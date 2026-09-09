@@ -27,11 +27,12 @@ public final class MultiverseDims {
     private MultiverseDims() {
     }
 
-    /** Registers overworld (base), nether (base+1) and end (base+2) of the level. Idempotent. */
+    /** Registers overworld (base), nether (base+1), end (base+2) and depths (base+3) of the level. Idempotent. */
     public static void registerLevelDimensions(int baseId) {
         registerOne(baseId, MultiverseWorldProviders.MultiverseOverworld.class);
         registerOne(baseId + 1, MultiverseWorldProviders.MultiverseHell.class);
         registerOne(baseId + 2, MultiverseWorldProviders.MultiverseEnd.class);
+        registerOne(baseId + 3, MultiverseWorldProviders.MultiverseDepths.class);
     }
 
     /** Registers the shared global dimension (9999). Idempotent. */

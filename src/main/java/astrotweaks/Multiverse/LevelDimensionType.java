@@ -1,8 +1,9 @@
 package astrotweaks.Multiverse;
 
-/** Which "universal" dimension a level has: 0-overworld, 1-nether, 2-end. */
+/** Which "universal" dimension a level has: 0-overworld, 1-nether, 2-end, 3-depths. */
 public enum LevelDimensionType {
     OVERWORLD,
     NETHER,
-    END
+    END,
+    DEPTHS
 }

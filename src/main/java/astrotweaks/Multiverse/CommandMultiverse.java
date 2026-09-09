@@ -20,9 +20,10 @@ import java.util.Random;
  *   <li>layer_id 0 &rarr; the save's original world (dimension 0)</li>
  *   <li>layer_id &lt;0 &rarr; the shared global dimension (9999)</li>
  *   <li>layer_id &gt;0 or a name &rarr; the multiverse level of the current save</li>
- *   <li>dim_id 0/1/2 &rarr; overworld / nether / end of the target</li>
+ *   <li>dim_id 0/1/2/3 &rarr; overworld / nether / end / depths of the target</li>
  *   <li>seed &rarr; used only when the level is created for the first time; default random</li>
  * </ul>
+ * /mv get &rarr; prints the current level and dimension id the sender is in.
  */
 public class CommandMultiverse extends CommandBase {
     @Override
@@ -31,11 +32,19 @@ public class CommandMultiverse extends CommandBase {
     }
     @Override
     public String getUsage(ICommandSender sender) {
-        return "/mv join <layer_id> [dim_id] [seed]";
+        return "/mv <join <layer_id> [dim_id] [seed] | get>";
     }
     @Override
     public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
-        if (args.length < 1 || !"join".equalsIgnoreCase(args[0])) {
+        if (args.length < 1) {
+            sender.sendMessage(new TextComponentString("Usage: " + getUsage(sender)));
+            return;
+        }
+        if ("get".equalsIgnoreCase(args[0])) {
+            handleGet(sender);
+            return;
+        }
+        if (!"join".equalsIgnoreCase(args[0])) {
             sender.sendMessage(new TextComponentString("Usage: " + getUsage(sender)));
             return;
         }
@@ -76,7 +85,15 @@ public class CommandMultiverse extends CommandBase {
             sender.sendMessage(new TextComponentString("Failed to load world for level '" + levelName + "'"));
             return;
         }
-        teleportTo(player, targetWorld, spawnFor(targetWorld, type));
+        BlockPos target = spawnFor(targetWorld, type);
+        if (type == LevelDimensionType.DEPTHS) {
+            // The depths level is an all-fill cavern: carve the same 2-block arrival
+            // pocket that the bedrock entry (MineDimEnter) keeps clear, so the player
+            // does not spawn inside solid stone.
+            targetWorld.destroyBlock(target, true);
+            targetWorld.destroyBlock(target.up(), true);
+        }
+        teleportTo(player, targetWorld, target);
         sender.sendMessage(new TextComponentString("Teleported to level '" + levelName + "' (" + type.name().toLowerCase() + ")"));
     }
     /** layer 0: return to the save's overworld spawn. */
@@ -100,6 +117,32 @@ public class CommandMultiverse extends CommandBase {
         teleportTo(player, global, global.getSpawnPoint());
         sender.sendMessage(new TextComponentString("Teleported to the global dimension"));
     }
+
+    /** /mv get: print the current level name and dimension id for debugging. */
+    private void handleGet(ICommandSender sender) {
+        if (!(sender instanceof EntityPlayerMP)) {
+            sender.sendMessage(new TextComponentString("Only players have a current dimension"));
+            return;
+        }
+        EntityPlayerMP player = (EntityPlayerMP) sender;
+        LevelManager lm = LevelManager.getInstance();
+        int dim = player.dimension;
+
+        if (dim == MultiverseDims.GLOBAL_DIM) {
+            player.sendMessage(new TextComponentString("[MULTIVERSE] Global dimension (9999) - DimID " + dim));
+            return;
+        }
+        LevelData data = lm.getLevelByDimensionId(dim);
+        if (data != null) {
+            LevelDimensionType type = data.typeOf(dim);
+            player.sendMessage(new TextComponentString("[MULTIVERSE] Level '" + data.name + "' (base " + data.baseId
+                    + ") - " + type.name() + " - DimID " + dim));
+        } else if (dim == 0) {
+            player.sendMessage(new TextComponentString("[MULTIVERSE] Original world (layer 0) - DimID " + dim));
+        } else {
+            player.sendMessage(new TextComponentString("[MULTIVERSE] Vanilla dimension (dim " + dim + ") - DimID " + dim));
+        }
+    }
     private BlockPos spawnFor(WorldServer world, LevelDimensionType type) {
         if (type == LevelDimensionType.END) {
             BlockPos coordinate = world.getSpawnCoordinate();
@@ -107,6 +150,9 @@ public class CommandMultiverse extends CommandBase {
                 return world.getSpawnPoint();
             }
             return coordinate;
+        }
+        if (type == LevelDimensionType.DEPTHS) {
+            return new BlockPos(8, 252, 8);
         }
         return world.getSpawnPoint();
     }
@@ -120,8 +166,8 @@ public class CommandMultiverse extends CommandBase {
     }
     private static LevelDimensionType dimensionTypeFromArgs(String s, ICommandSender sender) throws CommandException {
         Integer id = tryParseInt(s);
-        if (id == null || id < 0 || id > 2) {
-            sender.sendMessage(new TextComponentString("Invalid dim_id: " + s + " (0=overworld, 1=nether, 2=end)"));
+        if (id == null || id < 0 || id > 3) {
+            sender.sendMessage(new TextComponentString("Invalid dim_id: " + s + " (0=overworld, 1=nether, 2=end, 3=depths)"));
             throw new CommandException("Invalid dim_id: %s", s);
         }
         return LevelDimensionType.values()[id];

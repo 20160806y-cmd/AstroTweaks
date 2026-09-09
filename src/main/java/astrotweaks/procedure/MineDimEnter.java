@@ -8,10 +8,17 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.init.Blocks;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
+import astrotweaks.AstrotweaksMod;
 import astrotweaks.world.DepthsDim;
+import astrotweaks.Multiverse.LevelData;
+import astrotweaks.Multiverse.LevelDimensionType;
+import astrotweaks.Multiverse.LevelManager;
+import astrotweaks.Multiverse.MessageMultiverse;
+import astrotweaks.Multiverse.MultiverseDims;
 //import astrotweaks.procedure.ProcedureSwitchDimProc;
 import java.util.HashMap;
 
@@ -33,7 +40,12 @@ public final class MineDimEnter {
         World world = event.getWorld();
         if (world.isRemote) return;
         int dim = world.provider.getDimension();
-        if (dim != -6000 && dim != 0) return;
+        if (dim != -6000 && dim != 0) {
+            LevelData mvData0 = LevelManager.getInstance().getLevelByDimensionId(dim);
+            if (mvData0 == null) return;
+            LevelDimensionType mvType0 = mvData0.typeOf(dim);
+            if (mvType0 != LevelDimensionType.OVERWORLD && mvType0 != LevelDimensionType.DEPTHS) return;
+        }
 
         BlockPos pos = event.getPos();
         if (world.getBlockState(pos).getBlock() != Blocks.BEDROCK) return;
@@ -45,13 +57,22 @@ public final class MineDimEnter {
         //boolean shouldTeleport = false;
         int targetDim;
         int targetY;
-        
+
+        LevelData mvData = LevelManager.getInstance().getLevelByDimensionId(dim);
+        LevelDimensionType mvType = mvData != null ? mvData.typeOf(dim) : null;
+
         //teleport conditions
 	    if (dim == 0 && player.posY < MIN_HEIGHT_OVERWORLD) {
 	        targetDim = CAVERN_DIM_ID;
 	        targetY = TELEPORT_HEIGHT_CAVERN;
 	    } else if (dim == CAVERN_DIM_ID && player.posY > MAX_HEIGHT_CAVERN) {
 	        targetDim = 0;
+	        targetY = TELEPORT_HEIGHT_OVERWORLD;
+	    } else if (mvType == LevelDimensionType.OVERWORLD && player.posY < MIN_HEIGHT_OVERWORLD) {
+	        targetDim = mvData.dimensionId(LevelDimensionType.DEPTHS);
+	        targetY = TELEPORT_HEIGHT_CAVERN;
+	    } else if (mvType == LevelDimensionType.DEPTHS && player.posY > MAX_HEIGHT_CAVERN) {
+	        targetDim = mvData.dimensionId(LevelDimensionType.OVERWORLD);
 	        targetY = TELEPORT_HEIGHT_OVERWORLD;
 	    } else {
 	        return;
@@ -60,6 +81,17 @@ public final class MineDimEnter {
 
         MinecraftServer server = world.getMinecraftServer();
         if (server == null) return;
+
+        // MV levels: ensure the target world exists and the client knows the level's
+        // dimension ids BEFORE the transfer packet is scheduled.
+        if (mvData != null) {
+            MultiverseDims.registerLevelDimensions(mvData.baseId);
+            LevelDimensionType mvTargetType = mvData.typeOf(targetDim);
+            LevelManager.getInstance().getOrCreateWorld(server, mvData, mvTargetType);
+            if (player instanceof EntityPlayerMP) {
+                AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(mvData.baseId), (EntityPlayerMP) player);
+            }
+        }
 		
 		HashMap<String, String> cmdparams = new HashMap<>();
 		cmdparams.put("0", Integer.toString(targetDim));

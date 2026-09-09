@@ -1,10 +1,20 @@
 package astrotweaks.Multiverse;
 
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.DimensionType;
+import net.minecraft.world.WorldProvider;
 import net.minecraft.world.WorldProviderEnd;
 import net.minecraft.world.WorldProviderHell;
 import net.minecraft.world.WorldProviderSurface;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.gen.IChunkGenerator;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
+
+import astrotweaks.world.DepthsDim;
 
 /**
  * World providers for every multiverse dimension.
@@ -57,6 +67,51 @@ public class MultiverseWorldProviders {
         public int getRespawnDimension(EntityPlayerMP player) {
             return LevelManager.getOwningOverworldDimension(this.getDimension());
         }
+    }
+
+    /**
+     * Per-level "depths"/cavern world (baseId+3): the same dark all-fill cavern
+     * generator and biome provider as the vanilla DepthsDim world, but rooted in
+     * the level folder and with a unique id per level. Fire cannot light portals
+     * here because the registered dimension id is &gt; 0 (the custom portal is
+     * overworld/nether only anyway); entry/exit is handled by MineDimEnter.
+     */
+    public static class MultiverseDepths extends WorldProvider {
+        @Override
+        protected void init() {
+            this.nether = false;
+            this.hasSkyLight = false;
+            this.biomeProvider = new DepthsDim.BiomeProviderCustom(this.world.getSeed());
+        }
+        @Override
+        public IChunkGenerator createChunkGenerator() {
+            return new DepthsDim.ChunkProviderModded(this.world, this.world.getSeed() - this.getDimension());
+        }
+        @Override
+        public DimensionType getDimensionType() {
+            return DimensionType.getById(this.getDimension());
+        }
+        @Override
+        public int getRespawnDimension(EntityPlayerMP player) {
+            return LevelManager.getOwningOverworldDimension(this.getDimension());
+        }
+        @Override public void calculateInitialWeather() {}
+        @Override public void updateWeather() {}
+        @Override public boolean canDoLightning(Chunk chunk) { return false; }
+        @Override public boolean canDoRainSnowIce(Chunk chunk) { return false; }
+        @Override public boolean isSurfaceWorld() { return false; }
+        @Override public boolean canRespawnHere() { return false; }
+        @Override public boolean doesWaterVaporize() { return false; }
+        @Override public WorldSleepResult canSleepAt(EntityPlayer player, BlockPos pos) { return WorldSleepResult.DENY; }
+        @Override public boolean canCoordinateBeSpawn(int x, int z) { return false; }
+        @SideOnly(Side.CLIENT)
+        @Override public Vec3d getFogColor(float par1, float par2) { return new Vec3d(0.0, 0.0, 0.0); }
+        @SideOnly(Side.CLIENT)
+        @Override public Vec3d getSkyColor(net.minecraft.entity.Entity cameraEntity, float partialTicks) { return new Vec3d(0.0, 0.0, 0.0); }
+        @SideOnly(Side.CLIENT)
+        @Override public float calculateCelestialAngle(long worldTime, float partialTicks) { return 0.5F; }
+        @SideOnly(Side.CLIENT)
+        @Override public boolean doesXZShowFog(int x, int z) { return true; }
     }
 
     /** The shared global dimension 9999: a regular overworld-like world over all saves. */

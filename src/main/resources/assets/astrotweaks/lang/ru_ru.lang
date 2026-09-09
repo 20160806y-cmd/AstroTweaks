@@ -505,6 +505,7 @@ tile.mined_block.82.name=Блок свёклы
 tile.mineral_steel.name=Блок минеральной стали
 tile.minerals_ore.name=Минералы
 tile.money_table.name=Монетный стол
+tile.nether_portal.name=Портал
 tile.netherstar_block.name=Блок незер-звёзд
 tile.null_block.name=Null
 tile.potato_block.name=Блок картошки
@@ -524,3 +525,4 @@ tile.triple_compressed_quartz.name=Трижды сжатый кварц
 tile.u_destroyer_block.name=U Блок разрушения
 tile.u_killer_block.name=U Блок очищения
 tile.unknown_block.name=???
+

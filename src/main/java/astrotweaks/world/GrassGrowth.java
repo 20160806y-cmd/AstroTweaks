@@ -8,6 +8,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.EnumSkyBlock;
+import net.minecraft.world.DimensionType;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.chunk.Chunk;
@@ -196,7 +197,7 @@ public class GrassGrowth {
     	if (!GG_ON) return;
         World world = event.getWorld();
 		if (/*world == null || */world.isRemote) return;
-        if (world.provider.getDimension() != 0) return;
+        if (world.provider.getDimensionType() != DimensionType.OVERWORLD) return;
 
         Chunk chunk = event.getChunk();
         long key = ChunkPos.asLong(chunk.x, chunk.z);
@@ -222,7 +223,7 @@ public class GrassGrowth {
     	if (!GG_ON) return;
         World world = event.getWorld();
 		if (/*world == null || */world.isRemote) return;
-        if (world.provider.getDimension() != 0) return;
+        if (world.provider.getDimensionType() != DimensionType.OVERWORLD) return;
 
         Chunk chunk = event.getChunk();
         long key = ChunkPos.asLong(chunk.x, chunk.z);
@@ -249,7 +250,7 @@ public class GrassGrowth {
         World world = event.world;
         if (/*world == null || */world.isRemote) return; // server only
         int dim = world.provider.getDimension();
-        if (dim != 0) return;
+        if (world.provider.getDimensionType() != DimensionType.OVERWORLD) return;
 
 		long currentTick = world.getTotalWorldTime();
 		int processed = 0;
@@ -450,7 +451,7 @@ public class GrassGrowth {
     	if (!GG_ON) return;
         World world = event.getWorld();
 		if (/*world == null || */world.isRemote) return;
-        if (world.provider.getDimension() != 0) return;
+        if (world.provider.getDimensionType() != DimensionType.OVERWORLD) return;
         int dim = world.provider.getDimension();
 		synchronized (STATE_LOCK) {
 			PriorityQueue<ScheduledChunk> queue = queues.get(dim);

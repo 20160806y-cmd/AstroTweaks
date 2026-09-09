@@ -26,10 +26,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 
-import net.minecraftforge.client.event.ModelRegistryEvent;
-import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.common.EnumPlantType;
-import net.minecraftforge.fml.common.registry.GameRegistry;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
@@ -96,11 +93,9 @@ public class BlockGiantGrass {
                 case 1:
                     part = Part.MIDDLE;
                     break;
-
                 case 2:
                     part = Part.UPPER;
                     break;
-
                 case 0:
                 default:
                     part = Part.LOWER;
@@ -108,7 +103,6 @@ public class BlockGiantGrass {
             }
             return getDefaultState().withProperty(PART, part);
         }
-
         @Override
         public int getMetaFromState(IBlockState state) {
             switch (state.getValue(PART)) {
@@ -121,12 +115,10 @@ public class BlockGiantGrass {
                     return 0;
             }
         }
-
         @Override
         protected net.minecraft.block.state.BlockStateContainer createBlockState() {
             return new net.minecraft.block.state.BlockStateContainer(this, PART);
         }
-
         /**
          * После установки нижнего блока создаём средний и верхний.
          */
@@ -136,7 +128,6 @@ public class BlockGiantGrass {
 
 			IBlockState middleState = getDefaultState().withProperty(PART, Part.MIDDLE);
 			IBlockState upperState = getDefaultState().withProperty(PART, Part.UPPER);
-
 			world.setBlockState(pos.up(), middleState, 2);
 			world.setBlockState(pos.up(2), upperState, 2);
         }
@@ -147,20 +138,16 @@ public class BlockGiantGrass {
             BlockPos upperPos = lowerPos.up(2);
 
             if (!canPlaceBlockAt(world, lowerPos)) return false;
-            
 
             IBlockState lowerState = getDefaultState().withProperty(PART, Part.LOWER);
             IBlockState middleState = getDefaultState().withProperty(PART, Part.MIDDLE);
             IBlockState upperState = getDefaultState().withProperty(PART, Part.UPPER);
-
             world.setBlockState(lowerPos, lowerState, 2);
             world.setBlockState(middlePos, middleState, 2);
             world.setBlockState(upperPos, upperState, 2);
 
             return true;
         }
-
-
 
         /**
          * Удаляем всё, если ломается любой сегмент
@@ -184,14 +171,12 @@ public class BlockGiantGrass {
             }
             for (int i = 0; i < 3; i++) {
                 BlockPos partPos = base.up(i);
-
                 if (!partPos.equals(pos) && world.getBlockState(partPos).getBlock() == this) {
                     world.setBlockToAir(partPos);
                 }
             }
             super.breakBlock(world, pos, state);
         }
-
 		@Override
 		public boolean canBlockStay(World world, BlockPos pos, IBlockState state) {
 			Part part = state.getValue(PART);
@@ -211,7 +196,6 @@ public class BlockGiantGrass {
 					return false;
 			}
 		}
-
 		@Override
 		public void neighborChanged(IBlockState state, World world, BlockPos pos, Block blockIn, BlockPos fromPos) {
 			// Вызываем нашу проверку валидности
@@ -223,19 +207,11 @@ public class BlockGiantGrass {
 			// Можно также уведомить соседей, но не обязательно
 		}
 
-
-        @Override
-        public BlockFaceShape getBlockFaceShape(IBlockAccess world, IBlockState state, BlockPos pos, EnumFacing face) {
+        @Override public BlockFaceShape getBlockFaceShape(IBlockAccess world, IBlockState state, BlockPos pos, EnumFacing face) {
             return BlockFaceShape.UNDEFINED;
         }
-		@Override
-		public EnumPlantType getPlantType(IBlockAccess world, BlockPos pos) {
-			return EnumPlantType.Plains;
-		}
-        @Override
-        public IBlockState getPlant(IBlockAccess world, BlockPos pos) {
-            return world.getBlockState(pos);
-        }
+		@Override public EnumPlantType getPlantType(IBlockAccess world, BlockPos pos) { return EnumPlantType.Plains; }
+        @Override public IBlockState getPlant(IBlockAccess world, BlockPos pos) { return world.getBlockState(pos); }
         //@Override
         //public Item getItemDropped(IBlockState state, java.util.Random random, int fortune) {
         //    // Предмет выпадает только при разрушении нижней части
@@ -245,13 +221,11 @@ public class BlockGiantGrass {
             LOWER("lower"),
             MIDDLE("middle"),
             UPPER("upper");
-
             private final String name;
 
             Part(String name) {
                 this.name = name;
             }
-
             @Override public String getName() { return name; }
         }
     }

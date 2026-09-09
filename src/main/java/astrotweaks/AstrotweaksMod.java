@@ -107,7 +107,7 @@ public class AstrotweaksMod {
 	        astrotweaks.world.ForestVillage.preInit();
 		}
 
-		if (ModVariables.Enable_Ground_Elements) astrotweaks.world.DecorateGroungElements.register();
+		if (ModVariables.Enable_Ground_Elements) astrotweaks.world.DecorateGroundElements.register();
 		astrotweaks.world.BlockWorldGen.register();
 
 

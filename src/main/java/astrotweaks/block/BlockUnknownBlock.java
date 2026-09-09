@@ -3,10 +3,6 @@ package astrotweaks.block;
 
 import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.common.registry.GameRegistry;
-import net.minecraftforge.client.model.ModelLoader;
-import net.minecraftforge.client.event.ModelRegistryEvent;
-
 import net.minecraft.world.World;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.util.math.BlockPos;
@@ -14,17 +10,13 @@ import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.BlockRenderLayer;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.item.Item;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.material.MapColor;
 import net.minecraft.block.material.EnumPushReaction;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.Block;
-
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.command.ICommandSender;
@@ -32,7 +24,6 @@ import net.minecraft.command.ICommandSender;
 import java.util.Random;
 
 
-import astrotweaks.ElementsAstrotweaksMod;
 
 public class BlockUnknownBlock {
 	public static final Block block = new BlockCustom().setRegistryName("astrotweaks", "unknown_block");
@@ -47,10 +38,8 @@ public class BlockUnknownBlock {
 			setLightOpacity(0);
 			setCreativeTab(null);
 		}
-
 		@SideOnly(Side.CLIENT)
-		@Override
-		public BlockRenderLayer getBlockLayer() {
+		@Override public BlockRenderLayer getBlockLayer() {
 			return BlockRenderLayer.TRANSLUCENT;
 		}
 		@Override
@@ -64,30 +53,13 @@ public class BlockUnknownBlock {
 			return true;
 		}
 */
+		@Override public boolean isFullCube(IBlockState state) { return false; }
+		@Override public boolean isOpaqueCube(IBlockState state) { return false; }
+		@Override public EnumPushReaction getMobilityFlag(IBlockState state) { return EnumPushReaction.BLOCK; }
+		@Override public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) { return MapColor.BLACK; }
+		@Override public int quantityDropped(Random random) { return 0; }
 		@Override
-		public boolean isFullCube(IBlockState state) {
-			return false;
-		}
-		@Override
-		public boolean isOpaqueCube(IBlockState state) {
-			return false;
-		}
-		@Override
-		public EnumPushReaction getMobilityFlag(IBlockState state) {
-			return EnumPushReaction.BLOCK;
-		}
-		@Override
-		public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) {
-			return MapColor.BLACK;
-		}
-		@Override
-		public int quantityDropped(Random random) {
-			return 0;
-		}
-
-		@Override
-		public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer entity, EnumHand hand, EnumFacing direction,
-				float hitX, float hitY, float hitZ) {
+		public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer entity, EnumHand hand, EnumFacing direction, float hitX, float hitY, float hitZ) {
 			super.onBlockActivated(world, pos, state, entity, hand, direction, hitX, hitY, hitZ);
 			int x = pos.getX();
 			int y = pos.getY();
@@ -104,9 +76,7 @@ public class BlockUnknownBlock {
 					@Override public Vec3d getPositionVector() {return new Vec3d(x, y, z);}
 				}, "tellraw @a[distance=..4] {\"text\":\"You don't know what it is!\",\"color\":\"red\"}");
 			}
-			if (entity instanceof EntityPlayer)
-				((EntityPlayer) entity).closeScreen();
-
+			if (entity instanceof EntityPlayer) ((EntityPlayer) entity).closeScreen();
 			return true;
 		}
 	}

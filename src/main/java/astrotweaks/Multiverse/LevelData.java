@@ -21,12 +21,13 @@ public class LevelData {
         this.folder = folder;
     }
 
-    /** Global minecraft dimension id for the requested type (baseId, baseId+1, baseId+2). */
+    /** Global minecraft dimension id for the requested type (baseId .. baseId+3). */
     public int dimensionId(LevelDimensionType type) {
         switch (type) {
             case OVERWORLD: return baseId;
             case NETHER:    return baseId + 1;
             case END:       return baseId + 2;
+            case DEPTHS:    return baseId + 3;
             default:
                 throw new IllegalStateException("Unknown level dimension type: " + type);
                 // return baseId;
@@ -41,6 +42,8 @@ public class LevelData {
             return LevelDimensionType.NETHER;
         if (dimensionId == baseId + 2) 
             return LevelDimensionType.END;
+        if (dimensionId == baseId + 3) 
+            return LevelDimensionType.DEPTHS;
 
 
         return null;

@@ -38,7 +38,7 @@ public class MultiverseEvents {
     private int tickCounter;
 
     /**
-     * Runs a player dimension change without the portal re-mapping (used by
+     * Runs an entity dimension change without the portal re-mapping (used by
      * /mv join 0, where a nether portal in the level would otherwise hijack
      * the trip to the vanilla overworld). Returns the entity actually placed in the
      * target world (which for players is a fresh EntityPlayerMP).
@@ -49,6 +49,16 @@ public class MultiverseEvents {
             return player.changeDimension(dimension, teleporter);
         } finally {
             SKIP_PORTAL_REMAP.remove(player.getUniqueID());
+        }
+    }
+
+    /** Non-player variant of {@link #teleportIgnoringPortalRemap}. */
+    public static Entity teleportIgnoringPortalRemap(Entity entity, int dimension, ITeleporter teleporter) {
+        SKIP_PORTAL_REMAP.add(entity.getUniqueID());
+        try {
+            return entity.changeDimension(dimension, teleporter);
+        } finally {
+            SKIP_PORTAL_REMAP.remove(entity.getUniqueID());
         }
     }
 
@@ -111,7 +121,10 @@ public class MultiverseEvents {
         
 
         EntityPlayerMP player = entity instanceof EntityPlayerMP ? (EntityPlayerMP) entity : null;
-        if (player != null && SKIP_PORTAL_REMAP.remove(player.getUniqueID())) 
+        // Skip both players AND non-players that are being moved by our own code:
+        // the custom nether portal and /mv already computed exactly where the entity
+        // should land, which is never the vanilla nether/end mapping.
+        if (SKIP_PORTAL_REMAP.remove(entity.getUniqueID())) 
             return;
         
 
@@ -223,18 +236,41 @@ public class MultiverseEvents {
     // ------------------------------------------------------------------ portal creation safety net
 
     /**
-     * The global dimension (9999) is a sealed world: no nether/end portal may ever be
-     * created inside it. Vanilla fire cannot spawn portals there on its own (its own
-     * dimension id check would allow it now that MultiverseGlobal reports the overworld
-     * DimensionType), so this cancels the Forge hook fired from
-     * {@code BlockPortal.trySpawnPortal} before any portal block is placed.
+     * Portal creation safety net:
+     * <ul>
+     *   <li>the global dimension (9999) is a sealed world: no nether/end portal may
+     *       ever be created inside it (the vanilla fire check would allow it now that
+     *       MultiverseGlobal reports the overworld DimensionType);</li>
+     *   <li>inside a multiverse level overworld/nether the vanilla frame lighting is
+     *       cancelled and re-built with our custom {@link BlockNetherPortal} so every
+     *       portal block gets a two-way link (portals in MV end/depths stay forbidden:
+     *       fire cannot even light there because their DimensionType id &gt; 0).</li>
+     * </ul>
      */
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onPortalSpawn(BlockEvent.PortalSpawnEvent event) {
         if (event.getWorld() == null || event.getWorld().isRemote) return;
         if (event.getWorld().provider == null) return;
-        if (event.getWorld().provider.getDimension() == MultiverseDims.GLOBAL_DIM) {
+        int dim = event.getWorld().provider.getDimension();
+
+        if (dim == MultiverseDims.GLOBAL_DIM) {
             event.setCanceled(true);
+            return;
+        }
+
+        LevelData data = LevelManager.getInstance().getLevelByDimensionId(dim);
+        if (data == null) {
+            // Real-lane (-1/0/1) nether/end portals keep vanilla behavior.
+            return;
+        }
+        event.setCanceled(true);
+        LevelDimensionType type = data.typeOf(dim);
+        if (type != LevelDimensionType.OVERWORLD && type != LevelDimensionType.NETHER) {
+            return;
+        }
+        NetherPortalGeometry.Geometry geometry = NetherPortalGeometry.findFrame(event.getWorld(), event.getPos());
+        if (geometry != null) {
+            NetherPortalGeometry.placePortal(event.getWorld(), geometry);
         }
     }
 
@@ -279,7 +315,9 @@ public class MultiverseEvents {
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        
+
+        NetherPortalLink.onEndTick();
+
         if (++tickCounter % 100 != 0) {
             return;
         }

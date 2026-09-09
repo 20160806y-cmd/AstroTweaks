@@ -13,6 +13,10 @@ import net.minecraft.entity.monster.IMob;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.entity.Entity;
 
+import astrotweaks.Multiverse.LevelData;
+import astrotweaks.Multiverse.LevelDimensionType;
+import astrotweaks.Multiverse.LevelManager;
+
 // Подписка не нужна т.к. поведение управляется извне
 public final class CavernMobModifier {
 	public CavernMobModifier() {}
@@ -23,7 +27,10 @@ public final class CavernMobModifier {
 	    if (!event.getWorld().isRemote && event.getEntity() instanceof EntityLivingBase) {
 	        EntityLivingBase entity = (EntityLivingBase) event.getEntity();
 	        if (entity instanceof EntityPlayer || !(entity instanceof IMob)) return;
-	        if (event.getWorld().provider.getDimension() != DepthsDim.DIMID) return;
+	        if (event.getWorld().provider.getDimension() != DepthsDim.DIMID) {
+	            LevelData mvData = LevelManager.getInstance().getLevelByDimensionId(event.getWorld().provider.getDimension());
+	            if (mvData == null || mvData.typeOf(event.getWorld().provider.getDimension()) != LevelDimensionType.DEPTHS) return;
+	        }
 
 			NBTTagCompound data = entity.getEntityData();
 			if (data.getBoolean("Depths")) return;

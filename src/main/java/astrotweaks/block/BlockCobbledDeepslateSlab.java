@@ -1,11 +1,6 @@
 
 package astrotweaks.block;
 
-import net.minecraftforge.fml.relauncher.SideOnly;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.common.registry.GameRegistry;
-import net.minecraftforge.client.model.ModelLoader;
-import net.minecraftforge.client.event.ModelRegistryEvent;
 
 import net.minecraft.world.World;
 import net.minecraft.world.IBlockAccess;
@@ -13,10 +8,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.IStringSerializable;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemSlab;
 import net.minecraft.item.Item;
-import net.minecraft.client.renderer.block.model.Variant;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.block.properties.PropertyEnum;
 import net.minecraft.block.properties.IProperty;
@@ -29,7 +21,7 @@ import java.util.Random;
 
 import astrotweaks.creativetab.ATCreativeTabs;
 
-import astrotweaks.ElementsAstrotweaksMod;
+
 
 public class BlockCobbledDeepslateSlab {
 	public static final Block block = new BlockCustom().setRegistryName("astrotweaks", "cobbled_deepslate_slab");
@@ -69,7 +61,6 @@ public class BlockCobbledDeepslateSlab {
 					? new net.minecraft.block.state.BlockStateContainer(this, new IProperty[]{VARIANT})
 					: new net.minecraft.block.state.BlockStateContainer(this, new IProperty[]{HALF, VARIANT});
 		}
-
 		@Override
 		public IBlockState getStateFromMeta(int meta) {
 			if (this.isDouble()) {
@@ -78,7 +69,6 @@ public class BlockCobbledDeepslateSlab {
 				return this.getDefaultState().withProperty(HALF, BlockSlab.EnumBlockHalf.values()[meta % 2]);
 			}
 		}
-
 		@Override
 		public int getMetaFromState(IBlockState state) {
 			if (this.isDouble()) {
@@ -87,31 +77,12 @@ public class BlockCobbledDeepslateSlab {
 				return state.getValue(HALF).ordinal();
 			}
 		}
-
-		@Override
-		public String getUnlocalizedName(int meta) {
-			return super.getUnlocalizedName();
-		}
-
-		@Override
-		public IProperty<?> getVariantProperty() {
-			return VARIANT;
-		}
-
-		@Override
-		public Comparable<?> getTypeForItem(ItemStack stack) {
-			return BlockCustom.Variant.DEFAULT;
-		}
-
-		@Override
-		public boolean isDouble() {
-			return false;
-		}
-
-		@Override
-		public boolean doesSideBlockRendering(IBlockState state, IBlockAccess world, BlockPos pos, EnumFacing face) {
-			if (isDouble())
-				return true;
+		@Override public String getUnlocalizedName(int meta) { return super.getUnlocalizedName(); }
+		@Override public IProperty<?> getVariantProperty() { return VARIANT; }
+		@Override public Comparable<?> getTypeForItem(ItemStack stack) { return BlockCustom.Variant.DEFAULT; }
+		@Override public boolean isDouble() { return false; }
+		@Override public boolean doesSideBlockRendering(IBlockState state, IBlockAccess world, BlockPos pos, EnumFacing face) {
+			if (isDouble()) return true;
 			return super.doesSideBlockRendering(state, world, pos, face);
 		}
 		public enum Variant implements IStringSerializable {
@@ -120,12 +91,8 @@ public class BlockCobbledDeepslateSlab {
 				return "default";
 			}
 		}
-
 		public static class Double extends BlockCustom {
-			@Override
-			public boolean isDouble() {
-				return true;
-			}
+			@Override public boolean isDouble() { return true; }
 		}
 	}
 }

@@ -10,12 +10,11 @@ import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.EnumFacing;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.block.material.Material;
+//import net.minecraft.util.ResourceLocation;
+//import net.minecraft.block.material.Material;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
-
 
 import astrotweaks.ModVariables;
 
@@ -120,7 +119,6 @@ public final class SurfaceWorldGenerator {
 		//if (state == null) return false;
 		return state.getMaterial() == net.minecraft.block.material.Material.LEAVES;
 	}
-
 	private static boolean isLogBlock(IBlockState state) {
 		//if (state == null) return false;
 		//Block b = state.getBlock();

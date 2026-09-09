@@ -1,18 +1,14 @@
 
 package astrotweaks.block;
 
-import net.minecraftforge.oredict.OreDictionary;
 import net.minecraft.world.gen.feature.WorldGenMinable;
 import net.minecraft.world.gen.IChunkGenerator;
 import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraft.world.World;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.Item;
 import net.minecraft.init.Blocks;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.SoundType;
@@ -24,8 +20,6 @@ import java.util.Random;
 
 import astrotweaks.util.DropHandler;
 import astrotweaks.util.DropHandler.DropEntry;
-
-import astrotweaks.ModVariables;
 import astrotweaks.creativetab.ATCreativeTabs;
 
 
@@ -38,15 +32,15 @@ public class BlockMineralsOre {
 	public static void generateWorld(Random random, int chunkX, int chunkZ, World world, int dimID, IChunkGenerator cg, IChunkProvider cp) {
 	    if (dimID != 0) return;
 	    //if (!ModVariables.OW_Minerals_Gen) return;
-	
+
 	    WorldGenMinable gen = new WorldGenMinable(block.getDefaultState(), 8, STONE_MATCH);
 	    BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-	
+
 	    for (int i = 0; i < 5; i++) {
 	        int x = chunkX + random.nextInt(16);
 	        int y = random.nextInt(37) + 3;
 	        int z = chunkZ + random.nextInt(16);
-	
+
 	        pos.setPos(x, y, z);
 	        gen.generate(world, random, pos);
 	    }

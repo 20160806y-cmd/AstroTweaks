@@ -44,7 +44,7 @@ import java.util.UUID;
  * global dimension (9999) lives in MULTIVERSE_GLOBAL at the server root, outside
  * any single save.</p>
  *
- * <p>A level occupies 3 consecutive dimension ids (base, base+1, base+2) and is saved
+ * <p>A level occupies 4 consecutive dimension ids (base .. base+3) and is saved
  * into its own folder. Worlds are constructed manually and then registered with
  * {@link DimensionManager#setWorld(int, WorldServer, MinecraftServer)} because Forge's
  * initDimension only knows how to build a WorldServerMulti sharing the main overworld's
@@ -234,7 +234,7 @@ public class LevelManager {
         writeNbt(new File(multiverseFolder, "registry.dat"), root);
     }
     private void linkDimensions(LevelData data) {
-        for (int k = 0; k < 3; k++) {
+        for (int k = 0; k < 4; k++) {
             dimensionToLevel.put(data.baseId + k, data);
         }
     }
@@ -298,7 +298,7 @@ public class LevelManager {
         return base;
     }
     private boolean isBaseIdUsed(int base) {
-        for (int k = 0; k < 3; k++) {
+        for (int k = 0; k < 4; k++) {
             if (DimensionManager.isDimensionRegistered(base + k)) {
                 return true;
             }
@@ -404,7 +404,7 @@ public class LevelManager {
 
         if (fresh) {
             // Give a brand-new level the same treatment as a new vanilla world.
-            BlockPos spawn = world.getTopSolidOrLiquidBlock(new BlockPos(8, 0, 8));
+            BlockPos spawn = findSpawn(world);
             world.getWorldInfo().setSpawn(spawn);
             world.getWorldInfo().setServerInitialized(true);
             world.setSpawnPoint(spawn);
@@ -437,6 +437,35 @@ public class LevelManager {
                 world.setBlockState(base.add(dx, 1, dz), Blocks.END_PORTAL.getDefaultState());
             }
         }
+    }
+
+    /**
+     * Chooses a standable spawn for a brand-new level. For nether-like worlds this is
+     * the highest solid block at/below Y 64 (i.e. the FLOOR), never the bedrock ceiling;
+     * for depths worlds the fixed dark-cavern pocket at (8,252,8) used by MineDimEnter
+     * and /mv join; for overworld-like worlds the top solid block, as before.
+     */
+    private static BlockPos findSpawn(WorldServer world) {
+        int y = 64;
+        if (world.provider.getDimensionType() == net.minecraft.world.DimensionType.NETHER) {
+            y = Math.max(scanForTopSolidBelow(world, 8, 8, 64), 4);
+        } else if (world.provider instanceof MultiverseWorldProviders.MultiverseDepths) {
+            world.setBlockToAir(new BlockPos(8, 252, 8));
+            world.setBlockToAir(new BlockPos(8, 253, 8));
+            y = 252;
+        } else {
+            y = Math.max(world.getTopSolidOrLiquidBlock(new BlockPos(8, 0, 8)).getY(), 4);
+        }
+        return new BlockPos(8, y, 8);
+    }
+
+    private static int scanForTopSolidBelow(WorldServer world, int x, int z, int startY) {
+        for (int yy = Math.min(startY, world.getHeight() - 1); yy >= 0; yy--) {
+            if (world.getBlockState(new BlockPos(x, yy, z)).isTopSolid()) {
+                return yy;
+            }
+        }
+        return startY;
     }
 
     // ------------------------------------------------------------------ player persistence
@@ -600,7 +629,7 @@ public class LevelManager {
         if (multiverseFolder == null) return;
 
         for (LevelData data : levels.values()) {
-            for (int k = 0; k < 3; k++) {
+            for (int k = 0; k < 4; k++) {
                 unloadIfEmpty(server, data.baseId + k, ignore);
             }
         }
@@ -646,7 +675,7 @@ public class LevelManager {
         saveRegistry(server);
         savePlayerData();
         for (LevelData data : levels.values()) {
-            for (int k = 0; k < 3; k++) {
+            for (int k = 0; k < 4; k++) {
                 saveWorldIfLoaded(data.baseId + k);
             }
         }

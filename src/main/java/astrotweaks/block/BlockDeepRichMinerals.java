@@ -1,21 +1,11 @@
 package astrotweaks.block;
 
-import net.minecraftforge.fml.relauncher.SideOnly;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.common.registry.GameRegistry;
-import net.minecraftforge.client.model.ModelLoader;
-import net.minecraftforge.client.event.ModelRegistryEvent;
-import net.minecraftforge.oredict.OreDictionary;
 
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.NonNullList;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.item.Item;
-import net.minecraft.init.Items;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.material.EnumPushReaction;
@@ -23,45 +13,26 @@ import net.minecraft.block.SoundType;
 import net.minecraft.block.Block;
 
 import astrotweaks.creativetab.ATCreativeTabs;
-import astrotweaks.ElementsAstrotweaksMod;
-
 import astrotweaks.util.DropHandler;
 import astrotweaks.util.DropHandler.DropEntry;
+
+
 
 public class BlockDeepRichMinerals {
     public static final Block block = new BlockCustom().setRegistryName("astrotweaks", "deep_rich_minerals");
 
     public static class BlockCustom extends Block {
-    	/*
-        private static class DropEntry {
-            final String oreDict;
-            final int quantity;
-            final double weight; // chance
+        public BlockCustom() {
+            super(Material.IRON);
+            setUnlocalizedName("deep_rich_minerals");
+            setSoundType(SoundType.STONE);
+            setHarvestLevel("pickaxe", 3);
+            setHardness(60F);
+            setResistance(50F);
+            setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+        }
+        @Override public EnumPushReaction getMobilityFlag(IBlockState state) {return EnumPushReaction.IGNORE;}
 
-            DropEntry(String oreDict, int quantity, double weight) {
-                this.oreDict = oreDict;
-                this.quantity = quantity;
-                this.weight = weight;
-            }
-        }*/
-
-        // list of drops
-        /*
-        private static final List<DropEntry> DROP_LIST = new ArrayList<>();
-        static {
-            DROP_LIST.add(new DropEntry("oreDiamond", 	4, 20.0));
-            DROP_LIST.add(new DropEntry("oreEmerald", 	4,  9.0));
-            DROP_LIST.add(new DropEntry("oreGold",   	4, 20.0));
-			DROP_LIST.add(new DropEntry("oreIron", 		4, 11.0));
-			DROP_LIST.add(new DropEntry("oreLapis", 	4,  9.0));
-			DROP_LIST.add(new DropEntry("oreUranium", 	4, 15.0));
-			DROP_LIST.add(new DropEntry("oreThorium", 	4, 15.0));
-			DROP_LIST.add(new DropEntry("oreTitanium",  4, 14.0));
-			DROP_LIST.add(new DropEntry("oreNiobium",   4, 12.0));
-			DROP_LIST.add(new DropEntry("dustTungsten", 4, 12.0));
-			
-            
-        } */
 
         private static final astrotweaks.util.DropHandler.DropEntry[] DE_TABLE = new astrotweaks.util.DropHandler.DropEntry[] {
             new DropEntry("oreDiamond", 	4, 20.0),
@@ -75,19 +46,6 @@ public class BlockDeepRichMinerals {
 			new DropEntry("oreNiobium",		4, 12.0),
 			new DropEntry("dustTungsten",	4, 12.0),
         };
-
-
-
-        public BlockCustom() {
-            super(Material.IRON);
-            setUnlocalizedName("deep_rich_minerals");
-            setSoundType(SoundType.STONE);
-            setHarvestLevel("pickaxe", 3);
-            setHardness(60F);
-            setResistance(50F);
-            setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
-        }
-        @Override public EnumPushReaction getMobilityFlag(IBlockState state) {return EnumPushReaction.IGNORE;}
 
 		private static final DropHandler DE_DROP_TABLE = new DropHandler(DE_TABLE);
 		@Override public void getDrops(NonNullList<ItemStack> drops, IBlockAccess world, BlockPos pos, IBlockState state, int fortune) {

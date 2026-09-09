@@ -1,21 +1,12 @@
 package astrotweaks.block;
 
-import net.minecraftforge.fml.relauncher.SideOnly;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.common.registry.GameRegistry;
-import net.minecraftforge.client.model.ModelLoader;
-import net.minecraftforge.client.event.ModelRegistryEvent;
 
 import net.minecraft.world.World;
-import net.minecraft.world.IBlockAccess;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.Entity;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.item.Item;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.material.MapColor;
@@ -25,9 +16,9 @@ import net.minecraft.util.math.AxisAlignedBB;
 
 import astrotweaks.creativetab.ATCreativeTabs;
 
-import astrotweaks.ElementsAstrotweaksMod;
-
 import java.util.List;
+
+
 
 public class BlockUKillerBlock {
 	public static final Block block = new BlockCustom().setRegistryName("astrotweaks", "u_killer_block");
@@ -68,9 +59,7 @@ public class BlockUKillerBlock {
 				if (!e.isDead) {
 					try {
 						e.setDead();
-					} catch (NoSuchMethodError ex) {
-						// ignore
-					}
+					} catch (NoSuchMethodError ex) { /* ignore */ }
 				}
 			}
 			// remove the block itself

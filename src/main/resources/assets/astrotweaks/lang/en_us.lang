@@ -505,6 +505,7 @@ tile.mined_block.82.name=Beetroot block
 tile.mineral_steel.name=Mineral Steel Block
 tile.minerals_ore.name=Minerals
 tile.money_table.name=Coin stamping table
+tile.nether_portal.name=Portal
 tile.netherstar_block.name=Netherstar block
 tile.null_block.name=Null
 tile.potato_block.name=Potato block
@@ -524,6 +525,7 @@ tile.triple_compressed_quartz.name=Triple compressed quartz
 tile.u_destroyer_block.name=U Destroyer Block
 tile.u_killer_block.name=U Killer Block
 tile.unknown_block.name=???
+
 
 
 #

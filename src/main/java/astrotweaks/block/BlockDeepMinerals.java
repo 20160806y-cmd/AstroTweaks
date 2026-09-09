@@ -1,20 +1,11 @@
 package astrotweaks.block;
 
-import net.minecraftforge.fml.relauncher.SideOnly;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.common.registry.GameRegistry;
-import net.minecraftforge.client.model.ModelLoader;
-import net.minecraftforge.client.event.ModelRegistryEvent;
-import net.minecraftforge.oredict.OreDictionary;
 
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.NonNullList;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.item.Item;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.material.EnumPushReaction;
@@ -22,33 +13,15 @@ import net.minecraft.block.SoundType;
 import net.minecraft.block.Block;
 
 import astrotweaks.creativetab.ATCreativeTabs;
-import astrotweaks.ElementsAstrotweaksMod;
-
-import java.util.Random;
-import java.util.List;
-
 import astrotweaks.util.DropHandler;
 import astrotweaks.util.DropHandler.DropEntry;
-import net.minecraft.init.Items;
+
 
 
 public class BlockDeepMinerals {
     public static final Block block = new BlockCustom().setRegistryName("astrotweaks", "deep_minerals");
 
     public static class BlockCustom extends Block {
-        /*
-        private static final class DropEntry {
-            final String oreDict;
-            final int quantity;
-            final double weight;
-
-            DropEntry(String oreDict, int quantity, double weight) {
-                this.oreDict = oreDict;
-                this.quantity = quantity;
-                this.weight = weight;
-            }
-        }*/
-
         public BlockCustom() {
             super(Material.ROCK);
             setUnlocalizedName("deep_minerals");
@@ -60,7 +33,7 @@ public class BlockDeepMinerals {
         }
         @Override public EnumPushReaction getMobilityFlag(IBlockState state) { return EnumPushReaction.IGNORE; }
 
-        // immutable array of possible drops
+
         private static final DropEntry[] DE_TABLE = new DropEntry[] {
             new DropEntry("oreCopper",    2, 10.0),
             new DropEntry("oreSilver",    2, 10.0),
