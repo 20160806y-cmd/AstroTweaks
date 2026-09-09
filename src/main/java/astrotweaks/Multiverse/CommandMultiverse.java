@@ -25,17 +25,14 @@ import java.util.Random;
  * </ul>
  */
 public class CommandMultiverse extends CommandBase {
-
     @Override
     public String getName() {
         return "mv";
     }
-
     @Override
     public String getUsage(ICommandSender sender) {
         return "/mv join <layer_id> [dim_id] [seed]";
     }
-
     @Override
     public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
         if (args.length < 1 || !"join".equalsIgnoreCase(args[0])) {
@@ -79,20 +76,16 @@ public class CommandMultiverse extends CommandBase {
             sender.sendMessage(new TextComponentString("Failed to load world for level '" + levelName + "'"));
             return;
         }
-
         teleportTo(player, targetWorld, spawnFor(targetWorld, type));
         sender.sendMessage(new TextComponentString("Teleported to level '" + levelName + "' (" + type.name().toLowerCase() + ")"));
     }
-
     /** layer 0: return to the save's overworld spawn. */
     private void joinOriginalWorld(MinecraftServer server, EntityPlayerMP player) {
         WorldServer world0 = server.getWorld(0);
         BlockPos spawn = world0.getSpawnPoint();
         MultiverseEvents.teleportIgnoringPortalRemap(player, 0, new MultiverseTeleporter(spawn));
         player.fallDistance = 0.0F;
-        player.connection.setPlayerLocation(
-                spawn.getX() + 0.5, spawn.getY() + 1.0, spawn.getZ() + 0.5,
-                player.rotationYaw, player.rotationPitch);
+        player.connection.setPlayerLocation( spawn.getX() + 0.5, spawn.getY() + 1.0, spawn.getZ() + 0.5, player.rotationYaw, player.rotationPitch );
         player.sendMessage(new TextComponentString("Returned to the original world"));
     }
 
@@ -107,7 +100,6 @@ public class CommandMultiverse extends CommandBase {
         teleportTo(player, global, global.getSpawnPoint());
         sender.sendMessage(new TextComponentString("Teleported to the global dimension"));
     }
-
     private BlockPos spawnFor(WorldServer world, LevelDimensionType type) {
         if (type == LevelDimensionType.END) {
             BlockPos coordinate = world.getSpawnCoordinate();
@@ -118,18 +110,14 @@ public class CommandMultiverse extends CommandBase {
         }
         return world.getSpawnPoint();
     }
-
     private void teleportTo(EntityPlayerMP player, WorldServer targetWorld, BlockPos pos) {
         Entity travel = player.changeDimension(targetWorld.provider.getDimension(), new MultiverseTeleporter(pos));
         if (travel instanceof EntityPlayerMP) {
             EntityPlayerMP moved = (EntityPlayerMP) travel;
             moved.fallDistance = 0.0F;
-            moved.connection.setPlayerLocation(
-                    pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5,
-                    moved.rotationYaw, moved.rotationPitch);
+            moved.connection.setPlayerLocation( pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, moved.rotationYaw, moved.rotationPitch );
         }
     }
-
     private static LevelDimensionType dimensionTypeFromArgs(String s, ICommandSender sender) throws CommandException {
         Integer id = tryParseInt(s);
         if (id == null || id < 0 || id > 2) {
@@ -138,7 +126,6 @@ public class CommandMultiverse extends CommandBase {
         }
         return LevelDimensionType.values()[id];
     }
-
     private static long parseSeed(String s, ICommandSender sender) throws CommandException {
         if ("random".equalsIgnoreCase(s)) {
             return new Random().nextLong();
@@ -150,7 +137,6 @@ public class CommandMultiverse extends CommandBase {
             throw new CommandException("Invalid seed: %s", s);
         }
     }
-
     private static Integer tryParseInt(String s) {
         try {
             return Integer.parseInt(s);
@@ -158,7 +144,6 @@ public class CommandMultiverse extends CommandBase {
             return null;
         }
     }
-
     private static String sanitize(String name) {
         return name.replaceAll("[^A-Za-z0-9_\\-]", "_");
     }

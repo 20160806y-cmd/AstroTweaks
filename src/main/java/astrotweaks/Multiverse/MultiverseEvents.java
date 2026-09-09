@@ -38,12 +38,13 @@ public class MultiverseEvents {
     /**
      * Runs a player dimension change without the portal re-mapping (used by
      * /mv join 0, where a nether portal in the level would otherwise hijack
-     * the trip to the vanilla overworld).
+     * the trip to the vanilla overworld). Returns the entity actually placed in the
+     * target world (which for players is a fresh EntityPlayerMP).
      */
-    public static void teleportIgnoringPortalRemap(EntityPlayerMP player, int dimension, ITeleporter teleporter) {
+    public static Entity teleportIgnoringPortalRemap(EntityPlayerMP player, int dimension, ITeleporter teleporter) {
         SKIP_PORTAL_REMAP.add(player.getUniqueID());
         try {
-            player.changeDimension(dimension, teleporter);
+            return player.changeDimension(dimension, teleporter);
         } finally {
             SKIP_PORTAL_REMAP.remove(player.getUniqueID());
         }
@@ -87,53 +88,61 @@ public class MultiverseEvents {
     @SubscribeEvent
     public void onTravelToDimension(EntityTravelToDimensionEvent event) {
         Entity entity = event.getEntity();
-        if (entity == null || entity.getEntityWorld() == null || entity.getEntityWorld().isRemote) {
+        if (entity == null || entity.getEntityWorld() == null || entity.getEntityWorld().isRemote) 
             return;
-        }
+        
 
         EntityPlayerMP player = entity instanceof EntityPlayerMP ? (EntityPlayerMP) entity : null;
-        if (player != null && SKIP_PORTAL_REMAP.remove(player.getUniqueID())) {
+        if (player != null && SKIP_PORTAL_REMAP.remove(player.getUniqueID())) 
             return;
-        }
+        
 
         int from = entity.dimension;
         int to = event.getDimension();
 
+        // The global dimension (9999) is a sealed overworld-only world: it lives in
+        // MULTIVERSE_GLOBAL and must never let a player portal out of it into the
+        // vanilla nether/end or into any multiverse level.
+        if (from == MultiverseDims.GLOBAL_DIM) {
+            event.setCanceled(true);
+            return;
+        }
+
         LevelManager lm = LevelManager.getInstance();
         LevelData data = lm.getLevelByDimensionId(from);
-        if (data == null) {
-            return;
-        }
+        if (data == null) return;
 
         LevelDimensionType targetType = resolvePortalTarget(data.typeOf(from), to);
-        if (targetType == null) {
-            return;
-        }
+        if (targetType == null) return;
 
         MinecraftServer server = entity.getServer();
-        if (server == null) {
-            return;
-        }
+        if (server == null) return;
 
         event.setCanceled(true);
 
         WorldServer targetWorld = lm.getOrCreateWorld(server, data, targetType);
-        if (targetWorld == null) {
-            return;
-        }
+        if (targetWorld == null) return;
+        
 
         int corrected = data.dimensionId(targetType);
 
-        ITeleporter teleporter;
+        BlockPos targetPos;
         if (targetType == LevelDimensionType.END) {
-            teleporter = new MultiverseTeleporter(endSpawn(targetWorld));
+            targetPos = endSpawn(targetWorld);
         } else if (targetType == LevelDimensionType.OVERWORLD && data.typeOf(from) == LevelDimensionType.END) {
-            teleporter = new MultiverseTeleporter(targetWorld.getSpawnPoint());
+            targetPos = targetWorld.getSpawnPoint();
         } else {
-            // Overworld <-> nether: keep the vanilla movement-factor scaling and
-            // portal pairing (find/create a matching portal in the target world).
-            teleporter = targetWorld.getDefaultTeleporter();
+            // Overworld <-> nether: apply the vanilla movement-factor scaling so a
+            // player does not end up buried. x/z are divided by 8 going to the nether
+            // and multiplied by 8 coming back to the overworld.
+            double scale = targetType == LevelDimensionType.NETHER ? 1.0 / 8.0D : 8.0D;
+            targetPos = new BlockPos(
+                    (int) (entity.posX * scale),
+                    (int) entity.posY,
+                    (int) (entity.posZ * scale));
         }
+
+        ITeleporter teleporter = new MultiverseTeleporter(targetPos);
 
         if (player != null) {
             AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(data.baseId), player);
@@ -193,12 +202,9 @@ public class MultiverseEvents {
 
     @SubscribeEvent
     public void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
-        if (event.player == null || event.player.world.isRemote) {
-            return;
-        }
-        if (!(event.player instanceof EntityPlayerMP)) {
-            return;
-        }
+        if (event.player == null || event.player.world.isRemote) return;
+        if (!(event.player instanceof EntityPlayerMP)) return;
+        
         EntityPlayerMP player = (EntityPlayerMP) event.player;
         LevelManager lm = LevelManager.getInstance();
         int dim = player.dimension;
@@ -211,12 +217,9 @@ public class MultiverseEvents {
 
     @SubscribeEvent
     public void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (event.player == null || event.player.world.isRemote) {
-            return;
-        }
-        if (!(event.player instanceof EntityPlayerMP)) {
-            return;
-        }
+        if (event.player == null || event.player.world.isRemote) return;
+        if (!(event.player instanceof EntityPlayerMP)) return;
+        
         EntityPlayerMP player = (EntityPlayerMP) event.player;
         LevelManager lm = LevelManager.getInstance();
         int dim = player.dimension;
@@ -235,9 +238,8 @@ public class MultiverseEvents {
 
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
+        if (event.phase != TickEvent.Phase.END) return;
+        
         if (++tickCounter % 100 != 0) {
             return;
         }

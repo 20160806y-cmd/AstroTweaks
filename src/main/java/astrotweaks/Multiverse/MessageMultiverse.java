@@ -18,14 +18,12 @@ public class MessageMultiverse implements IMessage {
     private int baseDimId;
     private boolean global;
 
-    public MessageMultiverse() {
-    }
+    public MessageMultiverse() {}
 
     public MessageMultiverse(int baseDimId) {
         this.baseDimId = baseDimId;
         this.global = false;
     }
-
     public static MessageMultiverse forGlobal() {
         MessageMultiverse message = new MessageMultiverse(GLOBAL_SENTINEL);
         message.global = true;
@@ -37,7 +35,6 @@ public class MessageMultiverse implements IMessage {
         this.baseDimId = buf.readInt();
         this.global = buf.readBoolean();
     }
-
     @Override
     public void toBytes(ByteBuf buf) {
         buf.writeInt(this.baseDimId);
@@ -49,7 +46,6 @@ public class MessageMultiverse implements IMessage {
      * be visible before the (already queued) respawn packet creates the WorldClient.
      */
     public static class ClientHandler implements IMessageHandler<MessageMultiverse, IMessage> {
-
         @Override
         public IMessage onMessage(MessageMultiverse message, MessageContext ctx) {
             if (ctx.side == Side.CLIENT) {

@@ -2,6 +2,7 @@ package astrotweaks.Multiverse;
 
 import astrotweaks.AstrotweaksMod;
 
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
@@ -63,8 +64,7 @@ public class LevelManager {
     private File globalFolder;
     private boolean registryLoaded;
 
-    private LevelManager() {
-    }
+    private LevelManager() {}
 
     public static LevelManager getInstance() {
         if (INSTANCE == null) {
@@ -81,9 +81,8 @@ public class LevelManager {
      */
     public void onWorldLoaded(MinecraftServer server) {
         WorldServer world0 = server.getWorld(0);
-        if (world0 == null) {
-            return;
-        }
+        if (world0 == null) return;
+        
         File mvFolder = new File(world0.getSaveHandler().getWorldDirectory(), "MULTIVERSE");
         if (isSameFolder(multiverseFolder, mvFolder)) {
             registerGlobalDimensionIfMissing();
@@ -148,7 +147,6 @@ public class LevelManager {
         root.setLong("worldSeed", world0.getWorldInfo().getSeed());
         writeNbt(new File(multiverseFolder, "universe.dat"), root);
     }
-
     private static boolean isSameFolder(File a, File b) {
         if (a == null || b == null) {
             return false;
@@ -163,20 +161,15 @@ public class LevelManager {
     // ------------------------------------------------------------------ registry
 
     private void ensureRegistry(MinecraftServer server) {
-        if (registryLoaded) {
-            return;
-        }
+        if (registryLoaded) return;
         registryLoaded = true;
 
         File reg = new File(multiverseFolder, "registry.dat");
-        if (!reg.isFile()) {
-            return;
-        }
+        if (!reg.isFile()) return;
 
         NBTTagCompound root = readNbt(reg);
-        if (root == null) {
-            return;
-        }
+        if (root == null) return;
+
         NBTTagList list = root.getTagList("levels", 10);
         for (int i = 0; i < list.tagCount(); i++) {
             NBTTagCompound entry = list.getCompoundTagAt(i);
@@ -192,9 +185,8 @@ public class LevelManager {
     }
 
     private void saveRegistry(MinecraftServer server) {
-        if (multiverseFolder == null) {
-            return;
-        }
+        if (multiverseFolder == null) return;
+
         NBTTagCompound root = new NBTTagCompound();
         NBTTagList list = new NBTTagList();
         for (LevelData data : levels.values()) {
@@ -207,7 +199,6 @@ public class LevelManager {
         root.setTag("levels", list);
         writeNbt(new File(multiverseFolder, "registry.dat"), root);
     }
-
     private void linkDimensions(LevelData data) {
         for (int k = 0; k < 3; k++) {
             dimensionToLevel.put(data.baseId + k, data);
@@ -215,16 +206,14 @@ public class LevelManager {
     }
 
     // ------------------------------------------------------------------ levels
-
     /**
      * Returns the level, creating it when unknown. Existing folders whose registry entry
      * is missing are re-attached with a fresh base id and their stored seed.
      */
     public LevelData getOrCreateLevel(MinecraftServer server, String name, long seed) {
         ensureActive(server);
-        if (name == null || name.isEmpty() || name.contains("/") || name.contains("\\") || name.contains("..")) {
+        if (name == null || name.isEmpty() || name.contains("/") || name.contains("\\") || name.contains("..")) 
             return null;
-        }
 
         LevelData data = levels.get(name);
         if (data != null) {
@@ -247,7 +236,6 @@ public class LevelManager {
                 System.err.println("[Multiverse] Cannot create level folder: " + folder);
             }
         }
-
         if (data != null) {
             saveRegistry(server);
             MultiverseDims.registerLevelDimensions(data.baseId);
@@ -258,7 +246,6 @@ public class LevelManager {
     private boolean isLevelDataPresent(File folder) {
         return new File(folder, "level.dat").isFile();
     }
-
     private LevelData registerNewLevel(MinecraftServer server, String name, long seed, File folder) {
         int baseId = findFreeBaseId();
         LevelData data = new LevelData(name, baseId, seed, folder);
@@ -266,7 +253,6 @@ public class LevelManager {
         linkDimensions(data);
         return data;
     }
-
     private int findFreeBaseId() {
         int base = BASE_START;
         while (base < BASE_MAX && isBaseIdUsed(base)) {
@@ -277,7 +263,6 @@ public class LevelManager {
         }
         return base;
     }
-
     private boolean isBaseIdUsed(int base) {
         for (int k = 0; k < 3; k++) {
             if (DimensionManager.isDimensionRegistered(base + k)) {
@@ -290,17 +275,14 @@ public class LevelManager {
     public LevelData getLevelByName(String name) {
         return levels.get(name);
     }
-
     public LevelData getLevelByDimensionId(int id) {
         return dimensionToLevel.get(id);
     }
-
     public boolean isMultiverseDimension(int id) {
         return id == MultiverseDims.GLOBAL_DIM || dimensionToLevel.containsKey(id);
     }
 
     // ------------------------------------------------------------------ worlds
-
     /**
      * Loads (or creates) the WorldServer backing the given dimension of the level.
      * This is the 1.12.2 equivalent of a per-save dimension root.
@@ -364,7 +346,6 @@ public class LevelManager {
                 world.getChunkFromChunkCoords(cx, cz);
             }
         }
-
         return world;
     }
 
@@ -388,32 +369,35 @@ public class LevelManager {
     private File playerDataFile() {
         return new File(multiverseFolder, "mv_playerdata.dat");
     }
-
     public void recordPlayer(EntityPlayerMP player) {
         playerEntries.put(player.getUniqueID(), new PlayerEntry(player.dimension, player.posX, player.posY, player.posZ, player.rotationYaw, player.rotationPitch));
         savePlayerData();
     }
-
     public void clearPlayer(UUID uuid) {
         if (playerEntries.remove(uuid) != null) {
             savePlayerData();
         }
     }
-
     public PlayerEntry getPlayerEntry(UUID uuid) {
         return playerEntries.get(uuid);
     }
 
-    /** Teleports a freshly logged-in player back into their multiverse dimension. */
+    /**
+     * Teleports a freshly logged-in player back into their multiverse dimension.
+     *
+     * <p>The transfer goes through the portal/re-map bypass so the intermediate
+     * {@code PlayerChangedDimensionEvent} (which would otherwise see dim 0 and clear
+     * the entry mid-restore) cannot drop the player's saved location. The entity
+     * actually placed in the target world is used for the post-transfer position so we
+     * never write to a stale reference.</p>
+     */
     public boolean restorePlayer(EntityPlayerMP player) {
         PlayerEntry entry = playerEntries.get(player.getUniqueID());
-        if (entry == null) {
-            return false;
-        }
+        if (entry == null) return false;
+
         MinecraftServer server = player.world.getMinecraftServer();
-        if (server == null) {
-            return false;
-        }
+        if (server == null) return false;
+
         ensureActive(server);
 
         LevelData data = dimensionToLevel.get(entry.dimension);
@@ -444,16 +428,20 @@ public class LevelManager {
             return false;
         }
 
-        player.changeDimension(entry.dimension, new MultiverseTeleporter(new BlockPos((int) entry.x, (int) entry.y, (int) entry.z)));
-        player.fallDistance = 0.0F;
-        player.connection.setPlayerLocation(entry.x, entry.y + 1.0D, entry.z, entry.yaw, entry.pitch);
+        // Teleport through the dedicated MV teleporter (which skips the vanilla nether
+        // portal math) and apply position/rotation to the RETURNED entity.
+        Entity restored = astrotweaks.Multiverse.MultiverseEvents.teleportIgnoringPortalRemap(
+                player,  entry.dimension,
+                new MultiverseTeleporter(new BlockPos((int) entry.x, (int) entry.y, (int) entry.z)));
+        EntityPlayerMP moved = restored instanceof EntityPlayerMP ? (EntityPlayerMP) restored : player;
+        moved.fallDistance = 0.0F;
+        moved.connection.setPlayerLocation(entry.x, entry.y + 1.0D, entry.z, entry.yaw, entry.pitch);
         return true;
     }
 
     private void savePlayerData() {
-        if (multiverseFolder == null) {
-            return;
-        }
+        if (multiverseFolder == null) return;
+
         NBTTagCompound root = new NBTTagCompound();
         NBTTagList list = new NBTTagList();
         for (Map.Entry<UUID, PlayerEntry> e : playerEntries.entrySet()) {
@@ -478,18 +466,17 @@ public class LevelManager {
             return;
         }
         NBTTagCompound root = readNbt(file);
-        if (root == null) {
-            return;
-        }
+        if (root == null) return;
+
         NBTTagList list = root.getTagList("players", 10);
         for (int i = 0; i < list.tagCount(); i++) {
             NBTTagCompound tag = list.getCompoundTagAt(i);
             try {
                 UUID uuid = UUID.fromString(tag.getString("uuid"));
                 PlayerEntry entry = new PlayerEntry(
-                        tag.getInteger("dim"),
-                        tag.getDouble("x"), tag.getDouble("y"), tag.getDouble("z"),
-                        tag.getFloat("yaw"), tag.getFloat("pitch"));
+                    tag.getInteger("dim"),
+                    tag.getDouble("x"), tag.getDouble("y"), tag.getDouble("z"),
+                    tag.getFloat("yaw"), tag.getFloat("pitch"));
                 playerEntries.put(uuid, entry);
             } catch (IllegalArgumentException e) {
                 System.err.println("[Multiverse] Skipping bad player entry: " + e);
@@ -498,12 +485,10 @@ public class LevelManager {
     }
 
     // ------------------------------------------------------------------ unloading
-
     /** Unloads level and global worlds that no longer contain any (non-exempt) player. */
     public void unloadEmptyDimensions(MinecraftServer server, UUID... ignore) {
-        if (multiverseFolder == null) {
-            return;
-        }
+        if (multiverseFolder == null) return;
+
         for (LevelData data : levels.values()) {
             for (int k = 0; k < 3; k++) {
                 unloadIfEmpty(data.baseId + k, ignore);
@@ -514,10 +499,15 @@ public class LevelManager {
 
     private void unloadIfEmpty(int dim, UUID... ignore) {
         WorldServer world = DimensionManager.getWorld(dim);
-        if (world == null) {
-            return;
-        }
+        if (world == null) return;
         if (world.playerEntities.isEmpty() || onlyIgnoredPlayers(world.playerEntities, ignore)) {
+            // Save the world before dropping it, otherwise all its chunks (and the
+            // global 9999 world in MULTIVERSE_GLOBAL) would be lost on unload.
+            try {
+                world.saveAllChunks(true, null);
+            } catch (Exception e) {
+                System.err.println("[Multiverse] Failed to save world " + dim + " before unload: " + e);
+            }
             DimensionManager.unloadWorld(dim);
         }
     }
@@ -539,12 +529,10 @@ public class LevelManager {
     }
 
     // ------------------------------------------------------------------ saving
-
     /** Saves the registry, player data and all loaded multiverse worlds (server stop). */
     public void saveAll(MinecraftServer server) {
-        if (multiverseFolder == null) {
-            return;
-        }
+        if (multiverseFolder == null) return;
+
         saveRegistry(server);
         savePlayerData();
         for (LevelData data : levels.values()) {
@@ -557,9 +545,8 @@ public class LevelManager {
 
     private void saveWorldIfLoaded(int dim) {
         WorldServer world = DimensionManager.getWorld(dim);
-        if (world == null) {
-            return;
-        }
+        if (world == null) return;
+
         try {
             world.saveAllChunks(true, null);
         } catch (Exception e) {
@@ -579,7 +566,6 @@ public class LevelManager {
             System.err.println("[Multiverse] Failed to write " + file + ": " + e);
         }
     }
-
     private static NBTTagCompound readNbt(File file) {
         try (FileInputStream fin = new FileInputStream(file)) {
             return CompressedStreamTools.readCompressed(fin);
@@ -588,13 +574,11 @@ public class LevelManager {
             return null;
         }
     }
-
     /** Where a player stands inside a multiverse dimension when they leave/download. */
     public static class PlayerEntry {
         public final int dimension;
         public final double x, y, z;
         public final float yaw, pitch;
-
         PlayerEntry(int dimension, double x, double y, double z, float yaw, float pitch) {
             this.dimension = dimension;
             this.x = x;

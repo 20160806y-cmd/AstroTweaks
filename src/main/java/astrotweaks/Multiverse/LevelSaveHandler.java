@@ -17,7 +17,6 @@ import java.io.File;
  * and level.dat / data / playerdata live at the folder root.
  */
 public class LevelSaveHandler extends AnvilSaveHandler {
-
     public LevelSaveHandler(File levelFolder) {
         super(levelFolder.getParentFile(), levelFolder.getName(), true, DataFixesManager.createFixer());
     }

@@ -46,13 +46,7 @@ public final class MultiverseDims {
         // EnumHelper.addEnum appends a real constant, Forge's DimensionType.getById
         // will then find the id on both sides. The enum constant name must be unique
         // per id and valid as a Java identifier.
-        DimensionType type = DimensionType.register(
-                "MV_DIM_" + dimId,
-                "_mv",
-                dimId,
-                providerClass,
-                false
-        );
+        DimensionType type = DimensionType.register( "MV_DIM_" + dimId, "_mv", dimId, providerClass, false );
         DimensionManager.registerDimension(dimId, type);
     }
 }
