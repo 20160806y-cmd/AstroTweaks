@@ -20,6 +20,8 @@ import net.minecraft.world.storage.WorldInfo;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
+import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minecraftforge.fml.common.Loader;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -43,9 +45,10 @@ import java.util.UUID;
  * any single save.</p>
  *
  * <p>A level occupies 3 consecutive dimension ids (base, base+1, base+2) and is saved
- * into its own folder. Worlds are constructed manually (the WorldServer constructor
- * registers them in DimensionManager via setWorld) because Forge's initDimension only
- * knows how to build a WorldServerMulti sharing the main overworld's save handler.</p>
+ * into its own folder. Worlds are constructed manually and then registered with
+ * {@link DimensionManager#setWorld(int, WorldServer, MinecraftServer)} because Forge's
+ * initDimension only knows how to build a WorldServerMulti sharing the main overworld's
+ * save handler.</p>
  */
 public class LevelManager {
 
@@ -93,7 +96,9 @@ public class LevelManager {
         }
         cachedServer = server;
         multiverseFolder = mvFolder;
-        globalFolder = server.getFile("MULTIVERSE_GLOBAL");
+        // The global universe must live beside config/mods/logs at the game root,
+        // NOT inside the save folder (server.getFile would resolve into the save).
+        globalFolder = new File(resolveGameRoot(), "MULTIVERSE_GLOBAL");
         levels.clear();
         dimensionToLevel.clear();
         playerEntries.clear();
@@ -107,6 +112,7 @@ public class LevelManager {
         if (!globalFolder.exists() && !globalFolder.mkdirs()) {
             throw new IllegalStateException("Cannot create MULTIVERSE_GLOBAL folder: " + globalFolder);
         }
+        System.out.println("[MULTIVERSE] Shared global dimension folder: " + globalFolder);
 
         ensureRegistry(server);
         writeBindingMarker(world0);
@@ -134,9 +140,9 @@ public class LevelManager {
         File legacy = server.getFile("MULTIVERSE");
         if (!multiverseFolder.exists() && legacy.isDirectory() && new File(legacy, "registry.dat").isFile()) {
             if (legacy.renameTo(multiverseFolder)) {
-                System.out.println("[Multiverse] Migrated legacy MULTIVERSE folder to " + multiverseFolder);
+                System.out.println("[MULTIVERSE] Migrated legacy MULTIVERSE folder to " + multiverseFolder);
             } else {
-                System.err.println("[Multiverse] Could not migrate legacy MULTIVERSE folder " + legacy);
+                System.err.println("[MULTIVERSE] Could not migrate legacy MULTIVERSE folder " + legacy);
             }
         }
     }
@@ -156,6 +162,34 @@ public class LevelManager {
         } catch (IOException e) {
             return a.equals(b);
         }
+    }
+
+    /**
+     * Resolves the folder that holds the shared MULTIVERSE_GLOBAL world. On the client
+     * this is Minecraft.mcDataDir (the .minecraft folder); on a dedicated server it
+     * falls back to the parent of the config folder (the server root). Never the save.
+     */
+    private static File resolveGameRoot() {
+        if (FMLCommonHandler.instance().getSide() == net.minecraftforge.fml.relauncher.Side.CLIENT
+                && net.minecraft.client.Minecraft.getMinecraft() != null) {
+            File mcDataDir = net.minecraft.client.Minecraft.getMinecraft().mcDataDir;
+            if (mcDataDir != null) {
+                return mcDataDir;
+            }
+        }
+        File configDir = Loader.instance().getConfigDir();
+        return configDir == null ? new File(".") : configDir.getParentFile();
+    }
+
+    /**
+     * True for worlds saved through a {@link LevelSaveHandler} (our per-level folders
+     * and the global world). Worlds owned by any other save handler - above all the
+     * for-save WorldServerMulti Forge spins up via DimensionManager.initDimension that
+     * reuses the OVERWORLD's session.lock and region folder - must never be saved:
+     * doing so writes into the overworld and throws the session-lock MinecraftException.
+     */
+    private static boolean isOwnedWorld(WorldServer world) {
+        return world.getSaveHandler() instanceof LevelSaveHandler;
     }
 
     // ------------------------------------------------------------------ registry
@@ -233,7 +267,7 @@ public class LevelManager {
             if ((folder.exists() || folder.mkdirs()) && folder.isDirectory()) {
                 data = registerNewLevel(server, name, seed, folder);
             } else {
-                System.err.println("[Multiverse] Cannot create level folder: " + folder);
+                System.err.println("[MULTIVERSE] Cannot create level folder: " + folder);
             }
         }
         if (data != null) {
@@ -282,6 +316,21 @@ public class LevelManager {
         return id == MultiverseDims.GLOBAL_DIM || dimensionToLevel.containsKey(id);
     }
 
+    /**
+     * Returns the overworld dimension id that owns the given dimension.
+     * For overworld dimensions, returns the dim itself. For nether/end dims,
+     * returns the overworld dim of the same level. Used by WorldProviders
+     * so that death in nether/end respawns the player in the correct overworld.
+     */
+    public static int getOwningOverworldDimension(int dimId) {
+        LevelManager lm = getInstance();
+        LevelData data = lm.dimensionToLevel.get(dimId);
+        if (data != null) {
+            return data.baseId;
+        }
+        return dimId;
+    }
+
     // ------------------------------------------------------------------ worlds
     /**
      * Loads (or creates) the WorldServer backing the given dimension of the level.
@@ -292,13 +341,22 @@ public class LevelManager {
 
         WorldServer existing = DimensionManager.getWorld(dimId);
         if (existing != null) {
-            return existing;
+            // If the existing world points at the wrong save root (e.g. Forge/the game
+            // auto-created DIM1000 in the save folder instead of MULTIVERSE/<name>),
+            // unload it so we can rebuild it rooted at the level folder.
+            File existingDir = existing.getSaveHandler().getWorldDirectory();
+            if (isSameFolder(existingDir, data.folder)) {
+                return existing;
+            }
+            System.out.println("[MULTIVERSE] Unloading world for dim " + dimId
+                    + " pointing at wrong folder: " + existingDir + " (expected " + data.folder + ")");
+            unloadWorldNow(server, dimId, true);
         }
 
         // Dimension must be registered before constructing the WorldServer.
         MultiverseDims.registerLevelDimensions(data.baseId);
 
-        return constructWorld(server, data.folder, dimId, data.name, type == LevelDimensionType.END);
+        return constructWorld(server, data.folder, dimId, data.name, data.seed, type == LevelDimensionType.END);
     }
 
     /** Loads (or creates) the shared global dimension world. */
@@ -306,19 +364,27 @@ public class LevelManager {
         ensureActive(server);
         WorldServer existing = DimensionManager.getWorld(MultiverseDims.GLOBAL_DIM);
         if (existing != null) {
-            return existing;
+            // Same duplicate-guard as getOrCreateWorld: the game might have loaded the
+            // global dim rooted at the wrong folder.
+            File existingDir = existing.getSaveHandler().getWorldDirectory();
+            if (isSameFolder(existingDir, globalFolder)) {
+                return existing;
+            }
+            System.out.println("[MULTIVERSE] Unloading global world pointing at wrong folder: "
+                    + existingDir + " (expected " + globalFolder + ")");
+            unloadWorldNow(server, MultiverseDims.GLOBAL_DIM, true);
         }
         MultiverseDims.registerGlobalDimension();
-        return constructWorld(server, globalFolder, MultiverseDims.GLOBAL_DIM, "__global", false);
+        return constructWorld(server, globalFolder, MultiverseDims.GLOBAL_DIM, "__global", new Random().nextLong(), false);
     }
 
-    private WorldServer constructWorld(MinecraftServer server, File folder, int dimId, String saveName, boolean buildEndPortal) {
+    private WorldServer constructWorld(MinecraftServer server, File folder, int dimId, String saveName, long seed, boolean buildEndPortal) {
         LevelSaveHandler saveHandler = new LevelSaveHandler(folder);
         WorldInfo info = saveHandler.loadWorldInfo();
         boolean fresh = info == null;
         if (fresh) {
             info = new WorldInfo(
-                    new WorldSettings(new Random().nextLong(), GameType.SURVIVAL, true, false, WorldType.DEFAULT),
+                    new WorldSettings(seed, GameType.SURVIVAL, true, false, WorldType.DEFAULT),
                     saveName
             );
         }
@@ -326,6 +392,15 @@ public class LevelManager {
         WorldServer world = new WorldServer(server, saveHandler, info, dimId, server.profiler);
         world.init();
         world.addEventListener(new ServerWorldEventHandler(server, world));
+
+        // Register explicitly. DimensionManager.setWorld idempotently puts the world
+        // into the loaded-world map AND rebuilds the server's tick list from it, so
+        // any stale world (e.g. a Forge WorldServerMulti hotspot for this id) is
+        // atomically replaced instead of ticking alongside us.
+        DimensionManager.setWorld(dimId, world, server);
+        System.out.println("[MULTIVERSE] Constructed world dim=" + dimId + " folder=" + folder
+                + " world@" + System.identityHashCode(world)
+                + " handler@" + System.identityHashCode(saveHandler));
 
         if (fresh) {
             // Give a brand-new level the same treatment as a new vanilla world.
@@ -396,13 +471,16 @@ public class LevelManager {
         if (entry == null) return false;
 
         MinecraftServer server = player.world.getMinecraftServer();
+        if (server == null) {
+            server = FMLCommonHandler.instance().getMinecraftServerInstance();
+        }
         if (server == null) return false;
 
         ensureActive(server);
 
         LevelData data = dimensionToLevel.get(entry.dimension);
         if (data == null && entry.dimension != MultiverseDims.GLOBAL_DIM) {
-            System.err.println("[Multiverse] Dropping unknown restore dimension " + entry.dimension + " for " + player.getName());
+            System.err.println("[MULTIVERSE] Dropping unknown restore dimension " + entry.dimension + " for " + player.getName());
             clearPlayer(player.getUniqueID());
             return false;
         }
@@ -430,12 +508,19 @@ public class LevelManager {
 
         // Teleport through the dedicated MV teleporter (which skips the vanilla nether
         // portal math) and apply position/rotation to the RETURNED entity.
-        Entity restored = astrotweaks.Multiverse.MultiverseEvents.teleportIgnoringPortalRemap(
-                player,  entry.dimension,
+        Entity restored = MultiverseEvents.teleportIgnoringPortalRemap(
+                player, entry.dimension,
                 new MultiverseTeleporter(new BlockPos((int) entry.x, (int) entry.y, (int) entry.z)));
         EntityPlayerMP moved = restored instanceof EntityPlayerMP ? (EntityPlayerMP) restored : player;
         moved.fallDistance = 0.0F;
         moved.connection.setPlayerLocation(entry.x, entry.y + 1.0D, entry.z, entry.yaw, entry.pitch);
+
+        // Bind the player's spawn point to THIS universe's overworld/level spawn so a
+        // respawn after death lands in the correct world, not the vanila dim 0.
+        BlockPos spawn = target.getSpawnPoint();
+        if (spawn != null) {
+            moved.setSpawnPoint(spawn, true);
+        }
         return true;
     }
 
@@ -479,36 +564,61 @@ public class LevelManager {
                     tag.getFloat("yaw"), tag.getFloat("pitch"));
                 playerEntries.put(uuid, entry);
             } catch (IllegalArgumentException e) {
-                System.err.println("[Multiverse] Skipping bad player entry: " + e);
+                System.err.println("[MULTIVERSE] Skipping bad player entry: " + e);
             }
         }
     }
 
     // ------------------------------------------------------------------ unloading
+
+    /**
+     * Immediately drops the world for the given dimension from the loaded-world map and
+     * the server tick list, optionally saving it first. Unlike
+     * {@code DimensionManager.unloadWorld} (which only queues and may silently abort),
+     * this guarantees a stale WorldServer can never keep ticking next to a rebuilt one
+     * that shares its folder and session.lock.
+     */
+    private static void unloadWorldNow(MinecraftServer server, int dim, boolean saveIfOwned) {
+        WorldServer world = DimensionManager.getWorld(dim);
+        if (world == null) return;
+
+        if (saveIfOwned && isOwnedWorld(world)) {
+            try {
+                world.saveAllChunks(true, null);
+            } catch (Exception e) {
+                System.err.println("[MULTIVERSE] Failed to save world " + dim + " before unload: " + e);
+            }
+        }
+        MinecraftForge.EVENT_BUS.post(new WorldEvent.Unload(world));
+        DimensionManager.setWorld(dim, null, server);
+        System.out.println("[MULTIVERSE] Unloaded dimension " + dim
+                + " (world@" + System.identityHashCode(world) + " dropped from tick list)");
+    }
+
     /** Unloads level and global worlds that no longer contain any (non-exempt) player. */
     public void unloadEmptyDimensions(MinecraftServer server, UUID... ignore) {
         if (multiverseFolder == null) return;
 
         for (LevelData data : levels.values()) {
             for (int k = 0; k < 3; k++) {
-                unloadIfEmpty(data.baseId + k, ignore);
+                unloadIfEmpty(server, data.baseId + k, ignore);
             }
         }
-        unloadIfEmpty(MultiverseDims.GLOBAL_DIM, ignore);
+        unloadIfEmpty(server, MultiverseDims.GLOBAL_DIM, ignore);
     }
 
-    private void unloadIfEmpty(int dim, UUID... ignore) {
+    private void unloadIfEmpty(MinecraftServer server, int dim, UUID... ignore) {
         WorldServer world = DimensionManager.getWorld(dim);
         if (world == null) return;
         if (world.playerEntities.isEmpty() || onlyIgnoredPlayers(world.playerEntities, ignore)) {
-            // Save the world before dropping it, otherwise all its chunks (and the
-            // global 9999 world in MULTIVERSE_GLOBAL) would be lost on unload.
-            try {
-                world.saveAllChunks(true, null);
-            } catch (Exception e) {
-                System.err.println("[Multiverse] Failed to save world " + dim + " before unload: " + e);
+            if (!isOwnedWorld(world)) {
+                // Phantom world created by Forge reusing the overworld's save handler:
+                // dump it without saving (saving would touch the overworld's region files
+                // or throw MinecraftException from the mismatched session lock).
+                unloadWorldNow(server, dim, false);
+                return;
             }
-            DimensionManager.unloadWorld(dim);
+            unloadWorldNow(server, dim, true);
         }
     }
 
@@ -547,10 +657,13 @@ public class LevelManager {
         WorldServer world = DimensionManager.getWorld(dim);
         if (world == null) return;
 
+        if (!isOwnedWorld(world)) {
+            return;
+        }
         try {
             world.saveAllChunks(true, null);
         } catch (Exception e) {
-            System.err.println("[Multiverse] Failed to save world " + dim + ": " + e);
+            System.err.println("[MULTIVERSE] Failed to save world " + dim + ": " + e);
         }
     }
 
@@ -563,14 +676,14 @@ public class LevelManager {
         try (FileOutputStream fout = new FileOutputStream(file)) {
             CompressedStreamTools.writeCompressed(tag, fout);
         } catch (IOException e) {
-            System.err.println("[Multiverse] Failed to write " + file + ": " + e);
+            System.err.println("[MULTIVERSE] Failed to write " + file + ": " + e);
         }
     }
     private static NBTTagCompound readNbt(File file) {
         try (FileInputStream fin = new FileInputStream(file)) {
             return CompressedStreamTools.readCompressed(fin);
         } catch (IOException e) {
-            System.err.println("[Multiverse] Failed to read " + file + ": " + e);
+            System.err.println("[MULTIVERSE] Failed to read " + file + ": " + e);
             return null;
         }
     }

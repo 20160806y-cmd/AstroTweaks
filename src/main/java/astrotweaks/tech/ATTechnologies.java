@@ -92,7 +92,7 @@ public class ATTechnologies {
     static {
         AstrotweaksMod.PACKET_HANDLER.registerMessage(ArkGUI.ArkActionMessageHandler.class, ArkGUI.ArkActionMessage.class, 10, net.minecraftforge.fml.relauncher.Side.SERVER);
         AstrotweaksMod.PACKET_HANDLER.registerMessage(ArkGUI.GUIButtonPressedMessageHandler.class, ArkGUI.GUIButtonPressedMessage.class, 11, net.minecraftforge.fml.relauncher.Side.SERVER);
-        
+
         AstrotweaksMod.PACKET_HANDLER.registerMessage(MTGUI.GUIButtonPressedMessageHandler.class, MTGUI.GUIButtonPressedMessage.class, 12, net.minecraftforge.fml.relauncher.Side.SERVER);
 
         AstrotweaksMod.PACKET_HANDLER.registerMessage(TDArkGUI.TDArkActionMessageHandler.class, TDArkGUI.TDArkActionMessage.class, 20, net.minecraftforge.fml.relauncher.Side.SERVER);

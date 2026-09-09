@@ -115,9 +115,8 @@ public class AstrotweaksMod {
 		// BUS  events
 		MinecraftForge.EVENT_BUS.register(new astrotweaks.event.EventLoadWorld());
 
-		// Multiverse: world/portal events live on the Forge bus, player/tick events on the FML bus.
+		// Multiverse: all events live on the Forge bus (FML bus == Forge bus in 1.12.2).
 		MinecraftForge.EVENT_BUS.register(new astrotweaks.Multiverse.MultiverseEvents());
-		net.minecraftforge.fml.common.FMLCommonHandler.instance().bus().register(new astrotweaks.Multiverse.MultiverseEvents());
 
 
 		if (ModVariables.Extra_Fuels) MinecraftForge.EVENT_BUS.register(new CombinedFuelHandler());

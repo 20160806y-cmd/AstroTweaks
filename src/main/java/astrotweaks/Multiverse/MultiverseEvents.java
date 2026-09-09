@@ -9,8 +9,10 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.util.ITeleporter;
 import net.minecraftforge.event.entity.EntityTravelToDimensionEvent;
+import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.PlayerEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
@@ -76,11 +78,27 @@ public class MultiverseEvents {
         if (!(event.player instanceof EntityPlayerMP)) {
             return;
         }
-        EntityPlayerMP player = (EntityPlayerMP) event.player;
-        LevelManager lm = LevelManager.getInstance();
-        if (lm.getPlayerEntry(player.getUniqueID()) != null) {
-            lm.restorePlayer(player);
+        final EntityPlayerMP player = (EntityPlayerMP) event.player;
+        final MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
+        if (server == null) {
+            return;
         }
+        // PlayerLoggedInEvent fires before the target WorldServer is guaranteed to be
+        // attached and before the client knows the DimensionType. Defer the restore to
+        // the next server tick so the login sequence completes first.
+        server.addScheduledTask(() -> {
+            if (player.isDead) {
+                return;
+            }
+            LevelManager lm = LevelManager.getInstance();
+            LevelManager.PlayerEntry entry = lm.getPlayerEntry(player.getUniqueID());
+            if (entry == null) {
+                return;
+            }
+            if (!lm.restorePlayer(player)) {
+                System.err.println("[MULTIVERSE] Failed to restore " + player.getName() + " to dimension " + entry.dimension);
+            }
+        });
     }
 
     // ------------------------------------------------------------------ portal remap
@@ -119,6 +137,8 @@ public class MultiverseEvents {
         if (server == null) return;
 
         event.setCanceled(true);
+        System.out.println("[MULTIVERSE] Portal remap: dim " + from + " -> " + to
+                + " remapped to " + targetType + " in level '" + data.name + "'");
 
         WorldServer targetWorld = lm.getOrCreateWorld(server, data, targetType);
         if (targetWorld == null) return;
@@ -142,7 +162,9 @@ public class MultiverseEvents {
                     (int) (entity.posZ * scale));
         }
 
-        ITeleporter teleporter = new MultiverseTeleporter(targetPos);
+        boolean portalPair = targetType == LevelDimensionType.NETHER
+                || (targetType == LevelDimensionType.OVERWORLD && data.typeOf(from) == LevelDimensionType.NETHER);
+        ITeleporter teleporter = new MultiverseTeleporter(targetPos, portalPair);
 
         if (player != null) {
             AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(data.baseId), player);
@@ -195,6 +217,24 @@ public class MultiverseEvents {
                 return null;
             default:
                 return null;
+        }
+    }
+
+    // ------------------------------------------------------------------ portal creation safety net
+
+    /**
+     * The global dimension (9999) is a sealed world: no nether/end portal may ever be
+     * created inside it. Vanilla fire cannot spawn portals there on its own (its own
+     * dimension id check would allow it now that MultiverseGlobal reports the overworld
+     * DimensionType), so this cancels the Forge hook fired from
+     * {@code BlockPortal.trySpawnPortal} before any portal block is placed.
+     */
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public void onPortalSpawn(BlockEvent.PortalSpawnEvent event) {
+        if (event.getWorld() == null || event.getWorld().isRemote) return;
+        if (event.getWorld().provider == null) return;
+        if (event.getWorld().provider.getDimension() == MultiverseDims.GLOBAL_DIM) {
+            event.setCanceled(true);
         }
     }
 

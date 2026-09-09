@@ -11,8 +11,12 @@ import net.minecraft.world.WorldProviderSurface;
  *
  * <p>Instances are created reflectively by Forge's DimensionManager, so the
  * classes MUST be static and have an empty constructor. The dimension id of a
- * provider is inflicted afterwards (setDimension), so we resolve the matching
- * DimensionType by id instead of hardcoding one.</p>
+ * provider is inflicted afterwards (setDimension), so {@link #getDimensionType()}
+ * returns the base DimensionType of the world it mimics. This matters for the
+ * vanilla fire check in {@code BlockFire.onBlockAdded} which refuses to spawn a
+ * nether portal when {@code provider.getDimensionType().getId() > 0}; returning
+ * {@code DimensionType.getById(dim)} would yield a custom id (1000+) and make
+ * portals un-spawnable in every multiverse overworld.</p>
  *
  * <p>Note: we intentionally do NOT override createWorld(...) - that hook does not
  * exist in 1.12.2. Worlds are constructed and registered manually by
@@ -25,9 +29,8 @@ public class MultiverseWorldProviders {
     public static class MultiverseOverworld extends WorldProviderSurface {
         @Override
         public DimensionType getDimensionType() {
-            return DimensionType.getById(this.getDimension());
+            return DimensionType.OVERWORLD;
         }
-
         @Override
         public int getRespawnDimension(EntityPlayerMP player) {
             return this.getDimension();
@@ -37,24 +40,22 @@ public class MultiverseWorldProviders {
     public static class MultiverseHell extends WorldProviderHell {
         @Override
         public DimensionType getDimensionType() {
-            return DimensionType.getById(this.getDimension());
+            return DimensionType.NETHER;
         }
-
         @Override
         public int getRespawnDimension(EntityPlayerMP player) {
-            return this.getDimension();
+            return LevelManager.getOwningOverworldDimension(this.getDimension());
         }
     }
 
     public static class MultiverseEnd extends WorldProviderEnd {
         @Override
         public DimensionType getDimensionType() {
-            return DimensionType.getById(this.getDimension());
+            return DimensionType.THE_END;
         }
-
         @Override
         public int getRespawnDimension(EntityPlayerMP player) {
-            return this.getDimension();
+            return LevelManager.getOwningOverworldDimension(this.getDimension());
         }
     }
 
@@ -62,9 +63,8 @@ public class MultiverseWorldProviders {
     public static class MultiverseGlobal extends WorldProviderSurface {
         @Override
         public DimensionType getDimensionType() {
-            return DimensionType.getById(this.getDimension());
+            return DimensionType.OVERWORLD;
         }
-
         @Override
         public int getRespawnDimension(EntityPlayerMP player) {
             return this.getDimension();
