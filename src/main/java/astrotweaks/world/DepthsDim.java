@@ -90,9 +90,8 @@ public class DepthsDim {
 		@Override public IChunkGenerator createChunkGenerator() { return new ChunkProviderModded(this.world, this.world.getSeed() - DIMID); }
 		@Override public boolean isSurfaceWorld() {return false;}
 		@Override public boolean canRespawnHere() {return false;}
-		@Override
 		@SideOnly(Side.CLIENT)
-		public boolean doesXZShowFog(int par1, int par2) {return true;}
+		@Override public boolean doesXZShowFog(int par1, int par2) {return true;}
 		@Override public WorldSleepResult canSleepAt(EntityPlayer player, BlockPos pos) { return WorldSleepResult.DENY; }
 		@Override public boolean doesWaterVaporize() {return false;}
 		// No Nether/End portals
@@ -153,7 +152,7 @@ public class DepthsDim {
 			//this.genRavines = new MapGenRavine();
 
 		}
-	
+
 		@Override
 		public Chunk generateChunk(int x, int z) {
 			this.random.setSeed((long) x * 347539041L + (long) z * 535358712L);

@@ -1,4 +1,3 @@
-
 package astrotweaks.block;
 
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -9,7 +8,6 @@ import net.minecraft.util.EnumHand;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.BlockRenderLayer;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.material.MapColor;

@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Arrays;
 import java.util.ArrayList;
 
-import astrotweaks.procedure.ProcedureCommandGM;
+
 
 public class CommandGm {
 	public static class CommandHandler implements ICommand {
@@ -72,7 +72,7 @@ public class CommandGm {
 					index[0]++;
 				});
 
-				ProcedureCommandGM.executeProcedure(entity, cmdparams);
+				astrotweaks.procedure.P_CommandGM.exect(entity, cmdparams);
 			}
 		}
 	}

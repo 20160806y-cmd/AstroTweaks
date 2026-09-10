@@ -13,8 +13,8 @@ import java.util.Map;
 
 
 
-public final class ProcedureCommandGM {
-    public static void executeProcedure(Entity entity, Map<String, String> cmdparams) {
+public final class P_CommandGM {
+    public static void exect(Entity entity, Map<String, String> cmdparams) {
 
         String param = getParam(cmdparams, 0);
         if (param.isEmpty()) return;

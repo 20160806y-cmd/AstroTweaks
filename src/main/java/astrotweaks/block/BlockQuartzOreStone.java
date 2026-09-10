@@ -1,4 +1,3 @@
-
 package astrotweaks.block;
 
 
@@ -43,7 +42,6 @@ public class BlockQuartzOreStone {
 	    }
 	}
 
-
 	public static class BlockCustom extends Block {
 		public BlockCustom() {
 			super(Material.ROCK);
@@ -54,8 +52,7 @@ public class BlockQuartzOreStone {
 			setResistance(15F);
 			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
 		}
-		@Override
-		public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) {
+		@Override public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) {
 			return MapColor.STONE;
 		}
 		@Override

@@ -12,8 +12,8 @@ import java.util.HashMap;
 import astrotweaks.ModVariables;
 
 
-public class ProcedureShowDeathsProc {
-	public ProcedureShowDeathsProc() {}
+public class P_ShowDeaths {
+	public P_ShowDeaths() {}
 
 	private static String getParam0(HashMap<String, String> cmdparams) {
 		if (cmdparams == null) return "";

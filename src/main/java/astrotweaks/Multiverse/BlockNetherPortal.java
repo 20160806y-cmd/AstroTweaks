@@ -4,7 +4,6 @@ import net.minecraft.block.BlockPortal;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.material.MapColor;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.entity.Entity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
@@ -58,7 +57,6 @@ public class BlockNetherPortal extends BlockPortal {
     @Override
     public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, net.minecraft.block.Block blockIn, BlockPos fromPos) {
         if (worldIn.isRemote) return;
-
         if (NetherPortalGeometry.findInterior(worldIn, pos) == null) {
             worldIn.setBlockToAir(pos);
         }

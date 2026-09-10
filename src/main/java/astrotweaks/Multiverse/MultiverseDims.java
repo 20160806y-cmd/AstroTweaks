@@ -6,7 +6,7 @@ import net.minecraftforge.common.DimensionManager;
 
 /**
  * Registers the dimension ids used by the multiverse (three per level plus the
- * shared global dimension 9999) and their DimensionManager mappings. Run on BOTH
+ * shared global dimension -1000000) and their DimensionManager mappings. Run on BOTH
  * sides:
  * <ul>
  *   <li>server &rarr; before creating the WorldServer (WorldServer ctor internally calls
@@ -22,10 +22,9 @@ import net.minecraftforge.common.DimensionManager;
 public final class MultiverseDims {
 
     /** Shared "global" dimension: one overworld-like world over all saves. */
-    public static final int GLOBAL_DIM = 9999;
+    public static final int GLOBAL_DIM = -1_000_000;
 
-    private MultiverseDims() {
-    }
+    private MultiverseDims() {}
 
     /** Registers overworld (base), nether (base+1), end (base+2) and depths (base+3) of the level. Idempotent. */
     public static void registerLevelDimensions(int baseId) {
@@ -35,7 +34,7 @@ public final class MultiverseDims {
         registerOne(baseId + 3, MultiverseWorldProviders.MultiverseDepths.class);
     }
 
-    /** Registers the shared global dimension (9999). Idempotent. */
+    /** Registers the shared global dimension (-1000000). Idempotent. */
     public static void registerGlobalDimension() {
         registerOne(GLOBAL_DIM, MultiverseWorldProviders.MultiverseGlobal.class);
     }
@@ -48,6 +47,10 @@ public final class MultiverseDims {
         // will then find the id on both sides. The enum constant name must be unique
         // per id and valid as a Java identifier.
         DimensionType type = DimensionType.register( "MV_DIM_" + dimId, "_mv", dimId, providerClass, false );
-        DimensionManager.registerDimension(dimId, type);
+        // DimensionType.register may internally call DimensionManager.registerDimension
+        // in some Forge builds, so guard against double-registration.
+        if (!DimensionManager.isDimensionRegistered(dimId)) {
+            DimensionManager.registerDimension(dimId, type);
+        }
     }
 }

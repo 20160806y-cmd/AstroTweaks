@@ -1,4 +1,3 @@
-
 package astrotweaks.block;
 
 import net.minecraft.world.gen.feature.WorldGenMinable;

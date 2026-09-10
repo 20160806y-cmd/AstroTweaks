@@ -23,14 +23,12 @@ import net.minecraft.block.Block;
 import java.util.Random;
 
 import astrotweaks.item.*;
-import astrotweaks.world.DepthsDim;
-
 import astrotweaks.ModVariables;
 
 
 @Mod.EventBusSubscriber(modid = "astrotweaks")
 public final class EventBreakBlock {
-    private static final int CAVERN_DIM_ID = DepthsDim.DIMID;
+    private static final int CAVERN_DIM_ID = astrotweaks.world.DepthsDim.DIMID;
 	public EventBreakBlock() {}
 	private static void spawnItem(World world, int x, int y, int z, ItemStack stack) {
 	  if (world == null || stack == null || stack.isEmpty() || world.isRemote) return;
@@ -48,21 +46,10 @@ public final class EventBreakBlock {
 		BlockPos pos = new BlockPos(x, y, z);
 		IBlockState state = world.getBlockState(pos);
 		Block block = state.getBlock();
-		//Material mat = state.getMaterial();
 
-		//ItemStack held = (entity instanceof EntityLivingBase) ? ((EntityLivingBase) entity).getHeldItemMainhand() : ItemStack.EMPTY;
-		//boolean notShears = !(held.getItem() == new ItemStack(Items.SHEARS, 1).getItem());
-
-		
 		boolean notCreativeMode = true;
 		if (entity instanceof EntityPlayer) notCreativeMode = !((EntityPlayer)entity).capabilities.isCreativeMode;
-		//net.minecraft.block.Block block = world.getBlockState(pos).getBlock();
 
-		//int dim = world.provider.getDimension();
-
-		//boolean isTallGrassVariant = block == Blocks.TALLGRASS.getStateFromMeta(1).getBlock() || block == Blocks.DOUBLE_PLANT.getStateFromMeta(2).getBlock();
-
-		
 
 		if (notCreativeMode && ModVariables.Extra_Drops_All) {
 		boolean isTallGrassVariant = block == Blocks.TALLGRASS && state.getValue(BlockTallGrass.TYPE) == BlockTallGrass.EnumType.GRASS;

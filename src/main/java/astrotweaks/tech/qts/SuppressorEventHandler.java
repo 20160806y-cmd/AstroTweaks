@@ -26,7 +26,6 @@ import net.minecraft.client.resources.I18n;
 
 
 
-
 @Mod.EventBusSubscriber(modid = "astrotweaks")
 public class SuppressorEventHandler {
     // Запрещаем использовать эндер-жемчуг, а также телепортацию Эндерменов

@@ -8,7 +8,8 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 import astrotweaks.creativetab.ATCreativeTabs;
-import astrotweaks.procedure.ProcedureSQInvTick;
+
+
 
 public final class ItemYAntiQuant {
     public static final Item Y_ANTI_QUANT = new Item() {
@@ -20,7 +21,7 @@ public final class ItemYAntiQuant {
         @Override
         public void onUpdate(ItemStack itemstack, World world, Entity entity, int slot, boolean par5) {
             super.onUpdate(itemstack, world, entity, slot, par5);
-            ProcedureSQInvTick.exect(entity, itemstack);
+            astrotweaks.procedure.P_SQInvTick.exect(entity, itemstack);
         }
     }.setCreativeTab(ATCreativeTabs.AT_INTEGRATION_CT).setRegistryName("astrotweaks", "y_anti_quant").setUnlocalizedName("y_anti_quant");
 

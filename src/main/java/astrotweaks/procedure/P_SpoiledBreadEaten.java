@@ -7,10 +7,10 @@ import net.minecraft.entity.Entity;
 
 
 
-public class ProcedureSpoiledBreadEaten {
-	public ProcedureSpoiledBreadEaten() {}
+public class P_SpoiledBreadEaten {
+	public P_SpoiledBreadEaten() {}
 
-	public static void executeProcedure(Entity entity) {
+	public static void exect(Entity entity) {
 		if (entity == null) return;
 		if (entity instanceof EntityLivingBase)
 			((EntityLivingBase) entity).addPotionEffect(new PotionEffect(MobEffects.HUNGER, (int) 900, (int) 0, (false), (false)));

@@ -8,7 +8,7 @@ import net.minecraft.item.EnumAction;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.creativetab.CreativeTabs;
 
-import astrotweaks.procedure.ProcedureSpoiledFoodEaten;
+
 
 public final class ItemSpoiledDrink {
 	public static final Item SPOILED_DRINK = new ItemSpoiledDrink.ItemFoodCustom().setRegistryName("astrotweaks", "spoiled_drink").setUnlocalizedName("spoiled_drink");
@@ -33,7 +33,7 @@ public final class ItemSpoiledDrink {
 		@Override
 		protected void onFoodEaten(ItemStack itemStack, World world, EntityPlayer entity) {
 			super.onFoodEaten(itemStack, world, entity);
-			ProcedureSpoiledFoodEaten.exect(entity);
+			astrotweaks.procedure.P_SpoiledFoodEaten.exect(entity);
 		}
 	}
 }

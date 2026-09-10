@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.Arrays;
 import java.util.ArrayList;
 
-import astrotweaks.procedure.ProcedureATCP;
+
 
 public class CommandATCC {
 	public static class CommandHandler implements ICommand {
@@ -73,7 +73,7 @@ public class CommandATCC {
 					cmdparams.put(Integer.toString(index[0]), param);
 					index[0]++;
 				});
-				ProcedureATCP.executeProcedure(entity, cmdparams);
+				astrotweaks.procedure.P_ATCP.exect(entity, cmdparams);
 			}
 		}
 	}

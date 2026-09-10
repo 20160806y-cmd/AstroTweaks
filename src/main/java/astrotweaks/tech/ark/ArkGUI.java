@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.io.IOException;
 
 import astrotweaks.AstrotweaksMod;
+import astrotweaks.Multiverse.MultiverseUtil;
 
 
 public class ArkGUI {
@@ -140,12 +141,27 @@ public class ArkGUI {
 
 				// Start transfer with delay
 	            if (message.buttonID == 0 && parseOk) {
+
+					// Введённый DimID относителен текущей вселенной. Резолвим в абсолютный
+					// и запрещаем выход за пределы своей вселенной.
+					int srcDim = world.provider.getDimension();
+					int anchor = MultiverseUtil.anchorBaseOf(srcDim);
+					int resolvedDim = MultiverseUtil.resolveRelativeDim(anchor, targetDim);
+					if (!MultiverseUtil.isSameUniverse(srcDim, resolvedDim)) {
+						player.sendMessage(new TextComponentTranslation("ark.err.cross_universe"));
+						return;
+					}
+					if (!DimensionManager.isDimensionRegistered(resolvedDim)) {
+						player.sendMessage(new TextComponentTranslation("ark.err.dim", targetDim));
+						return;
+					}
+
 	                //if (delayTicks > 0) {
 	                // delay with TileEntity (ITickable)
 					if (delayTicks < 5) { delayTicks = 5;}
 					if (!(delayTicks == 5)) { player.sendMessage(new TextComponentTranslation(TextFormatting.AQUA + "ark.delayed_start", delayTicks)); }
 
-                    teArk.startDelayedTransfer(player, pos, targetDim, targetX,targetY,targetZ, message.clearMode, message.captureEntities, message.captureItems, delayTicks);
+                    teArk.startDelayedTransfer(player, pos, resolvedDim, targetX,targetY,targetZ, message.clearMode, message.captureEntities, message.captureItems, delayTicks);
 
 	            }
 	        });

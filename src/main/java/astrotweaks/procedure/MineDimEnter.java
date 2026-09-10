@@ -19,7 +19,6 @@ import astrotweaks.Multiverse.LevelDimensionType;
 import astrotweaks.Multiverse.LevelManager;
 import astrotweaks.Multiverse.MessageMultiverse;
 import astrotweaks.Multiverse.MultiverseDims;
-//import astrotweaks.procedure.ProcedureSwitchDimProc;
 import java.util.HashMap;
 
 
@@ -100,7 +99,7 @@ public final class MineDimEnter {
 		cmdparams.put("3", Integer.toString(targetY));
 		cmdparams.put("4", Integer.toString(pos.getZ()));
 
-		ProcedureSwitchDimProc.executeProcedure(player, cmdparams, true);
+		P_SwitchDim.exect(player, cmdparams, true);
 
 
         // clear target area

@@ -15,10 +15,10 @@ import astrotweaks.recipe.GavelRecipe;
 
 
 
-public class ProcedureGavelRightClickedOnBlock {
-    public ProcedureGavelRightClickedOnBlock() {}
+public class P_GavelRightClickedOnBlock {
+    public P_GavelRightClickedOnBlock() {}
 
-    public static void executeProcedure(int x, int y, int z, World world, Entity entity, ItemStack itemstack) {
+    public static void exect(int x, int y, int z, World world, Entity entity, ItemStack itemstack) {
 
         // check mainhand has contain Gavel
         boolean holdingGavel = ((entity instanceof EntityLivingBase) ? ((EntityLivingBase) entity).getHeldItemMainhand() : ItemStack.EMPTY).getItem() == new ItemStack(astrotweaks.item.ItemGavel.GAVEL, 1).getItem();

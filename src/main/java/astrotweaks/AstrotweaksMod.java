@@ -60,8 +60,8 @@ public class AstrotweaksMod {
 	static {
 		PACKET_HANDLER.registerMessage(ModVariables.WorldSavedDataSyncMessageHandler.class, ModVariables.WorldSavedDataSyncMessage.class, 0, Side.SERVER);
 		PACKET_HANDLER.registerMessage(ModVariables.WorldSavedDataSyncMessageHandler.class, ModVariables.WorldSavedDataSyncMessage.class, 0, Side.CLIENT);
-		PACKET_HANDLER.registerMessage(astrotweaks.Multiverse.MessageMultiverse.ClientHandler.class, astrotweaks.Multiverse.MessageMultiverse.class, 1, Side.CLIENT);
 	}
+	// MessageMultiverse (1) и TDARK-пакеты (20/21) регистрируются в preInit ТОЛЬКО при включённом MULTIVERSE/TDARK
 	@SidedProxy(clientSide = "astrotweaks.ClientProxyAstrotweaksMod", serverSide = "astrotweaks.ServerProxyAstrotweaksMod")
 	public static IProxyAstrotweaksMod proxy;
 	@Mod.Instance(MODID)
@@ -70,8 +70,6 @@ public class AstrotweaksMod {
 	// ####################################################################################################
 
 	public AstrotweaksMod() {
-		
-
 		ConfigManager.loadConfig();
 	}
 
@@ -116,7 +114,14 @@ public class AstrotweaksMod {
 		MinecraftForge.EVENT_BUS.register(new astrotweaks.event.EventLoadWorld());
 
 		// Multiverse: all events live on the Forge bus (FML bus == Forge bus in 1.12.2).
-		MinecraftForge.EVENT_BUS.register(new astrotweaks.Multiverse.MultiverseEvents());
+		if (ModVariables.MULTIVERSE) {
+			AstrotweaksMod.PACKET_HANDLER.registerMessage(astrotweaks.Multiverse.MessageMultiverse.ClientHandler.class, astrotweaks.Multiverse.MessageMultiverse.class, 1, Side.CLIENT);
+			MinecraftForge.EVENT_BUS.register(new astrotweaks.Multiverse.MultiverseEvents());
+		}
+		if (ModVariables.MULTIVERSE && ModVariables.Enable_TDARK) {
+			AstrotweaksMod.PACKET_HANDLER.registerMessage(astrotweaks.tech.tdark.TDArkGUI.TDArkActionMessageHandler.class, astrotweaks.tech.tdark.TDArkGUI.TDArkActionMessage.class, 20, Side.SERVER);
+			AstrotweaksMod.PACKET_HANDLER.registerMessage(astrotweaks.tech.tdark.TDArkGUI.GUIButtonPressedMessageHandler.class, astrotweaks.tech.tdark.TDArkGUI.GUIButtonPressedMessage.class, 21, Side.SERVER);
+		}
 
 
 		if (ModVariables.Extra_Fuels) MinecraftForge.EVENT_BUS.register(new CombinedFuelHandler());
@@ -199,7 +204,7 @@ public class AstrotweaksMod {
 	public void serverStop(FMLServerStoppingEvent event) {
 		net.minecraft.server.MinecraftServer server = net.minecraftforge.fml.common.FMLCommonHandler.instance().getMinecraftServerInstance();
 		if (server != null) {
-			astrotweaks.Multiverse.LevelManager.getInstance().saveAll(server);
+			astrotweaks.Multiverse.LevelManager.getInstance().unloadAndUnregisterAll(server);
 		}
 	}
 

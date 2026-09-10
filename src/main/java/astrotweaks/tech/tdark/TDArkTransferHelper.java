@@ -108,7 +108,7 @@ public class TDArkTransferHelper {
         }
     }
 
-    public static void performTeleport(EntityPlayerMP player,World world,BlockPos termPos,BlockTDArk.TileEntityCustom teArk,int targetDim,int targetX,int targetY,int targetZ,
+    public static void performTeleport(EntityPlayerMP player,World world,BlockPos termPos,BlockTDArk.TileEntityCustom teTDArk,int targetDim,int targetX,int targetY,int targetZ,
 					boolean clearMode, boolean captureEntities, boolean captureItems) {
 		//////////
 
@@ -130,10 +130,10 @@ public class TDArkTransferHelper {
 
         // 3. Checking the boundaries of the world (taking into account Y+2 for the kernel)
         int coreTargetY = targetY + 2; // Y coord of the core in the new location
-        int minY = coreTargetY - 2;
-        int maxY = coreTargetY + 2;
+        int minY = coreTargetY - 5;
+        int maxY = coreTargetY + 5;
         final int border = 29999990;
-        if ((minY < 9 || maxY > 247) || (Math.abs(targetX) > border || Math.abs(targetZ) > border)) {
+        if ((minY < 3 || maxY > 253) || (Math.abs(targetX) > border || Math.abs(targetZ) > border)) {
             player.sendMessage(new TextComponentTranslation("ark.err.aow"));
             return;
         }
@@ -146,13 +146,24 @@ public class TDArkTransferHelper {
 	        return;
 	    }
 
-        // 5. Defining areas
+		// Загружаем чанки цели ДО проверок подавителя (>>4: чунки 16x16)
+	    int minChunkX = targetX - 7 >> 4;
+	    int maxChunkX = targetX + 7 >> 4;
+	    int minChunkZ = targetZ - 7 >> 4;
+	    int maxChunkZ = targetZ + 7 >> 4;
+	    for (int cx = minChunkX; cx <= maxChunkX; cx++) {
+	        for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
+	            targetWorld.getChunkProvider().provideChunk(cx, cz);
+	        }
+	    }
+
+        // 5. Defining areas (куб 15x11x15 блоков)
 	    BlockPos corePosTarget = new BlockPos(targetX, coreTargetY, targetZ);
-	    BlockPos sourceMin = corePos.add(-7, -7, -7);
-	    BlockPos sourceMax = corePos.add(7, 7, 7);
-	    BlockPos targetMin = corePosTarget.add(-7, -7, -7);
-	    BlockPos targetMax = corePosTarget.add(7, 7, 7);
-        // Переносим куб 15x15x15 блоков
+	    BlockPos sourceMin = corePos.add(-7, -5, -7);
+	    BlockPos sourceMax = corePos.add(7, 5, 7);
+	    BlockPos targetMin = corePosTarget.add(-7, -5, -7);
+	    BlockPos targetMax = corePosTarget.add(7, 5, 7);
+        // Переносим куб 15x11x15 блоков
 		
 		if (isSuppressorInArea(targetWorld, targetMin, targetMax)) {
 		    player.sendMessage(new TextComponentTranslation("qts.tp_interrupted")); // Целевая область защищена подавителем
@@ -176,6 +187,11 @@ public class TDArkTransferHelper {
         }
         // Target area clear of unbreakable blocks
 
+        // 6.5 Потребляем 1 алмаз из инвентаря машины (слот с наименьшим номером).
+        if (!teTDArk.consumeDiamond()) {
+            player.sendMessage(new TextComponentTranslation("tdark.err.diamond"));
+            return;
+        }
 
         // 7. Save blocks and TileEntity from the source
 	    List<BlockSave> blocksToMove = new ArrayList<>();
@@ -208,17 +224,7 @@ public class TDArkTransferHelper {
 	        }
 	    }
 
-		// Loading chunks of the target area
-	    int minChunkX = targetMin.getX() >> 3;
-	    int maxChunkX = targetMax.getX() >> 3;
-	    int minChunkZ = targetMin.getZ() >> 3;
-	    int maxChunkZ = targetMax.getZ() >> 3;
-	    for (int cx = minChunkX; cx <= maxChunkX; cx++) {
-	        for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
-	            targetWorld.getChunkProvider().provideChunk(cx, cz);
-	        }
-	    }
-
+		// Loading chunks of the target area (done earlier, before the suppressor checks).
         // 9. Clear the target area (destroy all blocks)
         if (clearMode) {
             // destroy mode
@@ -276,7 +282,6 @@ public class TDArkTransferHelper {
 		        double newX = corePosTarget.getX() + (playerX.posX - corePos.getX());
 		        double newY = corePosTarget.getY() + (playerX.posY - corePos.getY() + 0.1);
 		        double newZ = corePosTarget.getZ() + (playerX.posZ - corePos.getZ());
-
 
 		        if (sourceDim == targetDim) {
 		            // Same dimension - just move it
@@ -358,7 +363,7 @@ public class TDArkTransferHelper {
             world.getChunkFromBlockCoords(p).markDirty();
         }
         // Notify the player
-        player.sendMessage(new TextComponentTranslation("ark.success"));
+        player.sendMessage(new TextComponentTranslation("tdark.success"));
 
     }
 

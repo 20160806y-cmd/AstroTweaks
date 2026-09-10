@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.ArrayList;
 
-import astrotweaks.procedure.ProcedureSwitchDimProc;
+
 
 public class CommandSwitchDim {
 	public static class CommandHandler implements ICommand {
@@ -47,7 +47,7 @@ public class CommandSwitchDim {
 			for (int i = 0; i < cmd.length; i++) {
 				cmdparams.put(Integer.toString(i), cmd[i]);
 			}
-			ProcedureSwitchDimProc.executeProcedure(sourceEntity, cmdparams, false);
+			astrotweaks.procedure.P_SwitchDim.exect(sourceEntity, cmdparams, false);
 		}
 	}
 }

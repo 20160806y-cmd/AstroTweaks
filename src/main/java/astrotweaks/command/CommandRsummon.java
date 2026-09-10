@@ -14,7 +14,8 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.Arrays;
 import java.util.ArrayList;
-import astrotweaks.procedure.ProcedureRsummonProc;
+
+
 
 public class CommandRsummon {
     public static class CommandHandler implements ICommand {
@@ -111,7 +112,7 @@ public class CommandRsummon {
 
             // Call procedure
             //                   executeProcedure(double x, double y, double z, World world, @Optional Entity entity, String 
-            ProcedureRsummonProc.executeProcedure(spawnX, spawnY, spawnZ, world, entity, entityId, count, nbt);
+            astrotweaks.procedure.P_Rsummon.exect(spawnX, spawnY, spawnZ, world, entity, entityId, count, nbt);
         }
 
         // Helper: Check if string looks like a coordinate (number, ~offset, ^offset)

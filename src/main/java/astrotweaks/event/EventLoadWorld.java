@@ -1,19 +1,13 @@
 package astrotweaks.event;
 
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.event.world.WorldEvent;
-import net.minecraftforge.common.MinecraftForge;
-
 import net.minecraft.world.World;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.command.ICommandSender;
 
-
-
-import astrotweaks.ElementsAstrotweaksMod;
 import astrotweaks.ModVariables;
 
 

@@ -14,7 +14,6 @@ import net.minecraftforge.fml.relauncher.Side;
 public class MessageMultiverse implements IMessage {
 
     private static final int GLOBAL_SENTINEL = -1;
-
     private int baseDimId;
     private boolean global;
 

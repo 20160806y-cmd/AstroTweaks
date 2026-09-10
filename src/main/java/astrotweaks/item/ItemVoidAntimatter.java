@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import astrotweaks.creativetab.ATCreativeTabs;
+
 
 public final class ItemVoidAntimatter {
 	public static final Item VOID_ANTIMATTER = new ItemVoidAntimatter.ItemCustom().setRegistryName("astrotweaks", "void_antimatter").setUnlocalizedName("void_antimatter");
@@ -27,7 +27,7 @@ public final class ItemVoidAntimatter {
 	private ItemVoidAntimatter() {}
 	public static class ItemCustom extends Item {
 		public ItemCustom() {
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 		}
 		@Override
 		public void addInformation(ItemStack itemstack, World world, List<String> tooltip, ITooltipFlag flag) {

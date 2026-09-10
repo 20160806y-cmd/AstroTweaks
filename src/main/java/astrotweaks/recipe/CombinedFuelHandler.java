@@ -11,7 +11,6 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 
 
-
 public class CombinedFuelHandler {
 	public CombinedFuelHandler() {}
     private static class FuelEntry {

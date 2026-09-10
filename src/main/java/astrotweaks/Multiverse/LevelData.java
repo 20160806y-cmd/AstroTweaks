@@ -11,11 +11,15 @@ import java.io.File;
 public class LevelData {
 
     public final String name;
+    public final int number;     // номер вселенной (1..MULTIVERSE_MAX_UNIVERSES)
+    public final String uid;     // 8-hex-хеш вселенной
     public final int baseId;
     public final long seed;
     public final File folder;
-    public LevelData(String name, int baseId, long seed, File folder) {
+    public LevelData(String name, int number, String uid, int baseId, long seed, File folder) {
         this.name = name;
+        this.number = number;
+        this.uid = uid;
         this.baseId = baseId;
         this.seed = seed;
         this.folder = folder;
@@ -44,7 +48,6 @@ public class LevelData {
             return LevelDimensionType.END;
         if (dimensionId == baseId + 3) 
             return LevelDimensionType.DEPTHS;
-
 
         return null;
     }

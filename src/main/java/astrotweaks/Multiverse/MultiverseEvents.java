@@ -37,6 +37,11 @@ public class MultiverseEvents {
 
     private int tickCounter;
 
+
+    private MinecraftServer server;
+
+
+
     /**
      * Runs an entity dimension change without the portal re-mapping (used by
      * /mv join 0, where a nether portal in the level would otherwise hijack
@@ -72,7 +77,7 @@ public class MultiverseEvents {
         if (event.getWorld().provider == null || event.getWorld().provider.getDimension() != 0) {
             return;
         }
-        MinecraftServer server = event.getWorld().getMinecraftServer();
+        server = event.getWorld().getMinecraftServer();
         if (server != null) {
             LevelManager.getInstance().onWorldLoaded(server);
         }
@@ -90,9 +95,8 @@ public class MultiverseEvents {
         }
         final EntityPlayerMP player = (EntityPlayerMP) event.player;
         final MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
-        if (server == null) {
-            return;
-        }
+        if (server == null) return;
+        
         // PlayerLoggedInEvent fires before the target WorldServer is guaranteed to be
         // attached and before the client knows the DimensionType. Defer the restore to
         // the next server tick so the login sequence completes first.
@@ -116,22 +120,20 @@ public class MultiverseEvents {
     @SubscribeEvent
     public void onTravelToDimension(EntityTravelToDimensionEvent event) {
         Entity entity = event.getEntity();
-        if (entity == null || entity.getEntityWorld() == null || entity.getEntityWorld().isRemote) 
-            return;
+        if (entity == null || entity.getEntityWorld() == null || entity.getEntityWorld().isRemote) return;
         
 
         EntityPlayerMP player = entity instanceof EntityPlayerMP ? (EntityPlayerMP) entity : null;
         // Skip both players AND non-players that are being moved by our own code:
         // the custom nether portal and /mv already computed exactly where the entity
         // should land, which is never the vanilla nether/end mapping.
-        if (SKIP_PORTAL_REMAP.remove(entity.getUniqueID())) 
-            return;
+        if (SKIP_PORTAL_REMAP.remove(entity.getUniqueID())) return;
         
 
         int from = entity.dimension;
         int to = event.getDimension();
 
-        // The global dimension (9999) is a sealed overworld-only world: it lives in
+        // The global dimension (-1000000) is a sealed overworld-only world: it lives in
         // MULTIVERSE_GLOBAL and must never let a player portal out of it into the
         // vanilla nether/end or into any multiverse level.
         if (from == MultiverseDims.GLOBAL_DIM) {
@@ -146,7 +148,7 @@ public class MultiverseEvents {
         LevelDimensionType targetType = resolvePortalTarget(data.typeOf(from), to);
         if (targetType == null) return;
 
-        MinecraftServer server = entity.getServer();
+        server = entity.getServer();
         if (server == null) return;
 
         event.setCanceled(true);
@@ -238,7 +240,7 @@ public class MultiverseEvents {
     /**
      * Portal creation safety net:
      * <ul>
-     *   <li>the global dimension (9999) is a sealed world: no nether/end portal may
+     *   <li>the global dimension (-1000000) is a sealed world: no nether/end portal may
      *       ever be created inside it (the vanilla fire check would allow it now that
      *       MultiverseGlobal reports the overworld DimensionType);</li>
      *   <li>inside a multiverse level overworld/nether the vanilla frame lighting is
@@ -270,7 +272,13 @@ public class MultiverseEvents {
         }
         NetherPortalGeometry.Geometry geometry = NetherPortalGeometry.findFrame(event.getWorld(), event.getPos());
         if (geometry != null) {
-            NetherPortalGeometry.placePortal(event.getWorld(), geometry);
+            final net.minecraft.world.World world = event.getWorld();
+            final NetherPortalGeometry.Geometry geo = geometry;
+            if (world instanceof WorldServer) {
+                ((WorldServer) world).addScheduledTask(() -> NetherPortalGeometry.placePortal(world, geo));
+            } else {
+                NetherPortalGeometry.placePortal(world, geo);
+            }
         }
     }
 
@@ -304,7 +312,7 @@ public class MultiverseEvents {
         } else {
             lm.clearPlayer(player.getUniqueID());
         }
-        MinecraftServer server = player.world.getMinecraftServer();
+        server = player.world.getMinecraftServer();
         if (server != null) {
             lm.unloadEmptyDimensions(server, player.getUniqueID());
         }
@@ -321,7 +329,7 @@ public class MultiverseEvents {
         if (++tickCounter % 100 != 0) {
             return;
         }
-        MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
+        server = FMLCommonHandler.instance().getMinecraftServerInstance();
         if (server == null || server.getWorld(0) == null) {
             return;
         }

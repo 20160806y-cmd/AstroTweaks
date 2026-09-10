@@ -10,8 +10,8 @@ import astrotweaks.item.ATItems;
 
 
 
-public class ProcedureSQInvTick  {
-	public ProcedureSQInvTick() {}
+public class P_SQInvTick  {
+	public P_SQInvTick() {}
 
 	public static void exect(Entity entity, ItemStack itemstack) {
 		if (entity == null) return;

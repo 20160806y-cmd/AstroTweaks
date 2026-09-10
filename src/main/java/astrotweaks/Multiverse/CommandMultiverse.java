@@ -18,7 +18,7 @@ import java.util.Random;
  * /mv join &lt;layer_id&gt; [dim_id] [seed]
  * <ul>
  *   <li>layer_id 0 &rarr; the save's original world (dimension 0)</li>
- *   <li>layer_id &lt;0 &rarr; the shared global dimension (9999)</li>
+ *   <li>layer_id &lt;0 &rarr; the shared global dimension (-1000000)</li>
  *   <li>layer_id &gt;0 or a name &rarr; the multiverse level of the current save</li>
  *   <li>dim_id 0/1/2/3 &rarr; overworld / nether / end / depths of the target</li>
  *   <li>seed &rarr; used only when the level is created for the first time; default random</li>
@@ -111,11 +111,16 @@ public class CommandMultiverse extends CommandBase {
         AstrotweaksMod.PACKET_HANDLER.sendTo(MessageMultiverse.forGlobal(), player);
         WorldServer global = lm.getOrCreateGlobalWorld(server);
         if (global == null) {
-            sender.sendMessage(new TextComponentString("Failed to load the global dimension"));
+            sender.sendMessage(new TextComponentString("Failed to load the Void dimension"));
             return;
         }
-        teleportTo(player, global, global.getSpawnPoint());
-        sender.sendMessage(new TextComponentString("Teleported to the global dimension"));
+        // Fixed arrival spot: (0,64,0) stands directly on the void bedrock at (0,63,0).
+        BlockPos target = new BlockPos(0, 64, 0);
+        global.getWorldInfo().setSpawn(target);
+        // В измерении пустоты нельзя респавниться
+        //global.setSpawnPoint(target);
+        teleportTo(player, global, target);
+        sender.sendMessage(new TextComponentString("Teleported to the Void dimension"));
     }
 
     /** /mv get: print the current level name and dimension id for debugging. */
@@ -129,14 +134,13 @@ public class CommandMultiverse extends CommandBase {
         int dim = player.dimension;
 
         if (dim == MultiverseDims.GLOBAL_DIM) {
-            player.sendMessage(new TextComponentString("[MULTIVERSE] Global dimension (9999) - DimID " + dim));
+            player.sendMessage(new TextComponentString("[MULTIVERSE] Global Void dimension (-1000000) - DimID " + dim));
             return;
         }
         LevelData data = lm.getLevelByDimensionId(dim);
         if (data != null) {
             LevelDimensionType type = data.typeOf(dim);
-            player.sendMessage(new TextComponentString("[MULTIVERSE] Level '" + data.name + "' (base " + data.baseId
-                    + ") - " + type.name() + " - DimID " + dim));
+            player.sendMessage(new TextComponentString("[MULTIVERSE] Level '"+data.name+"' (base "+data.baseId+") - "+type.name()+" - DimID "+dim + " - UID "+data.uid));
         } else if (dim == 0) {
             player.sendMessage(new TextComponentString("[MULTIVERSE] Original world (layer 0) - DimID " + dim));
         } else {
@@ -154,10 +158,23 @@ public class CommandMultiverse extends CommandBase {
         if (type == LevelDimensionType.DEPTHS) {
             return new BlockPos(8, 252, 8);
         }
-        return world.getSpawnPoint();
+        BlockPos baseSpawn = world.getSpawnPoint();
+        if (type == LevelDimensionType.OVERWORLD) {
+            int radius = world.getGameRules().getInt("spawnRadius");
+            if (radius > 0) {
+                Random rand = world.rand;
+                int dx = rand.nextInt(radius * 2 + 1) - radius;
+                int dz = rand.nextInt(radius * 2 + 1) - radius;
+                int newX = baseSpawn.getX() + dx;
+                int newZ = baseSpawn.getZ() + dz;
+                int safeY = LevelManager.findStandableY(world, newX, newZ);
+                return new BlockPos(newX, safeY, newZ);
+            }
+        }
+        return baseSpawn;
     }
     private void teleportTo(EntityPlayerMP player, WorldServer targetWorld, BlockPos pos) {
-        Entity travel = player.changeDimension(targetWorld.provider.getDimension(), new MultiverseTeleporter(pos));
+        Entity travel = MultiverseEvents.teleportIgnoringPortalRemap(player, targetWorld.provider.getDimension(), new MultiverseTeleporter(pos));
         if (travel instanceof EntityPlayerMP) {
             EntityPlayerMP moved = (EntityPlayerMP) travel;
             moved.fallDistance = 0.0F;

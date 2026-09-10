@@ -23,10 +23,15 @@ import net.minecraftforge.common.util.ITeleporter;
  * portals appear at the top of the world and wipe the entire column below them. Here the
  * portal is built with its floor directly ON the ground and only its own footprint
  * (floor .. top cap) is cleared - nothing below ever gets touched.</p>
+ *
+ * <p>The block scan and portal build reuse one {@link BlockPos.MutableBlockPos}, so a
+ * teleport allocates almost no per-block positions.</p>
  */
 public class MultiverseTeleporter implements ITeleporter {
     private final BlockPos pos;
     private final boolean createExitPortal;
+
+    private static final IBlockState OBSIDIAN = Blocks.OBSIDIAN.getDefaultState();
 
     public MultiverseTeleporter(BlockPos pos) {
         this(pos, false);
@@ -40,20 +45,15 @@ public class MultiverseTeleporter implements ITeleporter {
     public void placeEntity(World world, Entity entity, float yaw) {
         int x = pos.getX();
         int z = pos.getZ();
-
+        int groundY = findTopSolidBelow(world, x, z, pos.getY());
+        if (groundY < 0) {
+            groundY = findTopSolidBelow(world, x, z, world.getHeight() - 1);
+        }
         if (createExitPortal && world.provider.getDimension() != MultiverseDims.GLOBAL_DIM) {
-            int groundY = findTopSolidBelow(world, x, z, pos.getY());
-            if (groundY < 0) {
-                groundY = findTopSolidBelow(world, x, z, world.getHeight() - 1);
-            }
             int portalBase = clampPortalBase(Math.max(groundY, 0) + 1, world);
-            buildReturnPortal(world, new BlockPos(x, portalBase, z));
+            buildReturnPortal(world, x, portalBase, z);
             entity.setPositionAndUpdate(x + 0.5, portalBase + 1.0, z + 0.5);
         } else {
-            int groundY = findTopSolidBelow(world, x, z, pos.getY());
-            if (groundY < 0) {
-                groundY = findTopSolidBelow(world, x, z, world.getHeight() - 1);
-            }
             int safeY = Math.max(pos.getY(), Math.max(groundY, 0) + 1);
             entity.setPositionAndUpdate(x + 0.5, safeY, z + 0.5);
         }
@@ -76,9 +76,9 @@ public class MultiverseTeleporter implements ITeleporter {
      */
     private static int findTopSolidBelow(World world, int x, int z, int startY) {
         int top = Math.min(startY, world.getHeight() - 1);
+        BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
         for (int yy = top; yy >= 0; yy--) {
-            IBlockState state = world.getBlockState(new BlockPos(x, yy, z));
-            if (state.isTopSolid()) {
+            if (world.getBlockState(mpos.setPos(x, yy, z)).isTopSolid()) {
                 return yy;
             }
         }
@@ -91,41 +91,39 @@ public class MultiverseTeleporter implements ITeleporter {
      * footprint around it (from the floor up to the top cap) so the player does not spawn
      * inside walls. Blocks below the floor are never modified.
      */
-    private static void buildReturnPortal(World world, BlockPos basePos) {
-        int x = basePos.getX();
-        int y = basePos.getY();
-        int z = basePos.getZ();
-
+    private static void buildReturnPortal(World world, int x, int y, int z) {
+        BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
         for (int dx = -1; dx <= 2; dx++) {
             for (int dz = -2; dz <= 2; dz++) {
-                clearColumn(world, new BlockPos(x + dx, y - 1, z + dz), y + 4);
+                clearColumn(world, mpos, x + dx, y - 1, z + dz, y + 4);
             }
         }
         for (int dx = -1; dx <= 2; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
-                world.setBlockState(new BlockPos(x + dx, y - 1, z + dz), Blocks.OBSIDIAN.getDefaultState());
-                world.setBlockState(new BlockPos(x + dx, y + 3, z + dz), Blocks.OBSIDIAN.getDefaultState());
+                mpos.setPos(x + dx, y - 1, z + dz);
+                world.setBlockState(mpos, OBSIDIAN);
+                mpos.setPos(x + dx, y + 3, z + dz);
+                world.setBlockState(mpos, OBSIDIAN);
             }
         }
         for (int dh = 0; dh <= 4; dh++) {
-            world.setBlockState(new BlockPos(x - 1, y + dh, z), Blocks.OBSIDIAN.getDefaultState());
-            world.setBlockState(new BlockPos(x + 2, y + dh, z), Blocks.OBSIDIAN.getDefaultState());
+            mpos.setPos(x - 1, y + dh, z);
+            world.setBlockState(mpos, OBSIDIAN);
+            mpos.setPos(x + 2, y + dh, z);
+            world.setBlockState(mpos, OBSIDIAN);
         }
-
-        world.setBlockState(new BlockPos(x + 1, y + 1, z), Blocks.FIRE.getDefaultState());
-
+        mpos.setPos(x + 1, y + 1, z);
+        world.setBlockState(mpos, Blocks.FIRE.getDefaultState());
     }
 
-    private static void clearColumn(World world, BlockPos from, int upToY) {
-        for (int yy = from.getY(); yy <= upToY; yy++) {
-            Block block = world.getBlockState(new BlockPos(from.getX(), yy, from.getZ())).getBlock();
+    private static void clearColumn(World world, BlockPos.MutableBlockPos mpos, int x, int fromY, int z, int upToY) {
+        for (int yy = fromY; yy <= upToY; yy++) {
+            mpos.setPos(x, yy, z);
+            Block block = world.getBlockState(mpos).getBlock();
             if (block != Blocks.AIR && block != Blocks.PORTAL && block != Blocks.END_PORTAL) {
-                world.setBlockState(new BlockPos(from.getX(), yy, from.getZ()), Blocks.AIR.getDefaultState());
+                world.setBlockState(mpos, Blocks.AIR.getDefaultState());
             }
         }
     }
-    @Override
-    public boolean isVanilla() {
-        return false;
-    }
+    @Override public boolean isVanilla() { return false; }
 }

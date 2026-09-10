@@ -50,6 +50,7 @@ import net.minecraft.world.Teleporter;
 
 import astrotweaks.tech.ATTechnologies;
 import astrotweaks.tech.qts.SuppressorManager;
+import astrotweaks.Multiverse.MultiverseUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -146,6 +147,26 @@ public class ArkTransferHelper {
 	        return;
 	    }
 
+	    // Выйти за пределы своей вселенной можно только случайно; защищаемся повторно
+	    // (idempotent: относительные ID уже разрешены на этапе GUI).
+	    if (!MultiverseUtil.isSameUniverse(world.provider.getDimension(), targetDim)) {
+	        player.sendMessage(new TextComponentTranslation("ark.err.cross_universe"));
+	        return;
+	    }
+
+		// Загружаем чанки цели ДО проверок подавителя, иначе isSuppressorInArea
+	    // читает пустой (не сгенерированный) ландшафт, а загрузка после проверки
+	    // позволяет подавителю "появиться" под перемещаемыми блоками.
+	    int minChunkX = targetMinCx(targetX);
+	    int maxChunkX = targetMaxCx(targetX);
+	    int minChunkZ = targetMinCz(targetZ);
+	    int maxChunkZ = targetMaxCz(targetZ);
+	    for (int cx = minChunkX; cx <= maxChunkX; cx++) {
+	        for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
+	            targetWorld.getChunkProvider().provideChunk(cx, cz);
+	        }
+	    }
+
         // 5. Defining areas
 	    BlockPos corePosTarget = new BlockPos(targetX, coreTargetY, targetZ);
 	    BlockPos sourceMin = corePos.add(-3, -2, -3);
@@ -208,17 +229,8 @@ public class ArkTransferHelper {
 	        }
 	    }
 
-		// Loading chunks of the target area
-	    int minChunkX = targetMin.getX() >> 3;
-	    int maxChunkX = targetMax.getX() >> 3;
-	    int minChunkZ = targetMin.getZ() >> 3;
-	    int maxChunkZ = targetMax.getZ() >> 3;
-	    for (int cx = minChunkX; cx <= maxChunkX; cx++) {
-	        for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
-	            targetWorld.getChunkProvider().provideChunk(cx, cz);
-	        }
-	    }
-
+		// Loading chunks of the target area (performed before the suppressor checks,
+	    // see the comment earlier in this method).
         // 9. Clear the target area (destroy all blocks)
         if (clearMode) {
             // destroy mode
@@ -419,4 +431,10 @@ public class ArkTransferHelper {
 	    }
 	    return false;
 	}
+
+	// Область переноса ARK ±3 по X/Z; >> 4 (чунки 16x16, не 8x8 - исправление бага).
+	private static int targetMinCx(int x) { return (x - 3) >> 4; }
+	private static int targetMaxCx(int x) { return (x + 3) >> 4; }
+	private static int targetMinCz(int z) { return (z - 3) >> 4; }
+	private static int targetMaxCz(int z) { return (z + 3) >> 4; }
 }

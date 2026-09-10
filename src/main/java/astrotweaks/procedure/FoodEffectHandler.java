@@ -4,11 +4,9 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.MobEffects;
 import net.minecraft.item.ItemStack;
 import net.minecraft.potion.PotionEffect;
-import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import java.util.*;
-
 
 import astrotweaks.ModVariables;
 
@@ -26,8 +24,8 @@ public class FoodEffectHandler {
         // register
         // Format:  Name, Time in Ticks, Level
         addEffects(map, new ItemStack(net.minecraft.init.Items.ROTTEN_FLESH),
-            potion(MobEffects.WEAKNESS, 600, 0),
-            potion(MobEffects.MINING_FATIGUE, 800, 0),
+            potion(MobEffects.WEAKNESS, 800, 0),
+            potion(MobEffects.MINING_FATIGUE, 1200, 0),
             potion(MobEffects.HUNGER, 1800, 1),
             potion(MobEffects.SLOWNESS, 600, 0),
             potion(MobEffects.NAUSEA, 200, 0),
@@ -35,14 +33,14 @@ public class FoodEffectHandler {
         );
         addEffects(map, new ItemStack(net.minecraft.init.Items.POISONOUS_POTATO),
             potion(MobEffects.POISON, 200, 2),
-            potion(MobEffects.WEAKNESS, 600, 0),
+            potion(MobEffects.WEAKNESS, 800, 0),
             potion(MobEffects.MINING_FATIGUE, 1200, 0),
-            potion(MobEffects.HUNGER, 800, 3),
+            potion(MobEffects.HUNGER, 1200, 3),
             potion(MobEffects.SLOWNESS, 600, 0),
             potion(MobEffects.NAUSEA, 400, 1)
         );
         addEffects(map, new ItemStack(net.minecraft.init.Items.SPIDER_EYE),
-            potion(MobEffects.POISON, 300, 1),
+            potion(MobEffects.POISON, 400, 1),
             potion(MobEffects.WEAKNESS, 1200, 0),
             potion(MobEffects.MINING_FATIGUE, 1200, 0),
             potion(MobEffects.HUNGER, 600, 2),
@@ -52,9 +50,9 @@ public class FoodEffectHandler {
         // RAW meat
         if (ModVariables.Raw_Meat_Negative_Effects) {
             PotionData[] meatEffects = {
-                potion(MobEffects.WEAKNESS, 400, 0),
+                potion(MobEffects.WEAKNESS, 450, 0),
                 potion(MobEffects.MINING_FATIGUE, 800, 0),
-                potion(MobEffects.HUNGER, 1800, 1),
+                potion(MobEffects.HUNGER, 1900, 1),
                 potion(MobEffects.POISON, 160, 0),
                 potion(MobEffects.SLOWNESS, 30, 1)
             };
@@ -64,7 +62,6 @@ public class FoodEffectHandler {
                 }
             }
         }
-
         FOOD_EFFECTS = Collections.unmodifiableMap(map);
     }
 
@@ -76,7 +73,7 @@ public class FoodEffectHandler {
     }
 
     @SubscribeEvent
-    public void onFoodEaten(LivingEntityUseItemEvent.Finish event) {
+    public void onFoodEaten(net.minecraftforge.event.entity.living.LivingEntityUseItemEvent.Finish event) {
     	if (Math.random() < 0.25) return;
         if (!(event.getEntityLiving() instanceof EntityPlayer)) return;
         ItemStack eaten = event.getItem();

@@ -1,4 +1,3 @@
-
 package astrotweaks.block;
 
 import net.minecraftforge.fml.relauncher.SideOnly;

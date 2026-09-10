@@ -2,7 +2,6 @@ package astrotweaks.recipe;
 
 import net.minecraftforge.oredict.OreDictionary;
 import net.minecraftforge.fml.common.registry.GameRegistry;
-
 import net.minecraft.item.ItemStack;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
@@ -77,14 +76,12 @@ public class RecipeSmeltingAll {
 		}
 
 
-
 		if (ModVariables.Money_Can_Smelt) {
 			 ItemStack output = ItemStack.EMPTY;
             if (!OreDictionary.getOres("nuggetCopper").isEmpty()) {
                 ItemStack copperNuggetStack = OreDictionary.getOres("nuggetCopper").get(0);
                 output = new ItemStack(copperNuggetStack.getItem(), 5, copperNuggetStack.getMetadata());
             }
-
             if (!output.isEmpty()) {
                 GameRegistry.addSmelting(new ItemStack(ATItems.COPPER_COIN, 1), output, 0F);
             }

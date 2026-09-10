@@ -7,7 +7,8 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemFood;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
-import astrotweaks.procedure.ProcedureCoockedPufferfishEaten;
+
+
 
 public final class ItemCoockedPufferfish {
     public static final Item PUFFERFISH = new ItemFood(2, 1f, false) {
@@ -18,7 +19,7 @@ public final class ItemCoockedPufferfish {
         @Override
         protected void onFoodEaten(ItemStack itemStack, World world, EntityPlayer entity) {
             super.onFoodEaten(itemStack, world, entity);
-            ProcedureCoockedPufferfishEaten.executeProcedure(entity);
+            astrotweaks.procedure.P_CoockedPufferfishEaten.exect(entity);
         }
     }.setAlwaysEdible().setCreativeTab(CreativeTabs.FOOD).setMaxStackSize(64).setRegistryName("astrotweaks", "coocked_pufferfish").setUnlocalizedName("coocked_pufferfish");
 

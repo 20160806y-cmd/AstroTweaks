@@ -3,19 +3,12 @@ package astrotweaks.block;
 
 import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.common.registry.GameRegistry;
-import net.minecraftforge.client.model.ModelLoader;
-import net.minecraftforge.client.event.ModelRegistryEvent;
-
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.BlockRenderLayer;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.item.Item;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.material.MapColor;
@@ -28,7 +21,7 @@ import net.minecraft.world.World;
 
 import astrotweaks.creativetab.ATCreativeTabs;
 
-import astrotweaks.ElementsAstrotweaksMod;
+
 
 public class BlockHeavyMine {
 	public static final Block block = new BlockCustom().setRegistryName("astrotweaks", "heavy_mine");
@@ -64,8 +57,6 @@ public class BlockHeavyMine {
 		public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) {
 			return MapColor.AIR;
 		}
-
-
 
 		//@Override public boolean removedByPlayer(IBlockState state, World world, BlockPos pos, EntityPlayer player, boolean willHarvest) {
 	    //	if (!world.isRemote) initExp(world, pos);

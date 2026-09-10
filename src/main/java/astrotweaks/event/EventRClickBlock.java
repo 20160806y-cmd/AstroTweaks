@@ -1,11 +1,9 @@
-package astrotweaks.procedure;
+package astrotweaks.event;
 
 import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.common.MinecraftForge;
+//import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 
 import net.minecraft.world.World;
 import net.minecraft.util.math.BlockPos;
@@ -19,18 +17,15 @@ import net.minecraft.entity.Entity;
 
 import java.util.List;
 import java.util.ArrayList;
-//import java.util.function.Predicate;
-//import java.util.function.BiConsumer;
 import java.util.concurrent.ThreadLocalRandom;
 
 import astrotweaks.item.ATItems;
 
 
 
-
 @Mod.EventBusSubscriber(modid = "astrotweaks")
-public class ProcedureRclickBlock {
-    public ProcedureRclickBlock() {}
+public class EventRClickBlock {
+    public EventRClickBlock() {}
 
 	private static final List<Rule> RULES = buildRules();
 	private interface Condition { boolean matches(Context ctx); }
@@ -149,7 +144,7 @@ public class ProcedureRclickBlock {
     }
 
     @SubscribeEvent
-    public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+    public void onRightClickBlock(net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock event) {
         EntityPlayer entity = event.getEntityPlayer();
         int i = event.getPos().getX();
         int j = event.getPos().getY();

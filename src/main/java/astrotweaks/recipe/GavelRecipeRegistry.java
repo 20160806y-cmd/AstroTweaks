@@ -1,6 +1,5 @@
 package astrotweaks.recipe;
 
-
 import net.minecraft.item.ItemStack;
 import net.minecraft.init.Blocks;
 
@@ -15,14 +14,11 @@ public class GavelRecipeRegistry {
     public static void register(GavelRecipe r) {
         RECIPES.add(r);
     }
-
     public static List<GavelRecipe> getRecipes() {
         return RECIPES;
     }
-
     public static void initDefaults() {
         // stone (meta 0) -> astrotweaks:stone_brick (meta 0) with three chances: 100%, 50%, 25%
-
         register(GavelRecipe.of(
             Blocks.STONE, 0,
             new ItemStack[] {
@@ -32,7 +28,6 @@ public class GavelRecipeRegistry {
             },
             new float[] { 1.0f, 0.5f, 0.2f }
         ));
-
         //  (stonebrick, meta 0) -> 4 stone_brick (100%)
         register(GavelRecipe.of(
             Blocks.STONEBRICK, 0,

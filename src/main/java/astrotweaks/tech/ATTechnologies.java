@@ -1,6 +1,7 @@
 package astrotweaks.tech;
 
 import astrotweaks.AstrotweaksMod;
+import astrotweaks.ModVariables;
 import astrotweaks.tech.ark.ArkGUI;
 import astrotweaks.tech.ark.BlockArk;
 import astrotweaks.tech.ark.BlockArkResonator;
@@ -8,7 +9,6 @@ import astrotweaks.tech.mt.MTGUI;
 import astrotweaks.tech.mt.BlockMoneyTable;
 import astrotweaks.tech.qts.BlockQTPSupressor;
 import astrotweaks.tech.tdark.BlockTDArk;
-import astrotweaks.tech.tdark.TDArkGUI;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
@@ -47,22 +47,30 @@ public class ATTechnologies {
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-    private static final Block[] BLOCKS = { 
+    /** TDARK-блок регистрируется только при включённом мультиверсе и TDARK. */
+    private static final Block[] BLOCKS_WITH_TDARK = {
         ARK, ARK_RESONATOR, MONEY_TABLE, QTP_SUPRESSOR, TDARK
     };
+    private static final Block[] BLOCKS_BASE = {
+        ARK, ARK_RESONATOR, MONEY_TABLE, QTP_SUPRESSOR
+    };
+
+    public static Block[] getBlocks() {
+        return (ModVariables.MULTIVERSE && ModVariables.Enable_TDARK) ? BLOCKS_WITH_TDARK : BLOCKS_BASE;
+    }
 
     private ATTechnologies() {}
 
 
     @SubscribeEvent
     public static void registerBlocks(RegistryEvent.Register<Block> event) {
-        event.getRegistry().registerAll(BLOCKS);
+        event.getRegistry().registerAll(getBlocks());
         registerTileEntities();
     }
 
     @SubscribeEvent
     public static void registerItems(RegistryEvent.Register<Item> event) {
-        for (Block block : BLOCKS) {
+        for (Block block : getBlocks()) {
             event.getRegistry().register(new ItemBlock(block).setRegistryName(block.getRegistryName()));
         }
     }
@@ -71,7 +79,9 @@ public class ATTechnologies {
         GameRegistry.registerTileEntity(BlockArk.TileEntityCustom.class, "astrotweaks:te_ark");
         GameRegistry.registerTileEntity(BlockMoneyTable.TileEntityCustom.class, "astrotweaks:te_money_table");
         GameRegistry.registerTileEntity(BlockQTPSupressor.TileEntityCustom.class, "astrotweaks:te_qtp_supressor");
-        GameRegistry.registerTileEntity(BlockTDArk.TileEntityCustom.class, "astrotweaks:te_tdark");
+        if (ModVariables.MULTIVERSE && ModVariables.Enable_TDARK) {
+            GameRegistry.registerTileEntity(BlockTDArk.TileEntityCustom.class, "astrotweaks:te_tdark");
+        }
         ForgeChunkManager.setForcedChunkLoadingCallback(AstrotweaksMod.instance, new ForgeChunkManager.LoadingCallback() {
             @Override
             public void ticketsLoaded(List<ForgeChunkManager.Ticket> tickets, World world) {
@@ -94,16 +104,13 @@ public class ATTechnologies {
         AstrotweaksMod.PACKET_HANDLER.registerMessage(ArkGUI.GUIButtonPressedMessageHandler.class, ArkGUI.GUIButtonPressedMessage.class, 11, net.minecraftforge.fml.relauncher.Side.SERVER);
 
         AstrotweaksMod.PACKET_HANDLER.registerMessage(MTGUI.GUIButtonPressedMessageHandler.class, MTGUI.GUIButtonPressedMessage.class, 12, net.minecraftforge.fml.relauncher.Side.SERVER);
-
-        AstrotweaksMod.PACKET_HANDLER.registerMessage(TDArkGUI.TDArkActionMessageHandler.class, TDArkGUI.TDArkActionMessage.class, 20, net.minecraftforge.fml.relauncher.Side.SERVER);
-        AstrotweaksMod.PACKET_HANDLER.registerMessage(TDArkGUI.GUIButtonPressedMessageHandler.class, TDArkGUI.GUIButtonPressedMessage.class, 21, net.minecraftforge.fml.relauncher.Side.SERVER);
     }
 
     @Mod.EventBusSubscriber(modid = "astrotweaks", value = Side.CLIENT)
     public static class ClientHandler {
         @SubscribeEvent
         public static void registerModels(ModelRegistryEvent event) {
-            for (Block block : BLOCKS) {
+            for (Block block : getBlocks()) {
                 Item item = Item.getItemFromBlock(block);
                 if (item != null && item != Item.getItemFromBlock(net.minecraft.init.Blocks.AIR)) {
                     ModelLoader.setCustomModelResourceLocation(item, 0,

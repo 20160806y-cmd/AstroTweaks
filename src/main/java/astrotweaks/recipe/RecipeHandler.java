@@ -5,11 +5,10 @@ import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 import net.minecraftforge.oredict.ShapedOreRecipe;
 import net.minecraftforge.oredict.ShapelessOreRecipe;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.item.crafting.IRecipe;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import net.minecraft.util.ResourceLocation;
-
-import net.minecraft.item.crafting.IRecipe;
 
 import java.util.*;
 
@@ -18,7 +17,6 @@ import java.util.*;
 public class RecipeHandler {
 	private static final Logger LOGGER = LogManager.getLogger("astrotweaks");
 
-	// Set (immutable)
 	public static final Set<String> RECIPES = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(
 
 "S 000,010,000;0=avaritia:resource:7;1=ore:dyeYellow;RES=minecraft:record_13",
@@ -487,8 +485,7 @@ public class RecipeHandler {
 	private static void parseShaped(String data) {
 		String[] parts = data.split(";", -1);
 		if (parts.length < 3) {
-			LOGGER.warn("Shaped recipe '{}' does not contain enough parts (it needs Pattern, Keys, and Result)", data);
-			return;
+			LOGGER.warn("Shaped recipe '{}' does not contain enough parts (it needs Pattern, Keys, and Result)", data); return;
 		}
 
 		// pattern
@@ -516,11 +513,10 @@ public class RecipeHandler {
 		int bottom = rows.size() - 1;
 		while (bottom >= top && rows.get(bottom).replace("\u00A0", " ").trim().isEmpty()) bottom--;
 		if (top > bottom) {
-			LOGGER.warn("Pattern is empty after trimming: {}", data);
-			return;
+			LOGGER.warn("Pattern is empty after trimming: {}", data); return;
 		}
 		List<String> trimmedRows = rows.subList(top, bottom + 1);
-		
+
 		// find leftmost and rightmost non-space column
 		int left = Integer.MAX_VALUE;
 		int right = Integer.MIN_VALUE;
@@ -533,8 +529,7 @@ public class RecipeHandler {
 			}
 		}
 		if (right < left) {
-			LOGGER.warn("Pattern has no non-space chars: {}", data);
-			return;
+			LOGGER.warn("Pattern has no non-space chars: {}", data); return;
 		}
 		// crop columns and build final pattern
 		String[] pattern = new String[trimmedRows.size()];
@@ -550,8 +545,7 @@ public class RecipeHandler {
 			if (keyPart.isEmpty()) continue;
 			String[] kv = keyPart.split("=", 2);
 			if (kv.length != 2) {
-				LOGGER.warn("Incorrect key definition in '{}'", keyPart);
-				return;
+				LOGGER.warn("Incorrect key definition in '{}'", keyPart); return;
 			}
 			char keyChar = kv[0].charAt(0);
 			String valueStr = kv[1].trim();
@@ -562,13 +556,11 @@ public class RecipeHandler {
 
 		// ---------- Result ----------
 		if (i >= parts.length) {
-			LOGGER.warn("The result is missing in the shaped recipe: {}", data);
-			return;
+			LOGGER.warn("The result is missing in the shaped recipe: {}", data); return;
 		}
 		String resultPart = parts[i].trim();
 		if (!resultPart.startsWith("RES=")) {
-			LOGGER.warn("Result should start with 'RES=' in '{}'", resultPart);
-			return;
+			LOGGER.warn("Result should start with 'RES=' in '{}'", resultPart); return;
 		}
 		String resultStr = resultPart.substring(4).trim();
 		ItemStack result = parseResult(resultStr);
@@ -583,8 +575,7 @@ public class RecipeHandler {
 		}
 		for (char c : patternChars) {
 			if (!keys.containsKey(c)) {
-				LOGGER.warn("The pattern symbol '{}' is not defined in the recipe keys: {}", c, data);
-				return;
+				LOGGER.warn("The pattern symbol '{}' is not defined in the recipe keys: {}", c, data); return;
 			}
 		}
 
@@ -621,8 +612,7 @@ public class RecipeHandler {
 			// Parse format: mod:item || mod:item:meta
 			String[] parts = value.split(":");
 			if (parts.length < 2) {
-				LOGGER.warn("Invalid ingredient format: {}", value);
-				return null;
+				LOGGER.warn("Invalid ingredient format: {}", value); return null;
 			}
 			String itemName = parts[0] + ":" + parts[1];
 			int meta = 0;
@@ -638,8 +628,7 @@ public class RecipeHandler {
 						else {
 							try { meta = Integer.parseInt(metaStr); }
 							catch (NumberFormatException e) {
-								LOGGER.warn("Incorrect meta in '{}'", value);
-								return null;
+								LOGGER.warn("Incorrect meta in '{}'", value); return null;
 							}
 						}
 					}
@@ -650,8 +639,7 @@ public class RecipeHandler {
 					else {
 						try { meta = Integer.parseInt(third); }
 						catch (NumberFormatException e) {
-							LOGGER.warn("Incorrect meta in '{}'", value);
-							return null;
+							LOGGER.warn("Incorrect meta in '{}'", value); return null;
 						}
 					}
 				}
@@ -666,8 +654,7 @@ public class RecipeHandler {
 
 			Item item = Item.getByNameOrId(itemName);
 			if (item == null) {
-				LOGGER.info("Recipe skipped: item '{}' was not found", itemName);
-				return null;
+				LOGGER.info("Recipe skipped: item '{}' was not found", itemName); return null;
 			}
 			return new ItemStack(item, 1, meta);
 		}
@@ -677,15 +664,13 @@ public class RecipeHandler {
 	private static void parseShapeless(String data) {
 		String[] parts = data.split(";");
 		if (parts.length < 2) {
-			LOGGER.warn("Shapeless recipe must contain ingredients and result separated by ';': {}", data);
-			return;
+			LOGGER.warn("Shapeless recipe must contain ingredients and result separated by ';': {}", data); return;
 		}
 
 		// last pars = Result
 		String resultPart = parts[parts.length - 1].trim();
 		if (!resultPart.startsWith("RES=")) {
-			LOGGER.warn("The Result must start with 'RES=' in '{}'", resultPart);
-			return;
+			LOGGER.warn("The Result must start with 'RES=' in '{}'", resultPart); return;
 		}
 		String resultStr = resultPart.substring(4).trim();
 		ItemStack result = parseResult(resultStr);
@@ -696,7 +681,7 @@ public class RecipeHandler {
 		for (int i = 0; i < parts.length - 1; i++) {
 			String token = parts[i].trim();
 			if (token.isEmpty()) continue;
-	
+
 			if (token.startsWith("ore:")) {
 				// ore:tag.count
 				String oreName = token.substring(4);
@@ -707,8 +692,7 @@ public class RecipeHandler {
 						count = Integer.parseInt(oreName.substring(dotIdx + 1));
 						oreName = oreName.substring(0, dotIdx);
 					} catch (NumberFormatException e) {
-						LOGGER.warn("Incorrect amount in ore ingredient: {}", token);
-						return;
+						LOGGER.warn("Incorrect amount in ore ingredient: {}", token); return;
 					}
 				}
 				//if (!OreDictionary.doesOreNameExist(oreName) || OreDictionary.getOres(oreName).isEmpty()) {
@@ -720,8 +704,7 @@ public class RecipeHandler {
 				// Common item: mod:item || mod:item:meta.count || mod:item.count
 				String[] itemParts = token.split(":");
 				if (itemParts.length < 2) {
-					LOGGER.warn("Invalid ingredient format: {}", token);
-					return;
+					LOGGER.warn("Invalid ingredient format: {}", token); return;
 				}
 				String itemName = itemParts[0] + ":" + itemParts[1];
 				int meta = 0;
@@ -740,15 +723,13 @@ public class RecipeHandler {
 							else {
 								try { meta = Integer.parseInt(metaStr); }
 								catch (NumberFormatException e) {
-									LOGGER.warn("Incorrect Meta in '{}'", token);
-									return;
+									LOGGER.warn("Incorrect Meta in '{}'", token); return;
 								}
 							}
 						}
 						try { count = Integer.parseInt(countStr); }
 						catch (NumberFormatException e) {
-							LOGGER.warn("Incorrect Count in '{}'", token);
-							return;
+							LOGGER.warn("Incorrect Count in '{}'", token); return;
 						}
 					} else {
 						// meta
@@ -756,8 +737,7 @@ public class RecipeHandler {
 						else {
 							try { meta = Integer.parseInt(third); }
 							catch (NumberFormatException e) {
-								LOGGER.warn("Incorrect Meta in '{}'", token);
-								return;
+								LOGGER.warn("Incorrect Meta in '{}'", token); return;
 							}
 						}
 					}
@@ -772,7 +752,6 @@ public class RecipeHandler {
 						return;
 					}
 				}
-	
 				Item item = Item.getByNameOrId(itemName);
 				if (item == null) {
 					LOGGER.info("Recipe was skipped: Item '{}' is empty", itemName);
@@ -874,7 +853,6 @@ public class RecipeHandler {
 					return ItemStack.EMPTY;
 				}
 			}
-
 			Item item = Item.getByNameOrId(itemName);
 			if (item == null) {
 				LOGGER.info("Recipe skipped: result item '{}' not found", itemName);

@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.Arrays;
 import java.util.ArrayList;
 
-import astrotweaks.procedure.ProcedureShowDeathsProc;
+
 
 public class CommandShowDeathsCC {
 	public static class CommandHandler implements ICommand {
@@ -74,7 +74,7 @@ public class CommandShowDeathsCC {
 					index[0]++;
 				});
 				if (world != null && world.isRemote)
-					ProcedureShowDeathsProc.exect(cmdparams, world);
+					astrotweaks.procedure.P_ShowDeaths.exect(cmdparams, world);
 			}
 		}
 	}

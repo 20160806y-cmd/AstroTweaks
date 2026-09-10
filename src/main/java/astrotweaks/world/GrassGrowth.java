@@ -107,12 +107,14 @@ public class GrassGrowth {
 	private static Map<Long, Long> getScheduledMap(int dim) {
 	    return scheduledTimes.computeIfAbsent(dim, k -> new ConcurrentHashMap<>());
 	}
+	/*
 	private static void addToQueue(int dim, ScheduledChunk chunk) {
 		if (chunk == null) return;
 		synchronized (STATE_LOCK) {
 			getQueue(dim).add(chunk);
 		}
 	}
+	*/
 	private static boolean isTurfBlock(IBlockState state) {
 		if (state.getBlock() == Blocks.GRASS) {
 			return true;
@@ -142,9 +144,8 @@ public class GrassGrowth {
 		* getHeightValue() возвращает Y сразу над верхним блоком согласно heightmap чанка.
 		*/
 		int y = chunk.getHeightValue(localX, localZ) - 1;
-
 		if (y < 1) return null;
-		
+
 
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(x, y, z);
 
@@ -257,9 +258,8 @@ public class GrassGrowth {
 
         //PriorityQueue<ScheduledChunk> queue = getQueue(dim);
 
-       // Set<Long> loaded = getLoadedSet(dim);
+        // Set<Long> loaded = getLoadedSet(dim);
         //Map<Long, Long> times = getScheduledMap(dim);
-
 
         while (processed < MAX_OPER_PER_TICK) {
 		    ScheduledChunk scheduled;

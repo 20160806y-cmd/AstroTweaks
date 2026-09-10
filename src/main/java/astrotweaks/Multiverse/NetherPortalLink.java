@@ -114,15 +114,12 @@ public final class NetherPortalLink {
         LevelDimensionType fromType = data.typeOf(fromDim);
         if (fromType == null) return;
 
-
         LevelDimensionType toType;
         if (fromType == LevelDimensionType.OVERWORLD) {
             toType = LevelDimensionType.NETHER;
         } else if (fromType == LevelDimensionType.NETHER) {
             toType = LevelDimensionType.OVERWORLD;
-        } else {
-            return;
-        }
+        } else { return; }
 
         int targetDim = data.dimensionId(toType);
         double scale = toType == LevelDimensionType.NETHER ? 1.0D / 8.0D : 8.0D;
@@ -235,9 +232,17 @@ public final class NetherPortalLink {
         writeLink(toWorld, toGeo, fromDim, fromGeo.interiorMin.getX(), fromGeo.interiorMin.getY(), fromGeo.interiorMin.getZ(), axisToInt(fromGeo.axis));
     }
     private static void writeLink(World world, NetherPortalGeometry.Geometry geo, int dim, int x, int y, int z, int axis) {
+        BlockPos.MutableBlockPos cell = new BlockPos.MutableBlockPos();
+        int bx = geo.interiorMin.getX();
+        int by = geo.interiorMin.getY();
+        int bz = geo.interiorMin.getZ();
+        EnumFacing rightDir = geo.rightDir();
+        int rx = NetherPortalGeometry.stepX(rightDir);
+        int rz = NetherPortalGeometry.stepZ(rightDir);
         for (int i = 0; i < geo.width; i++) {
             for (int j = 0; j < geo.height; j++) {
-                TileNetherPortal tile = getTile(world, geo.interiorMin.offset(geo.rightDir(), i).up(j));
+                cell.setPos(bx + rx * i, by + j, bz + rz * i);
+                TileNetherPortal tile = getTile(world, cell);
                 if (tile != null) {
                     tile.setLink(dim, x, y, z, axis);
                 }

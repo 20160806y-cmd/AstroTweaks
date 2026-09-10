@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.lang.reflect.Field;
 
-import astrotweaks.ModVariables;
+
 
 public class CommandATVars {
 	public static class CommandHandler implements ICommand {
@@ -60,7 +60,7 @@ public class CommandATVars {
 			String varName = cmd[1];
 
 			try {
-				Field f = ModVariables.class.getDeclaredField(varName);
+				Field f = astrotweaks.ModVariables.class.getDeclaredField(varName);
 				f.setAccessible(true);
 				Class<?> type = f.getType();
 

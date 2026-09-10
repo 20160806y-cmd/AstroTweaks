@@ -12,10 +12,10 @@ import astrotweaks.item.ItemXpBoxU;
 
 
 
-public class ProcedureATCP {
-	public ProcedureATCP() {}
+public class P_ATCP {
+	public P_ATCP() {}
 
-	public static void executeProcedure(Entity entity, HashMap<String, String> params) {
+	public static void exect(Entity entity, HashMap<String, String> params) {
 		if (entity == null || params == null) {
 		    System.err.println("Failed to load dependencies!");
 		    return;

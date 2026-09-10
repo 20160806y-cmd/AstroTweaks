@@ -2,6 +2,7 @@ package astrotweaks.Multiverse;
 
 import astrotweaks.AstrotweaksMod;
 
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -41,7 +42,7 @@ import java.util.UUID;
  * <p>Every save folder (the overworld that is currently loaded) owns its own
  * MULTIVERSE folder + registry + per-dimension level folders. The registry is
  * additionally bound to the save by a marker file (universe.dat). The shared
- * global dimension (9999) lives in MULTIVERSE_GLOBAL at the server root, outside
+ * global dimension (-1000000) lives in MULTIVERSE_GLOBAL at the server root, outside
  * any single save.</p>
  *
  * <p>A level occupies 4 consecutive dimension ids (base .. base+3) and is saved
@@ -52,13 +53,14 @@ import java.util.UUID;
  */
 public class LevelManager {
 
-    private static final int BASE_START = 1000;
+    private static final int BASE_START = 10_000;
     private static final int STEP = 100;
-    private static final int BASE_MAX = 1000000;
+    private static final int BASE_MAX = 20_000;
 
     private static LevelManager INSTANCE;
 
     private final Map<String, LevelData> levels = new HashMap<>();
+    private final Map<Integer, LevelData> universeByNumber = new HashMap<>();
     private final Map<Integer, LevelData> dimensionToLevel = new HashMap<>();
     private final Map<UUID, PlayerEntry> playerEntries = new HashMap<>();
 
@@ -66,6 +68,7 @@ public class LevelManager {
     private File multiverseFolder;
     private File globalFolder;
     private boolean registryLoaded;
+    private long worldSeed;
 
     private LevelManager() {}
 
@@ -92,14 +95,29 @@ public class LevelManager {
             return;
         }
         if (multiverseFolder != null) {
-            saveAll(cachedServer != null ? cachedServer : server);
+            // Unload every old multiverse world from DimensionManager so the
+            // next save does not inherit stale WorldServer instances or create
+            // folders for dimensions that belong to the previous save.
+            MinecraftServer oldServer = cachedServer != null ? cachedServer : server;
+            for (LevelData data : levels.values()) {
+                for (int k = 0; k < 4; k++) {
+                    unloadWorldNow(oldServer, data.baseId + k, true);
+                }
+                // Unregister so DimensionManager.initDimensions() does not
+                // recreate them as phantom worlds in the new save.
+                unregisterLevelDimensions(oldServer, data);
+            }
+            unloadWorldNow(oldServer, MultiverseDims.GLOBAL_DIM, true);
+            if (DimensionManager.isDimensionRegistered(MultiverseDims.GLOBAL_DIM)) {
+                DimensionManager.unregisterDimension(MultiverseDims.GLOBAL_DIM);
+            }
+            saveAll(oldServer);
         }
         cachedServer = server;
         multiverseFolder = mvFolder;
-        // The global universe must live beside config/mods/logs at the game root,
-        // NOT inside the save folder (server.getFile would resolve into the save).
         globalFolder = new File(resolveGameRoot(), "MULTIVERSE_GLOBAL");
         levels.clear();
+        universeByNumber.clear();
         dimensionToLevel.clear();
         playerEntries.clear();
         registryLoaded = false;
@@ -114,10 +132,18 @@ public class LevelManager {
         }
         System.out.println("[MULTIVERSE] Shared global dimension folder: " + globalFolder);
 
+        worldSeed = readWorldSeed(world0);
         ensureRegistry(server);
         writeBindingMarker(world0);
         registerGlobalDimensionIfMissing();
         loadPlayerData();
+
+        // Schedule phantom dimension cleanup for the next tick.
+        // DimensionManager.initDimensions() runs AFTER onWorldLoaded and auto-loads
+        // all registered dimensions from previous saves. By the next tick, those
+        // phantoms are loaded — we can identify and unload them.
+        final MinecraftServer schedServer = server;
+        server.addScheduledTask(() -> cleanupPhantomDimensions(schedServer));
     }
 
     private void ensureActive(MinecraftServer server) {
@@ -129,6 +155,44 @@ public class LevelManager {
     private void registerGlobalDimensionIfMissing() {
         if (!DimensionManager.isDimensionRegistered(MultiverseDims.GLOBAL_DIM)) {
             MultiverseDims.registerGlobalDimension();
+        }
+    }
+
+    /**
+     * Scans all loaded dimensions and unloads any that don't belong to the current save.
+     * Forge's DimensionManager retains registered dimension ids across JVM sessions
+     * (integrated server) and auto-loads them via initDimensions for every new world.
+     * This cleanup runs one tick after onWorldLoaded so all phantoms are loaded and
+     * can be identified by their save handler (phantoms use the default handler, not
+     * our LevelSaveHandler).
+     */
+    private void cleanupPhantomDimensions(MinecraftServer server) {
+        if (multiverseFolder == null) return;
+
+        for (Integer dimId : java.util.Arrays.asList(DimensionManager.getIDs())) {
+            if (dimId == 0) continue;
+            WorldServer world = DimensionManager.getWorld(dimId);
+            if (world == null) continue;
+            // Our legitimate worlds use LevelSaveHandler; phantoms use the default handler.
+            if (world.getSaveHandler() instanceof LevelSaveHandler) continue;
+
+            // Dimensions that belong to the current save will be rebuilt by getOrCreateWorld
+            // when a player actually joins. Leave them alone for now.
+            LevelData data = dimensionToLevel.get(dimId);
+            if (data != null) continue;
+
+            // Pure phantom from a previous save — unload, unregister and delete its folder.
+            System.out.println("[MULTIVERSE] Cleaning up phantom dimension " + dimId);
+            DimensionManager.setWorld(dimId, null, server);
+            if (DimensionManager.isDimensionRegistered(dimId)) {
+                DimensionManager.unregisterDimension(dimId);
+            }
+
+            File worldDir = world.getSaveHandler().getWorldDirectory();
+            File dimFolder = new File(worldDir, "DIM" + dimId);
+            if (dimFolder.isDirectory()) {
+                deleteRecursively(dimFolder);
+            }
         }
     }
 
@@ -152,6 +216,15 @@ public class LevelManager {
         root.setString("worldName", world0.getSaveHandler().getWorldDirectory().getName());
         root.setLong("worldSeed", world0.getWorldInfo().getSeed());
         writeNbt(new File(multiverseFolder, "universe.dat"), root);
+    }
+
+    /** worldSeed стабильно для всего сейва (из universe.dat, иначе из мира 0). */
+    private long readWorldSeed(WorldServer world0) {
+        NBTTagCompound root = readNbt(new File(multiverseFolder, "universe.dat"));
+        if (root != null && root.hasKey("worldSeed")) {
+            return root.getLong("worldSeed");
+        }
+        return world0.getWorldInfo().getSeed();
     }
     private static boolean isSameFolder(File a, File b) {
         if (a == null || b == null) {
@@ -208,12 +281,18 @@ public class LevelManager {
         for (int i = 0; i < list.tagCount(); i++) {
             NBTTagCompound entry = list.getCompoundTagAt(i);
             String name = entry.getString("name");
-            int baseId = entry.getInteger("baseId");
+            int number = entry.hasKey("number") ? entry.getInteger("number") : numberForBase(entry.getInteger("baseId"));
+            int baseId = entry.hasKey("baseId") ? entry.getInteger("baseId") : baseForNumber(number);
             long seed = entry.getLong("seed");
+            String uid = entry.getString("uid");
+            if (uid.isEmpty()) {
+                uid = uidForNumber(number);
+            }
             File folder = new File(multiverseFolder, name);
 
-            LevelData data = new LevelData(name, baseId, seed, folder);
+            LevelData data = new LevelData(name, number, uid, baseId, seed, folder);
             levels.put(name, data);
+            universeByNumber.put(number, data);
             linkDimensions(data);
         }
     }
@@ -226,8 +305,10 @@ public class LevelManager {
         for (LevelData data : levels.values()) {
             NBTTagCompound entry = new NBTTagCompound();
             entry.setString("name", data.name);
+            entry.setInteger("number", data.number);
             entry.setInteger("baseId", data.baseId);
             entry.setLong("seed", data.seed);
+            entry.setString("uid", data.uid);
             list.appendTag(entry);
         }
         root.setTag("levels", list);
@@ -251,7 +332,6 @@ public class LevelManager {
 
         LevelData data = levels.get(name);
         if (data != null) {
-            MultiverseDims.registerLevelDimensions(data.baseId);
             return data;
         }
 
@@ -262,41 +342,182 @@ public class LevelManager {
             if (info != null) {
                 storedSeed = info.getSeed();
             }
-            data = registerNewLevel(server, name, storedSeed, folder);
-        } else {
-            if ((folder.exists() || folder.mkdirs()) && folder.isDirectory()) {
-                data = registerNewLevel(server, name, seed, folder);
-            } else {
-                System.err.println("[MULTIVERSE] Cannot create level folder: " + folder);
+            int number = parseNumber(name);
+            if (number <= 0 || (universeByNumber.containsKey(number) && !universeByNumber.get(number).name.equals(name))) {
+                number = allocateNumber();
             }
+            return createOrRecycle(server, name, number, storedSeed, false);
+        }
+
+        if ((folder.exists() || folder.mkdirs()) && folder.isDirectory()) {
+            int number = parseNumber(name);
+            if (number <= 0 || universeByNumber.containsKey(number)) {
+                number = allocateNumber();
+            }
+            data = createOrRecycle(server, name, number, seed, false);
+        } else {
+            System.err.println("[MULTIVERSE] Cannot create level folder: " + folder);
         }
         if (data != null) {
             saveRegistry(server);
-            MultiverseDims.registerLevelDimensions(data.baseId);
         }
         return data;
+    }
+
+    /**
+     * Returns the level for a universe slot (1..max), creating it when the slot is free.
+     * If the slot already has a universe, that universe is returned and the seed is ignored
+     * (travelling to an existing universe). Used by TD/ARK portal transfers.
+     */
+    public LevelData getOrCreateLevel(MinecraftServer server, int number, long seed) {
+        ensureActive(server);
+        if (number < 1) number = 1;
+        if (number > maxUniverses()) number = maxUniverses();
+
+        LevelData data = universeByNumber.get(number);
+        if (data != null) {
+            return data;
+        }
+        String name = "MV_" + number;
+        File folder = new File(multiverseFolder, name);
+        if (folder.isDirectory() && isLevelDataPresent(folder)) {
+            long storedSeed = seed;
+            WorldInfo info = new LevelSaveHandler(folder).loadWorldInfo();
+            if (info != null) {
+                storedSeed = info.getSeed();
+            }
+            data = registerNewLevel(server, name, number, storedSeed, folder);
+        } else if ((folder.exists() || folder.mkdirs()) && folder.isDirectory()) {
+            data = registerNewLevel(server, name, number, seed, folder);
+        }
+        if (data != null) {
+            saveRegistry(server);
+        }
+        return data;
+    }
+
+    /** Random universe slot: travels to an existing one, or creates a new one at a free slot. */
+    public LevelData getRandomLevelOrCreate(MinecraftServer server, long seed) {
+        int n = 1 + new Random().nextInt(maxUniverses());
+        return getOrCreateLevel(server, n, seed);
+    }
+
+    /**
+     * Creates the universe at the given slot. Slots 1..max-1 are never overwritten
+     * (an existing occupant is either reused or the requester falls back to another
+     * free slot 1..max-1, then to a free slot max, and only as a last resort
+     * recycles the occupant of slot max). Only slot == max's world files are ever
+     * deleted and recreated with a new seed, while number/UID/baseId stay the same.
+     */
+    private LevelData createOrRecycle(MinecraftServer server, String name, int number, long seed, boolean forceRecycle) {
+        LevelData occupant = universeByNumber.get(number);
+        if (occupant == null) {
+            return registerNewLevel(server, name, number, seed, new File(multiverseFolder, name));
+        }
+        if (!forceRecycle && occupant.name.equals(name)) {
+            return occupant;
+        }
+        if (!forceRecycle && occupant.number < maxUniverses()) {
+            // Перезаписывать слот < max нельзя: ищем свободный слот 1..max-1.
+            for (int fallback = 1; fallback < maxUniverses(); fallback++) {
+                if (!universeByNumber.containsKey(fallback)) {
+                    return createOrRecycle(server, name, fallback, seed, false);
+                }
+            }
+        }
+        // Сюда доходим, когда слот < max свободных не имеет либо запрос уже про слот max.
+        // Если max свободен - занимаем его без перезаписи.
+        if (!forceRecycle && !universeByNumber.containsKey(maxUniverses())) {
+            return registerNewLevel(server, name, maxUniverses(), seed, new File(multiverseFolder, name));
+        }
+        // Всё занято: единственный перезаписываемый слот - max.
+        if (!forceRecycle && number != maxUniverses()) {
+            LevelData victim = universeByNumber.get(maxUniverses());
+            recycleLevel(server, victim);
+            return registerNewLevel(server, name, maxUniverses(), seed, new File(multiverseFolder, name));
+        }
+        // forceRecycle либо запрос уже приходится на слот max.
+        recycleLevel(server, occupant);
+        return registerNewLevel(server, name, number, seed, new File(multiverseFolder, name));
     }
 
     private boolean isLevelDataPresent(File folder) {
         return new File(folder, "level.dat").isFile();
     }
-    private LevelData registerNewLevel(MinecraftServer server, String name, long seed, File folder) {
-        int baseId = findFreeBaseId();
-        LevelData data = new LevelData(name, baseId, seed, folder);
+    private LevelData registerNewLevel(MinecraftServer server, String name, int number, long seed, File folder) {
+        if (!folder.exists() && !folder.mkdirs()) {
+            System.err.println("[MULTIVERSE] Cannot create level folder: " + folder);
+            return null;
+        }
+        int baseId = baseForNumber(number);
+        LevelData data = new LevelData(name, number, uidForNumber(number), baseId, seed, folder);
         levels.put(name, data);
+        universeByNumber.put(number, data);
         linkDimensions(data);
         return data;
     }
-    private int findFreeBaseId() {
-        int base = BASE_START;
-        while (base < BASE_MAX && isBaseIdUsed(base)) {
-            base += STEP;
+
+    /**
+     * Unloads all 4 dimensions of the universe (without saving), deletes its world files
+     * and drops it from the registry. Slot number/UID/baseId are then reusable.
+     */
+    private void recycleLevel(MinecraftServer server, LevelData old) {
+        System.out.println("[MULTIVERSE] Recycling universe #" + old.number + " (" + old.name + ")");
+        for (int k = 0; k < 4; k++) {
+            unloadWorldNow(server, old.baseId + k, false);
         }
-        if (base >= BASE_MAX) {
-            throw new IllegalStateException("No free multiverse dimension range left");
-        }
-        return base;
+        unregisterLevelDimensions(server, old);
+        levels.remove(old.name);
+        universeByNumber.remove(old.number);
+        deleteRecursively(old.folder);
+        System.out.println("[MULTIVERSE] Recycled universe #" + old.number);
     }
+
+    private void deleteRecursively(File file) {
+        if (file == null || !file.exists()) return;
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    deleteRecursively(child);
+                }
+            }
+        }
+        if (!file.delete()) {
+            System.err.println("[MULTIVERSE] Cannot delete " + file);
+        }
+    }
+
+    /** Lowest free slot 1..max-1; when all are busy returns the recycle slot (max). */
+    private int allocateNumber() {
+        int max = maxUniverses();
+        for (int n = 1; n < max; n++) {
+            if (!universeByNumber.containsKey(n)) {
+                return n;
+            }
+        }
+        return max;
+    }
+
+    private int parseNumber(String name) {
+        if (name != null && name.startsWith("MV_")) {
+            try {
+                int n = Integer.parseInt(name.substring(3));
+                if (n >= 1 && n <= maxUniverses()) {
+                    return n;
+                }
+            } catch (NumberFormatException ignore) {}
+        }
+        return -1;
+    }
+
+    private static int baseForNumber(int number) {
+        return BASE_START + (number - 1) * STEP;
+    }
+    private static int numberForBase(int baseId) {
+        return (baseId - BASE_START) / STEP + 1;
+    }
+
     private boolean isBaseIdUsed(int base) {
         for (int k = 0; k < 4; k++) {
             if (DimensionManager.isDimensionRegistered(base + k)) {
@@ -306,8 +527,52 @@ public class LevelManager {
         return false;
     }
 
+    // ------------------------------------------------------------------ uid hash
+
+    /** Deterministic 8-hex hash of a universe slot for this world's seed. Bijective for 1..max. */
+    public static String uidForNumber(long seed, int number) {
+        long h = number * 0x9E3779B9L + seed;
+        return String.format("%08x", h & 0xFFFFFFFFL);
+    }
+    public String uidForNumber(int number) {
+        return uidForNumber(worldSeed, number);
+    }
+    /** Reverse of {@link #uidForNumber(int)} for slots 1..max, or -1 when the uid matches no slot. */
+    public int numberForUid(String uid) {
+        if (uid == null || uid.length() != 8) return -1;
+        String u = uid.toLowerCase(java.util.Locale.ROOT);
+        for (int n = 1; n <= maxUniverses(); n++) {
+            if (uidForNumber(n).equals(u)) return n;
+        }
+        return -1;
+    }
+    public LevelData getLevelByUid(String uid) {
+        if (uid == null) return null;
+        String u = uid.trim().toLowerCase(java.util.Locale.ROOT);
+        if (u.isEmpty()) return null;
+        for (LevelData d : levels.values()) {
+            if (d.uid.equals(u)) return d;
+        }
+        return null;
+    }
+
+    public long getWorldSeed() {
+        return worldSeed;
+    }
+
+    private int maxUniverses() {
+        int m = astrotweaks.ModVariables.MULTIVERSE_MAX_UNIVERSES;
+        return m < 1 ? 1 : m;
+    }
+
     public LevelData getLevelByName(String name) {
         return levels.get(name);
+    }
+    public LevelData getLevelByNumber(int number) {
+        return universeByNumber.get(number);
+    }
+    public int countUniverses() {
+        return universeByNumber.size();
     }
     public LevelData getLevelByDimensionId(int id) {
         return dimensionToLevel.get(id);
@@ -402,8 +667,14 @@ public class LevelManager {
                 + " world@" + System.identityHashCode(world)
                 + " handler@" + System.identityHashCode(saveHandler));
 
+        // Pull spawn chunks first so findSpawn() has loaded terrain to scan.
+        for (int cx = -1; cx <= 1; cx++) {
+            for (int cz = -1; cz <= 1; cz++) {
+                world.getChunkFromChunkCoords(cx, cz);
+            }
+        }
+
         if (fresh) {
-            // Give a brand-new level the same treatment as a new vanilla world.
             BlockPos spawn = findSpawn(world);
             world.getWorldInfo().setSpawn(spawn);
             world.getWorldInfo().setServerInitialized(true);
@@ -414,13 +685,6 @@ public class LevelManager {
         }
 
         MinecraftForge.EVENT_BUS.post(new WorldEvent.Load(world));
-
-        // Pull a few spawn chunks so the teleported player does not fall through air.
-        for (int cx = -1; cx <= 1; cx++) {
-            for (int cz = -1; cz <= 1; cz++) {
-                world.getChunkFromChunkCoords(cx, cz);
-            }
-        }
         return world;
     }
 
@@ -443,20 +707,39 @@ public class LevelManager {
      * Chooses a standable spawn for a brand-new level. For nether-like worlds this is
      * the highest solid block at/below Y 64 (i.e. the FLOOR), never the bedrock ceiling;
      * for depths worlds the fixed dark-cavern pocket at (8,252,8) used by MineDimEnter
-     * and /mv join; for overworld-like worlds the top solid block, as before.
+     * and /mv join; for overworld-like worlds the top solid block found via heightmap,
+     * avoiding liquids (ocean floors, lava) by only counting non-liquid solid blocks.
      */
     private static BlockPos findSpawn(WorldServer world) {
         int y = 64;
         if (world.provider.getDimensionType() == net.minecraft.world.DimensionType.NETHER) {
             y = Math.max(scanForTopSolidBelow(world, 8, 8, 64), 4);
+        } else if (world.provider.getDimension() == MultiverseDims.GLOBAL_DIM) {
+            return new BlockPos(0, 64, 0);
         } else if (world.provider instanceof MultiverseWorldProviders.MultiverseDepths) {
             world.setBlockToAir(new BlockPos(8, 252, 8));
             world.setBlockToAir(new BlockPos(8, 253, 8));
             y = 252;
         } else {
-            y = Math.max(world.getTopSolidOrLiquidBlock(new BlockPos(8, 0, 8)).getY(), 4);
+            y = findStandableY(world, 8, 8);
         }
         return new BlockPos(8, y, 8);
+    }
+
+    /**
+     * Scans downward from the heightmap at (x, z) to find the highest solid,
+     * non-liquid block and returns Y+1 (the standable position above it).
+     * Falls back to 4 if nothing is found.
+     */
+    static int findStandableY(WorldServer world, int x, int z) {
+        int heightmapY = world.getHeight(new BlockPos(x, 0, z)).getY();
+        for (int yy = Math.min(heightmapY, world.getHeight() - 1); yy > 0; yy--) {
+            IBlockState state = world.getBlockState(new BlockPos(x, yy, z));
+            if (state.isTopSolid() && !state.getMaterial().isLiquid()) {
+                return yy + 1;
+            }
+        }
+        return Math.max(heightmapY, 4);
     }
 
     private static int scanForTopSolidBelow(WorldServer world, int x, int z, int startY) {
@@ -521,7 +804,6 @@ public class LevelManager {
                 clearPlayer(player.getUniqueID());
                 return false;
             }
-            MultiverseDims.registerLevelDimensions(data.baseId);
             target = getOrCreateWorld(server, data, type);
             AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(data.baseId), player);
         } else {
@@ -622,6 +904,57 @@ public class LevelManager {
         DimensionManager.setWorld(dim, null, server);
         System.out.println("[MULTIVERSE] Unloaded dimension " + dim
                 + " (world@" + System.identityHashCode(world) + " dropped from tick list)");
+    }
+
+    // ------------------------------------------------------------------ unregister
+
+    /**
+     * Unregisters all 4 dimension ids of a level from DimensionManager so that
+     * DimensionManager.initDimensions() on the next server start does not
+     * recreate them as phantom worlds.
+     */
+    private static void unregisterLevelDimensions(MinecraftServer server, LevelData data) {
+        for (int k = 0; k < 4; k++) {
+            int dimId = data.baseId + k;
+            if (DimensionManager.isDimensionRegistered(dimId)) {
+                WorldServer world = DimensionManager.getWorld(dimId);
+                if (world != null) {
+                    DimensionManager.setWorld(dimId, null, server);
+                }
+                DimensionManager.unregisterDimension(dimId);
+            }
+        }
+    }
+
+    /**
+     * Saves all multiverse worlds, unloads them from the tick list, unregisters
+     * every dimension id from DimensionManager (except the global void -1000000)
+     * and clears internal maps. Call on {@code FMLServerStoppingEvent} so that
+     * no stale registrations survive into the next server / save session.
+     */
+    public void unloadAndUnregisterAll(MinecraftServer server) {
+        if (multiverseFolder == null) return;
+
+        saveAll(server);
+
+        for (LevelData data : levels.values()) {
+            for (int k = 0; k < 4; k++) {
+                unloadWorldNow(server, data.baseId + k, false);
+            }
+            unregisterLevelDimensions(server, data);
+        }
+        unloadWorldNow(server, MultiverseDims.GLOBAL_DIM, false);
+        if (DimensionManager.isDimensionRegistered(MultiverseDims.GLOBAL_DIM)) {
+            DimensionManager.unregisterDimension(MultiverseDims.GLOBAL_DIM);
+        }
+
+        levels.clear();
+        universeByNumber.clear();
+        dimensionToLevel.clear();
+        playerEntries.clear();
+        multiverseFolder = null;
+        registryLoaded = false;
+        System.out.println("[MULTIVERSE] All dimensions unloaded and unregistered.");
     }
 
     /** Unloads level and global worlds that no longer contain any (non-exempt) player. */

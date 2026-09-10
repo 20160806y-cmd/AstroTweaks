@@ -16,10 +16,10 @@ import java.util.Map;
 import astrotweaks.ModVariables;
 
 
-public class ProcedureAstroTechCP {
-	public ProcedureAstroTechCP() {}
+public class P_AstroTechCP {
+	public P_AstroTechCP() {}
 
-	public static void executeProcedure(Entity sender, Map<String, Object> cmdparams) {
+	public static void exect(Entity sender, Map<String, Object> cmdparams) {
 		//Map<String, Object> cmdparams = (Map<String, Object>) cmdparamsObj;
 
 		if (!ModVariables.AstroTech_Environment) {

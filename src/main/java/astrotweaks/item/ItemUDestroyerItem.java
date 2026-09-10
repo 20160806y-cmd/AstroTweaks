@@ -13,7 +13,7 @@ import net.minecraft.entity.EntityLivingBase;
 
 import net.minecraft.init.Blocks;
 
-import astrotweaks.creativetab.ATCreativeTabs;
+
 
 public final class ItemUDestroyerItem {
 	public static final Item DESTROYER_ITEM = new ItemUDestroyerItem.ItemCustom().setRegistryName("astrotweaks", "u_destroyer_item").setUnlocalizedName("u_destroyer_item");
@@ -21,7 +21,7 @@ public final class ItemUDestroyerItem {
 	public static class ItemCustom extends Item {
 		public ItemCustom() {
 			setMaxDamage(1);
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 		}
 
 		@Override

@@ -10,6 +10,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.block.state.IBlockState;
@@ -31,13 +32,15 @@ import net.minecraft.util.text.TextFormatting;
 import astrotweaks.creativetab.ATCreativeTabs;
 import astrotweaks.AstrotweaksMod;
 
+import net.minecraft.inventory.IInventory;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.NonNullList;
+
 
 
 
 // Trans-dimensional Ark
 public class BlockTDArk {
-    // Это пул ID для новых измерений. При создании нового измерения мы берём персое свободное число от P[0] до P[1]. При привышении перезаписываем мир с последним ID в его пуле
-    private static final Integer[] NEW_OVERWORLD_DIMENSION_POOL = {100_000, 200_000};
 
 
 
@@ -76,32 +79,43 @@ public class BlockTDArk {
 	}
 
 	public static class TileEntityCustom extends TileEntity implements ITickable {
-		// BlockArk
-        private int targetSeed;
-	    private int targetDim = 0;
+		// Задержка фиксированная: 100 тиков (5 секунд)
+        public static final int TRANSFER_DELAY = 100;
+
+        private long targetSeed;
+        private String targetUid = "";          // 8-hex хеш целевой вселенной (пусто = случайная)
+	    private int targetDim = 0;              // относительный DimID (0/-1/1/-6000) относительно ЦЕЛЕВОЙ вселенной
 	    private int targetX = 0;
 	    private int targetY = 65;
 	    private int targetZ = 0;
 	    private boolean clearMode = true; // true = destroy, false = replace
 	    private boolean captureEntities = true;
 	    private boolean captureItems = true;
-	    private int mv_code = 0;
 
+		private final TDInventory inventory = new TDInventory();
 
 	    private boolean transferPending = false;
+	    private int delayTicksLeft = 0;
 	    private int pendingDim, pendingX, pendingY, pendingZ;
 	    private boolean pendingClearMode, pendingCaptureEntities, pendingCaptureItems;
 	    private BlockPos terminalPos; // BlockArk pos
 	    private EntityPlayerMP triggeringPlayer;
 
 		private final int border = 29999990;
-		private final int max_mv_code = 1000;
-
 
 	    // getters & setters
-	    public int getTargetSeed() { return targetSeed; }
-		public void setTargetSeed(int seed) {
+	    public long getTargetSeed() { return targetSeed; }
+		public void setTargetSeed(long seed) {
 		    this.targetSeed = seed;
+		    markDirty();
+			if (world != null && !world.isRemote) {
+			    IBlockState state = world.getBlockState(pos);
+			    world.notifyBlockUpdate(pos, state, state, 3);
+			}
+		}
+		public String getTargetUid() { return targetUid; }
+		public void setTargetUid(String uid) {
+		    this.targetUid = uid == null ? "" : uid.trim();
 		    markDirty();
 			if (world != null && !world.isRemote) {
 			    IBlockState state = world.getBlockState(pos);
@@ -171,17 +185,26 @@ public class BlockTDArk {
 	            world.notifyBlockUpdate(pos, state, state, 3);
 	        }
 	    }
-	    public int getMVCode() { return mv_code; }
-	    public void setDelayTicks(int code) {
-	        this.mv_code = Math.min(max_mv_code, Math.max(1000, code)); // limit
-	        markDirty();
-	        if (world != null && !world.isRemote) {
-	            IBlockState state = world.getBlockState(pos);
-	            world.notifyBlockUpdate(pos, state, state, 3);
+
+	    public TDInventory getInventory() { return inventory; }
+
+	    /** Потребляет 1 алмаз из слота с наименьшим номером, вернёт false если алмазов нет. */
+	    public boolean consumeDiamond() {
+	        for (int i = 0; i < inventory.getSizeInventory(); i++) {
+	            ItemStack stack = inventory.getStackInSlot(i);
+	            if (!stack.isEmpty() && stack.getItem() == net.minecraft.init.Items.DIAMOND && stack.getCount() >= 1) {
+	                stack.shrink(1);
+	                if (stack.isEmpty()) {
+	                    inventory.setInventorySlotContents(i, ItemStack.EMPTY);
+	                }
+	                markDirty();
+	                return true;
+	            }
 	        }
+	        return false;
 	    }
 		/////
-	    public void startDelayedTransfer(EntityPlayerMP player,BlockPos termPos,int dim,int x,int y,int z,boolean clearMode,boolean captureEntities,boolean captureItems,int delay) {
+	    public void startDelayedTransfer(EntityPlayerMP player,BlockPos termPos,int dim,int x,int y,int z,boolean clearMode,boolean captureEntities,boolean captureItems) {
 		    BlockPos corePos = TDArkTransferHelper.findCore(world, termPos);
 		    if (corePos == null) {
 		        player.sendMessage(new TextComponentTranslation("ark.err.structure").setStyle(new Style().setColor(TextFormatting.RED)));
@@ -200,15 +223,16 @@ public class BlockTDArk {
 		    // this's like in performTeleport
 		    int coreTargetY = y + 2;
 		    BlockPos corePosTarget = new BlockPos(x, coreTargetY, z);
-		    BlockPos targetMin = corePosTarget.add(-3, -2, -3);
-		    BlockPos targetMax = corePosTarget.add(3, 2, 3);
-		
-		    int minY = coreTargetY - 2;
-		    int maxY = coreTargetY + 2;
-		    if ((minY < 9 || maxY > 247) || (Math.abs(x) > border || Math.abs(z) > border)) {
+		    BlockPos targetMin = corePosTarget.add(-7, -5, -7);
+		    BlockPos targetMax = corePosTarget.add(7, 5, 7);
+
+		    int minY = coreTargetY - 5;
+		    int maxY = coreTargetY + 5;
+		    if ((minY < 3 || maxY > 253) || (Math.abs(x) > border || Math.abs(z) > border)) {
 		        return;
 		    }
 
+		    // Загружаем чанки цели ДО проверок подавителя (см. ArkTransferHelper)
 		    int minChunkX = targetMin.getX() >> 4;
 		    int maxChunkX = targetMax.getX() >> 4;
 		    int minChunkZ = targetMin.getZ() >> 4;
@@ -219,6 +243,7 @@ public class BlockTDArk {
 		        }
 		    }
 	        this.transferPending = true;
+	        this.delayTicksLeft = TRANSFER_DELAY;
 	        this.pendingDim = dim;
 	        this.pendingX = x;
 	        this.pendingY = y;
@@ -234,6 +259,8 @@ public class BlockTDArk {
 	    public void readFromNBT(NBTTagCompound compound) {
 	        super.readFromNBT(compound);
 	        // read fields
+	        if (compound.hasKey("targetSeed")) this.targetSeed = compound.getLong("targetSeed");
+	        if (compound.hasKey("targetUid")) this.targetUid = compound.getString("targetUid");
 	        if (compound.hasKey("targetDim")) this.targetDim = compound.getInteger("targetDim");
 	        if (compound.hasKey("targetX")) this.targetX = compound.getInteger("targetX");
 	        if (compound.hasKey("targetY")) this.targetY = compound.getInteger("targetY");
@@ -242,9 +269,16 @@ public class BlockTDArk {
 	        if (compound.hasKey("clearMode")) this.clearMode = compound.getBoolean("clearMode");
 	        if (compound.hasKey("captureEntities")) this.captureEntities = compound.getBoolean("captureEntities");
 	        if (compound.hasKey("captureItems")) this.captureItems = compound.getBoolean("captureItems");
-	        if (compound.hasKey("delayTicks")) this.mv_code = compound.getInteger("mv_code");
+
+	        if (compound.hasKey("invSlots")) {
+	            NBTTagList inv = compound.getTagList("invSlots", 10);
+	            for (int i = 0; i < Math.min(inv.tagCount(), inventory.getSizeInventory()); i++) {
+	                inventory.setInventorySlotContents(i, new ItemStack(inv.getCompoundTagAt(i)));
+	            }
+	        }
 
 	        transferPending = compound.getBoolean("transferPending");
+	        delayTicksLeft = compound.getInteger("delayTicksLeft");
 	        pendingDim = compound.getInteger("pendingDim");
 	        pendingX = compound.getInteger("pendingX");
 	        pendingY = compound.getInteger("pendingY");
@@ -259,6 +293,8 @@ public class BlockTDArk {
 		@Override
 		public NBTTagCompound writeToNBT(NBTTagCompound compound) {
 		    compound = super.writeToNBT(compound);
+		    compound.setLong("targetSeed", targetSeed);
+		    compound.setString("targetUid", targetUid);
 		    compound.setInteger("targetDim", targetDim);
 		    compound.setInteger("targetX", targetX);
 		    compound.setInteger("targetY", targetY);
@@ -267,9 +303,15 @@ public class BlockTDArk {
 	        compound.setBoolean("clearMode", clearMode);
 	        compound.setBoolean("captureEntities", captureEntities);
 	        compound.setBoolean("captureItems", captureItems);
-	        compound.setInteger("mv_code", mv_code);
+
+	        NBTTagList inv = new NBTTagList();
+	        for (int i = 0; i < inventory.getSizeInventory(); i++) {
+	            inv.appendTag(inventory.getStackInSlot(i).writeToNBT(new NBTTagCompound()));
+	        }
+	        compound.setTag("invSlots", inv);
 
 	        compound.setBoolean("transferPending", transferPending);
+	        compound.setInteger("delayTicksLeft", delayTicksLeft);
 	        compound.setInteger("pendingDim", pendingDim);
 	        compound.setInteger("pendingX", pendingX);
 	        compound.setInteger("pendingY", pendingY);
@@ -312,14 +354,23 @@ public class BlockTDArk {
 	        if (world.isRemote) return;
 
 	        if (transferPending) {
-
-                transferPending = false;
                 if (triggeringPlayer == null || triggeringPlayer.isDead) {
+                    transferPending = false;
+                    triggeringPlayer = null;
+                    markDirty();
                     return;
                 }
-                // check structure
+                if (delayTicksLeft > 0) {
+                    delayTicksLeft--;
+                    if (delayTicksLeft > 0) {
+                        return;
+                    }
+                }
+                transferPending = false;
+                // check structure (медленно: 100 тиков спустя структуру могла сломать)
                 BlockPos currentCore = TDArkTransferHelper.findCore(world, terminalPos);
                 if (currentCore == null) {
+                    markDirty();
                     return;
                 }
                 // execute
@@ -328,8 +379,73 @@ public class BlockTDArk {
                 triggeringPlayer = null;
             }
             markDirty();
-	        
+
+	    }
+
+	    /** 3 слота для алмазов. Размещение/отображение слотов на GUI - за пользователем. */
+	    public class TDInventory implements IInventory {
+	        private final NonNullList<ItemStack> slots = NonNullList.withSize(3, ItemStack.EMPTY);
+
+	        @Override public int getSizeInventory() { return slots.size(); }
+	        @Override public boolean isEmpty() {
+	            for (ItemStack s : slots) if (!s.isEmpty()) return false;
+	            return true;
+	        }
+	        @Override public ItemStack getStackInSlot(int index) { return slots.get(index); }
+	        @Override public ItemStack decrStackSize(int index, int count) {
+	            ItemStack stack = slots.get(index);
+	            if (stack.isEmpty()) return ItemStack.EMPTY;
+	            if (stack.getCount() <= count) {
+	                slots.set(index, ItemStack.EMPTY);
+	                markSlotDirty();
+	                return stack;
+	            }
+	            ItemStack split = stack.splitStack(count);
+	            markSlotDirty();
+	            return split;
+	        }
+	        @Override public ItemStack removeStackFromSlot(int index) {
+	            ItemStack stack = slots.get(index);
+	            slots.set(index, ItemStack.EMPTY);
+	            markSlotDirty();
+	            return stack;
+	        }
+	        @Override public void setInventorySlotContents(int index, ItemStack stack) {
+	            slots.set(index, stack);
+	            if (!stack.isEmpty() && stack.getCount() > getInventoryStackLimit()) {
+	                stack.setCount(getInventoryStackLimit());
+	            }
+	            markSlotDirty();
+	        }
+	        @Override public int getInventoryStackLimit() { return 64; }
+	        @Override public void markDirty() { TileEntityCustom.this.markDirty(); }
+	        @Override public boolean isUsableByPlayer(net.minecraft.entity.player.EntityPlayer player) {
+	            return world != null && world.getTileEntity(pos) == TileEntityCustom.this
+	                    && player.getDistanceSq(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D) <= 64.0D;
+	        }
+	        @Override public void openInventory(net.minecraft.entity.player.EntityPlayer player) {}
+	        @Override public void closeInventory(net.minecraft.entity.player.EntityPlayer player) {}
+	        @Override public boolean isItemValidForSlot(int index, ItemStack stack) { return true; }
+	        @Override public int getField(int id) { return 0; }
+	        @Override public void setField(int id, int value) {}
+	        @Override public int getFieldCount() { return 0; }
+	        @Override public void clear() {
+	            slots.clear();
+	            markSlotDirty();
+	        }
+	        @Override public String getName() { return "container.tdark"; }
+	        @Override public boolean hasCustomName() { return false; }
+	        @Override public net.minecraft.util.text.ITextComponent getDisplayName() {
+	            return new net.minecraft.util.text.TextComponentTranslation(getName());
+	        }
+
+	        private void markSlotDirty() {
+	            markDirty();
+	            if (world != null && !world.isRemote) {
+	                IBlockState state = world.getBlockState(pos);
+	                world.notifyBlockUpdate(pos, state, state, 3);
+	            }
+	        }
 	    }
 	}
 }
-

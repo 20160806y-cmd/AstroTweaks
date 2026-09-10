@@ -9,11 +9,13 @@ import net.minecraft.world.WorldProvider;
 import net.minecraft.world.WorldProviderEnd;
 import net.minecraft.world.WorldProviderHell;
 import net.minecraft.world.WorldProviderSurface;
+import net.minecraft.world.biome.BiomeProviderSingle;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.gen.IChunkGenerator;
+import net.minecraft.init.Biomes;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
-
+import astrotweaks.dimension.VoidDimension;
 import astrotweaks.world.DepthsDim;
 
 /**
@@ -46,7 +48,6 @@ public class MultiverseWorldProviders {
             return this.getDimension();
         }
     }
-
     public static class MultiverseHell extends WorldProviderHell {
         @Override
         public DimensionType getDimensionType() {
@@ -57,7 +58,6 @@ public class MultiverseWorldProviders {
             return LevelManager.getOwningOverworldDimension(this.getDimension());
         }
     }
-
     public static class MultiverseEnd extends WorldProviderEnd {
         @Override
         public DimensionType getDimensionType() {
@@ -114,15 +114,25 @@ public class MultiverseWorldProviders {
         @Override public boolean doesXZShowFog(int x, int z) { return true; }
     }
 
-    /** The shared global dimension 9999: a regular overworld-like world over all saves. */
-    public static class MultiverseGlobal extends WorldProviderSurface {
+
+
+    /** The shared global dimension -1000000: a void world over all saves. */
+    public static class MultiverseGlobal extends WorldProvider {
         @Override
-        public DimensionType getDimensionType() {
-            return DimensionType.OVERWORLD;
+        protected void init() {
+            this.biomeProvider = new BiomeProviderSingle(Biomes.VOID);
+            this.nether = false;
+            this.hasSkyLight = true;
         }
-        @Override
-        public int getRespawnDimension(EntityPlayerMP player) {
-            return this.getDimension();
-        }
+        @Override public DimensionType getDimensionType() { return DimensionType.getById(this.getDimension()); }
+        @Override public IChunkGenerator createChunkGenerator() { return new VoidDimension.ChunkProviderModded(this.world); }
+        @Override public int getRespawnDimension(EntityPlayerMP player) { return this.getDimension(); }
+        @Override public void calculateInitialWeather() {}
+        @Override public void updateWeather() {}
+        @Override public boolean canDoLightning(Chunk chunk) { return false; }
+        @Override public boolean canDoRainSnowIce(Chunk chunk) { return false; }
+        @Override public boolean isSurfaceWorld() { return false; }
+        @Override public boolean canRespawnHere() { return false; }
+        @Override public boolean canCoordinateBeSpawn(int x, int z) { return false; }
     }
 }

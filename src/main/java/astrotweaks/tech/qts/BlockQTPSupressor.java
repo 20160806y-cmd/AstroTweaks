@@ -14,7 +14,6 @@ import net.minecraft.block.state.IBlockState;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.material.EnumPushReaction;
 import net.minecraft.block.SoundType;
-import net.minecraft.block.ITileEntityProvider;
 import net.minecraft.block.Block;
 import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -22,8 +21,6 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.ForgeChunkManager.Ticket;
 import net.minecraft.util.math.ChunkPos;
-
-import astrotweaks.creativetab.ATCreativeTabs;
 
 import astrotweaks.ModVariables;
 import astrotweaks.AstrotweaksMod;
@@ -34,7 +31,7 @@ public class BlockQTPSupressor {
 
 	private static final int Max_Range = ModVariables.QTS_Max_Range;
 
-	public static class BlockCustom extends Block implements ITileEntityProvider {
+	public static class BlockCustom extends Block implements net.minecraft.block.ITileEntityProvider {
 		public BlockCustom() {
 			super(Material.IRON);
 			setUnlocalizedName("qtp_supressor");
@@ -43,7 +40,7 @@ public class BlockQTPSupressor {
 			setHardness(100F);
 			setResistance(100F);
 			setLightLevel(0.333333333333F);
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 		}
 		@Override public EnumPushReaction getMobilityFlag(IBlockState state) {return EnumPushReaction.BLOCK;}
 		@Override public TileEntity createNewTileEntity(World worldIn, int meta) {return new TileEntityCustom();}

@@ -27,7 +27,7 @@ public class GUIHandler {
 			if (id == ArkGUI.GUIID)
             	return null;
 			if (id == TDArkGUI.GUIID)
-            	return null;
+            	return new TDArkGUI.GuiContainerMod(world, x, y, z, player);
 
 			//if (id == QTPSupGUI.GUIID)
             //	return null;

@@ -15,10 +15,10 @@ import java.util.Random;
 
 
 
-public final class ProcedureRsummonProc {
-    public ProcedureRsummonProc() {}
+public final class P_Rsummon {
+    public P_Rsummon() {}
 
-    public static void executeProcedure(double x, double y, double z, World world, Entity entity, String entityId, int count, String nbtStr) {
+    public static void exect(double x, double y, double z, World world, Entity entity, String entityId, int count, String nbtStr) {
         // Extract dependencies
         //double x = dependencies.get("x") instanceof Number ? ((Number) dependencies.get("x")).doubleValue() : 0;
         //double y = dependencies.get("y") instanceof Number ? ((Number) dependencies.get("y")).doubleValue() : 0;

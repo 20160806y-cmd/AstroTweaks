@@ -34,6 +34,8 @@ import net.minecraft.client.renderer.BufferBuilder;
 //import net.minecraft.client.gui.Gui;
 import net.minecraft.client.Minecraft;
 
+
+
 public class MoneyTableJEIPlugin {
     public static void init() {}
     @JEIPlugin
@@ -63,12 +65,10 @@ public class MoneyTableJEIPlugin {
 		    final float scale = 1.0f;  // scale multiplier
 		
 		    this.background = new IDrawable() {
-		        @Override
-		        public int getWidth() {
+		        @Override public int getWidth() {
 		            return (int) (originalWidth * scale);
 		        }
-		        @Override
-		        public int getHeight() {
+		        @Override public int getHeight() {
 		            return (int) (originalHeight * scale);
 		        }
 		        @Override
@@ -87,30 +87,17 @@ public class MoneyTableJEIPlugin {
 		            buffer.pos(originalWidth, 0, 0).tex(1, 0).endVertex();
 		            buffer.pos(0, 0, 0).tex(0, 0).endVertex();
 		            Tessellator.getInstance().draw();
-		
+
 		            GlStateManager.popMatrix();
 		            GlStateManager.enableBlend();
 		        }
 		    };
 		}
-        @Override
-        public String getUid() {
-            return UID;
-        }
-        @Override
-        public String getTitle() {
-            return I18n.format("JEI.container.money_table");
-        }
-        @Override
-        public String getModName() {
-            return "AstroTweaks";
-        }
-        @Override
-        public IDrawable getBackground() {
-            return background;
-        }
-        @Override
-        public void setRecipe(IRecipeLayout recipeLayout, RecipeWrapper recipeWrapper, IIngredients ingredients) {
+        @Override public String getUid() { return UID; }
+        @Override public String getTitle() { return I18n.format("JEI.container.money_table"); }
+        @Override public String getModName() { return "AstroTweaks"; }
+        @Override public IDrawable getBackground() { return background; }
+        @Override public void setRecipe(IRecipeLayout recipeLayout, RecipeWrapper recipeWrapper, IIngredients ingredients) {
             IGuiItemStackGroup guiItemStacks = recipeLayout.getItemStacks();
 
             guiItemStacks.init(0, true, 53, 9);		// in +
@@ -138,7 +125,6 @@ public class MoneyTableJEIPlugin {
 	            guiItemStacks.set(0, ItemStack.EMPTY);
 	            guiItemStacks.set(1, ItemStack.EMPTY);
 	        }
-
             guiItemStacks.addTooltipCallback((slotIndex, input, ingredient, tooltip) -> {
                 if (slotIndex == 4) {
                     tooltip.add(I18n.format("JEI.tooltip.consumes_durability"));
@@ -170,7 +156,6 @@ public class MoneyTableJEIPlugin {
 	        damagedTool.setItemDamage(tool.getItemDamage() + 1);
 	        inputs.add(damagedTool);
 	    }
-
         @Override
         public void getIngredients(IIngredients ingredients) {
             ingredients.setInputLists(ItemStack.class, Collections.singletonList(inputs));
@@ -179,18 +164,15 @@ public class MoneyTableJEIPlugin {
     }
 
     public static class GuiHandler implements IAdvancedGuiHandler<MTGUI.GuiWindow> {
-        @Override
-        public Class<MTGUI.GuiWindow> getGuiContainerClass() {
+        @Override public Class<MTGUI.GuiWindow> getGuiContainerClass() {
             return MTGUI.GuiWindow.class;
         }
         @Nullable  // + @Nullable for FIX "type mismatch"
-        @Override
-        public List<Rectangle> getGuiExtraAreas(MTGUI.GuiWindow guiContainer) {
+        @Override public List<Rectangle> getGuiExtraAreas(MTGUI.GuiWindow guiContainer) {
             return Collections.emptyList();
         }
         @Nullable  // + @Nullable
-        @Override
-        public Object getIngredientUnderMouse(MTGUI.GuiWindow guiContainer, int mouseX, int mouseY) {
+        @Override public Object getIngredientUnderMouse(MTGUI.GuiWindow guiContainer, int mouseX, int mouseY) {
             return null;
         }
     }
@@ -198,7 +180,6 @@ public class MoneyTableJEIPlugin {
     private static List<RecipeWrapper> getAllRecipes() {
         List<RecipeWrapper> recipes = new ArrayList<>();
         ItemStack hammer = new ItemStack(ItemGavel.GAVEL);
-
         ItemStack[][] coinPairs = {
                 {new ItemStack(ATItems.WOOD_COIN), new ItemStack(ATItems.STONE_COIN)},
                 {new ItemStack(ATItems.STONE_COIN), new ItemStack(ATItems.COPPER_COIN)},
@@ -212,7 +193,6 @@ public class MoneyTableJEIPlugin {
                 {new ItemStack(ATItems.MYTHRIL_COIN), new ItemStack(ATItems.ADAMANTIUM_COIN)},
                 {new ItemStack(ATItems.ADAMANTIUM_COIN), new ItemStack(ATItems.UNI_COIN)}
         };
-
 
 		//recipes.add(new RecipeWrapper(new ItemStack(ItemCopperPlate.block), new ItemStack(ItemCopperCoin.block), hammer, false));
 		

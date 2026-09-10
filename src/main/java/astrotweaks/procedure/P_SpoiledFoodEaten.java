@@ -7,8 +7,8 @@ import net.minecraft.entity.Entity;
 
 
 
-public class ProcedureSpoiledFoodEaten {
-	public ProcedureSpoiledFoodEaten() {}
+public class P_SpoiledFoodEaten {
+	public P_SpoiledFoodEaten() {}
 
 	public static void exect(Entity entity) {
 		if (entity == null || !(entity instanceof EntityLivingBase)) return;

@@ -1,9 +1,7 @@
-
 package astrotweaks.block;
 
 import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.fml.relauncher.Side;
-
 import net.minecraft.world.gen.IChunkGenerator;
 import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraft.world.biome.Biome;
@@ -11,7 +9,6 @@ import net.minecraft.world.DimensionType;
 import net.minecraft.world.World;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.Rotation;
 import net.minecraft.util.NonNullList;
@@ -38,7 +35,6 @@ import astrotweaks.world.SurfaceWorldGenerator;
 
 import java.util.Set;
 import java.util.Random;
-
 
 import astrotweaks.ModVariables;
 
@@ -166,7 +162,7 @@ public class BlockGroundStick {
 		}
 		@Override
 		public void getDrops(NonNullList<ItemStack> drops, IBlockAccess world, BlockPos pos, IBlockState state, int fortune) {
-			drops.add(new ItemStack(Items.STICK, (int) (1)));
+			drops.add(new ItemStack(Items.STICK, 1));
 		}
 		@Override
 		public boolean canPlaceBlockAt(World worldIn, BlockPos pos) {
@@ -181,18 +177,14 @@ public class BlockGroundStick {
 			int x = pos.getX();
 			int y = pos.getY();
 			int z = pos.getZ();
-			if (world.isBlockIndirectlyGettingPowered(new BlockPos(x, y, z)) > 0) {
-			} else {
-}
 
-			if ((((world.getBlockState(new BlockPos((int) x, (int) y, (int) z))).getBlock() == BlockGroundStick.block.getDefaultState().getBlock())
-				&& ((world.getBlockState(new BlockPos((int) x, (int) (y - 1), (int) z))).getBlock() == Blocks.AIR.getDefaultState().getBlock()))) {
-				world.setBlockToAir(new BlockPos((int) x, (int) y, (int) z));
+			if ((((world.getBlockState(new BlockPos(x, y, z))).getBlock() == BlockGroundStick.block.getDefaultState().getBlock())
+					&& ((world.getBlockState(new BlockPos(x, y - 1, z))).getBlock() == Blocks.AIR.getDefaultState().getBlock()))) {
+				world.setBlockToAir(new BlockPos(x, y, z));
 
-					EntityItem entityToSpawn = new EntityItem(world, (x + 0.5), (y + 0.5), (z + 0.5), new ItemStack(Items.STICK, (int) (1)));
-					entityToSpawn.setPickupDelay(10);
-					world.spawnEntity(entityToSpawn);
-
+				EntityItem entityToSpawn = new EntityItem(world, (x + 0.5), (y + 0.5), (z + 0.5), new ItemStack(Items.STICK, 1));
+				entityToSpawn.setPickupDelay(10);
+				world.spawnEntity(entityToSpawn);
 			}
 		    if (isAdjacentToWater(world, pos) || world.getBlockState(pos).getMaterial() == Material.WATER) {
 		        world.destroyBlock(pos, true);
@@ -206,9 +198,9 @@ public class BlockGroundStick {
 			int y = pos.getY();
 			int z = pos.getZ();
 
-			world.setBlockToAir(new BlockPos((int) x, (int) y, (int) z));
+			world.setBlockToAir(new BlockPos(x, y, z));
 			if (!world.isRemote) {
-				EntityItem entityToSpawn = new EntityItem(world, (x + 0.5), (y + 0.5), (z + 0.5), new ItemStack(Items.STICK, (int) (1)));
+				EntityItem entityToSpawn = new EntityItem(world, (x + 0.5), (y + 0.5), (z + 0.5), new ItemStack(Items.STICK, 1));
 				entityToSpawn.setPickupDelay(10);
 				world.spawnEntity(entityToSpawn);
 			}

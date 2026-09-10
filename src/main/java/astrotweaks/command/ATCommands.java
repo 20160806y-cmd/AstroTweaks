@@ -1,10 +1,9 @@
 package astrotweaks.command;
 
-import astrotweaks.Multiverse.CommandMultiverse;
-import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
+
 
 public class ATCommands {
-	public static void init(FMLServerStartingEvent event) {
+	public static void init(net.minecraftforge.fml.common.event.FMLServerStartingEvent event) {
 		event.registerServerCommand(new CommandSwitchDim.CommandHandler());
 		event.registerServerCommand(new CommandGm.CommandHandler());
 		event.registerServerCommand(new CommandRsummon.CommandHandler());
@@ -12,7 +11,10 @@ public class ATCommands {
 		event.registerServerCommand(new CommandATVars.CommandHandler());
 		event.registerServerCommand(new CommandATCC.CommandHandler());
 		event.registerServerCommand(new CommandAstrotechCC.CommandHandler());
+		event.registerServerCommand(new CommandCKill());
 
-		event.registerServerCommand(new CommandMultiverse());
+		if (astrotweaks.ModVariables.MULTIVERSE) {
+			event.registerServerCommand(new astrotweaks.Multiverse.CommandMultiverse());
+		}
 	}
 }

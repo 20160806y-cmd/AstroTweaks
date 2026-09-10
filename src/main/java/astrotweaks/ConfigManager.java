@@ -1,7 +1,6 @@
 package astrotweaks;
 
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.common.MinecraftForge;
+
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.fml.common.FMLLog;
 import net.minecraft.util.ResourceLocation;
@@ -69,7 +68,7 @@ public class ConfigManager {
 
 			//// # general
 			ModVariables.doRegisterMinedBlocks = safeGetBoolean(config, "doRegisterMinedBlocks", "general", ModVariables.doRegisterMinedBlocks, "Register mined(trapped) blocks? (y/n)");
-			ModVariables.Extra_Fuels = safeGetBoolean(config, "Register_Extra_Fuels", "misc", ModVariables.Extra_Fuels, "Should to register more fuels for furnace? (y/n)");
+			ModVariables.Extra_Fuels = safeGetBoolean(config, "Register_Extra_Fuels", "general", ModVariables.Extra_Fuels, "Should to register more fuels for furnace? (y/n)");
 
 
 
@@ -107,6 +106,8 @@ public class ConfigManager {
 			//// # World
 			ModVariables.Enable_Depths_Dimension = safeGetBoolean(config, "Enable_Depths_Dimension", "World", ModVariables.Enable_Depths_Dimension, "Should register Depths dimension? (y/n)");
 			ModVariables.Enable_Depths_Dim_Bedrock_TP = safeGetBoolean(config, "Enable_Depths_Dim_Bedrock_TP", "World", ModVariables.Enable_Depths_Dim_Bedrock_TP, "Allow access to the Depths via Bedrock? (y/n)");
+			ModVariables.MULTIVERSE = safeGetBoolean(config, "MULTIVERSE", "World", ModVariables.MULTIVERSE, "Enable the Multiverse system (y/n)");
+			ModVariables.MULTIVERSE_MAX_UNIVERSES = safeGetInt(config, "MULTIVERSE_MAX_UNIVERSES", "World", ModVariables.MULTIVERSE_MAX_UNIVERSES, 1, 100, "Maximum number of universes. Slot 100 is the recycle slot (1-100)");
 
 			
 			//// # Tweaks
@@ -129,13 +130,15 @@ public class ConfigManager {
 			ModVariables.GG_Giant_Density = safeGetInt(config, "Giant_Graass_Density", "Natures Power", ModVariables.GG_Giant_Density, 1, 25, "Maximum giant grass density (1-25)");
 
 
+
 			//// # Technologies
-			ModVariables.QM_is_fully_unbreakable = safeGetBoolean(config, "QM_is_fully_unbreakable", "Game mechanics", ModVariables.QM_is_fully_unbreakable, "Prohibit the player from breaking the QM_block");
-			ModVariables.QTS_Max_Range = safeGetInt(config, "QTS_Max_Range", "misc", ModVariables.QTS_Max_Range, 1, 16384, "Maximum range of Quantum TP Supressor (1-16384)");
-			ModVariables.Money_Can_Smelt = safeGetBoolean(config, "Money_Can_Smelt", "misc", ModVariables.Money_Can_Smelt, "Can coins be melted down (y/n)");
-			ModVariables.Money_Can_Craft = safeGetBoolean(config, "Money_Can_Craft", "misc", ModVariables.Money_Can_Craft, "Can copper coins be crafted at the MoneyTable from a copper plate (y/n)");
-			ModVariables.Money_Can_Conversion = safeGetBoolean(config, "Money_Can_Conversion", "misc", ModVariables.Money_Can_Conversion, "Can coins be converted in Money Table? (y/n)");
-			ModVariables.Money_ConvCount = safeGetInt(config, "Money_ConvCount", "misc", ModVariables.Money_ConvCount, 1, 50, "Maximum number of coins that can be processed at one conv (1-50)");
+			ModVariables.Money_Can_Smelt = safeGetBoolean(config, "Money_Can_Smelt", "tech", ModVariables.Money_Can_Smelt, "Can coins be melted down (y/n)");
+			ModVariables.Money_Can_Craft = safeGetBoolean(config, "Money_Can_Craft", "tech", ModVariables.Money_Can_Craft, "Can copper coins be crafted at the MoneyTable from a copper plate (y/n)");
+			ModVariables.Money_Can_Conversion = safeGetBoolean(config, "Money_Can_Conversion", "tech", ModVariables.Money_Can_Conversion, "Can coins be converted in Money Table? (y/n)");
+			ModVariables.Money_ConvCount = safeGetInt(config, "Money_ConvCount", "tech", ModVariables.Money_ConvCount, 1, 50, "Maximum number of coins that can be processed at one conv (1-50)");
+			ModVariables.QM_is_fully_unbreakable = safeGetBoolean(config, "QM_is_fully_unbreakable", "tech", ModVariables.QM_is_fully_unbreakable, "Prohibit the player from breaking the QM_block");
+			ModVariables.QTS_Max_Range = safeGetInt(config, "QTS_Max_Range", "tech", ModVariables.QTS_Max_Range, 1, 16384, "Maximum range of Quantum TP Supressor (1-16384)");
+			ModVariables.Enable_TDARK = safeGetBoolean(config, "Enable_TDARK", "tech", ModVariables.Enable_TDARK, "Enable the TDARK + CT tech (requires MULTIVERSE) (y/n)");
 
 
 

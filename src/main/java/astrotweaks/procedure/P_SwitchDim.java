@@ -16,8 +16,8 @@ import astrotweaks.world.DepthsDim;
 
 
 
-public final class ProcedureSwitchDimProc {
-	public ProcedureSwitchDimProc() {}
+public final class P_SwitchDim {
+	public P_SwitchDim() {}
 
 	private static boolean Slient = false;
 	private static void sendMsg(EntityPlayerMP executor, String msg) {
@@ -25,11 +25,7 @@ public final class ProcedureSwitchDimProc {
 	    else System.out.println(msg);
 	}
 
-	public static void executeProcedure(Entity entity, Map<String, String> cmdparams, boolean Slient) {
-
-
-
-
+	public static void exect(Entity entity, Map<String, String> cmdparams, boolean Slient) {
 	    EntityPlayerMP executor = null;
 	    if (entity instanceof EntityPlayerMP) {
 	        executor = (EntityPlayerMP) entity;
@@ -121,7 +117,6 @@ public final class ProcedureSwitchDimProc {
 	            sendMsg(executor, msg);
 	            return;
 	        }
-
 	        // parse coords
 	        try {
 	            if (xParam != null && !xParam.isEmpty() &&
@@ -183,7 +178,6 @@ public final class ProcedureSwitchDimProc {
 	    //if (executor != null) executor.sendMessage(new TextComponentString(msg));
 	    //else System.out.println(msg);
 	    sendMsg(executor, msg);
-
 	}
 
     private static boolean isCoordinateToken(String token) {
@@ -242,11 +236,7 @@ public final class ProcedureSwitchDimProc {
 			this.server = world.getMinecraftServer();
 		}
 		@Override public void placeInPortal(Entity entity, float yawRotation) {}
-		@Override public boolean placeInExistingPortal(Entity entity, float yawRotation) {
-			return true;
-		}
-		@Override public boolean makePortal(Entity entity) {
-			return true;
-		}
+		@Override public boolean placeInExistingPortal(Entity entity, float yawRotation) { return true; }
+		@Override public boolean makePortal(Entity entity) { return true; }
 	}
 }
