@@ -374,6 +374,7 @@ tile.apple_block.name=Блок яблок
 tile.ark.name=Пространственный ковчег
 tile.ark_resonator.name=Резонатор ядра ковчега
 tile.tdark.name=Межпространственный ковчег [WIP]
+tile.bedrock.name=Бедрок
 tile.beetroot_block.name=Блок свёклы
 tile.brass_block.name=Латунный блок
 tile.bread_block.name=Блок хлеба

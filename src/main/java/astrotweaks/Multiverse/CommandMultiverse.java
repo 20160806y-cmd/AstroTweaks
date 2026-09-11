@@ -71,10 +71,16 @@ public class CommandMultiverse extends CommandBase {
             return;
         }
 
-        String levelName = layerId != null ? Integer.toString(layerId) : sanitize(args[1]);
-        LevelData data = lm.getOrCreateLevel(server, levelName, seed);
+        // Numeric layer ids map directly to universe slots (folder is MV_<slot>);
+        // named universes are normalized to MV_<name> inside getOrCreateLevel.
+        LevelData data;
+        if (layerId != null) {
+            data = lm.getOrCreateLevel(server, layerId, seed);
+        } else {
+            data = lm.getOrCreateLevel(server, sanitize(args[1]), seed);
+        }
         if (data == null) {
-            sender.sendMessage(new TextComponentString("Failed to create/load level '" + levelName + "'"));
+            sender.sendMessage(new TextComponentString("Failed to create/load level '" + args[1] + "'"));
             return;
         }
 
@@ -84,7 +90,7 @@ public class CommandMultiverse extends CommandBase {
 
         WorldServer targetWorld = lm.getOrCreateWorld(server, data, type);
         if (targetWorld == null) {
-            sender.sendMessage(new TextComponentString("Failed to load world for level '" + levelName + "'"));
+            sender.sendMessage(new TextComponentString("Failed to load world for level '" + data.name + "'"));
             return;
         }
         BlockPos target = spawnFor(targetWorld, type);
@@ -96,7 +102,7 @@ public class CommandMultiverse extends CommandBase {
             targetWorld.destroyBlock(target.up(), true);
         }
         teleportTo(player, targetWorld, target);
-        sender.sendMessage(new TextComponentString("Teleported to level '" + levelName + "' (" + type.name().toLowerCase() + ")"));
+        sender.sendMessage(new TextComponentString("Teleported to level '" + data.name + "' (" + type.name().toLowerCase() + ")"));
     }
     /** layer 0: return to the save's overworld spawn. */
     private void joinOriginalWorld(MinecraftServer server, EntityPlayerMP player) {

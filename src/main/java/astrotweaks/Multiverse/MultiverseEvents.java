@@ -289,10 +289,32 @@ public class MultiverseEvents {
         server = player.world.getMinecraftServer();
         if (server != null) {
             lm.unloadEmptyDimensions(server, player.getUniqueID());
+            lm.flushRegistryIfDirty(server);
         }
     }
 
     // ------------------------------------------------------------------ unloading / save
+
+    /**
+     * Keeps player positions fresh across the vanilla autosave so a crash never loses
+     * a player's last multiverse location. {@link LevelManager#recordPlayer} only
+     * writes the player file when the stored position actually changed, so this stays
+     * cheap even though every loaded world fires the event.
+     */
+    @SubscribeEvent
+    public void onWorldSave(WorldEvent.Save event) {
+        if (event.getWorld() == null || event.getWorld().isRemote) return;
+        if (!(event.getWorld() instanceof WorldServer)) return;
+        WorldServer ws = (WorldServer) event.getWorld();
+        if (ws.playerEntities.isEmpty()) return;
+
+        LevelManager lm = LevelManager.getInstance();
+        for (net.minecraft.entity.player.EntityPlayer p : ws.playerEntities) {
+            if (p instanceof EntityPlayerMP && lm.isMultiverseDimension(p.dimension)) {
+                lm.recordPlayer((EntityPlayerMP) p);
+            }
+        }
+    }
 
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
@@ -307,5 +329,6 @@ public class MultiverseEvents {
         if (server == null || server.getWorld(0) == null)   return;
         
         LevelManager.getInstance().unloadEmptyDimensions(server);
+        LevelManager.getInstance().flushRegistryIfDirty(server);
     }
 }
