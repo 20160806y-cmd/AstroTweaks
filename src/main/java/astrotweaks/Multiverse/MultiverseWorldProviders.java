@@ -115,7 +115,7 @@ public class MultiverseWorldProviders {
     }
 
 
-
+    // Нужно сделать управление параметром ModVariables.Enable_uVOID
     /** The shared global dimension -1000000: a void world over all saves. */
     public static class MultiverseGlobal extends WorldProvider {
         @Override
@@ -126,7 +126,7 @@ public class MultiverseWorldProviders {
         }
         @Override public DimensionType getDimensionType() { return DimensionType.getById(this.getDimension()); }
         @Override public IChunkGenerator createChunkGenerator() { return new VoidDimension.ChunkProviderModded(this.world); }
-        @Override public int getRespawnDimension(EntityPlayerMP player) { return this.getDimension(); }
+        @Override public int getRespawnDimension(EntityPlayerMP player) { return 0; }
         @Override public void calculateInitialWeather() {}
         @Override public void updateWeather() {}
         @Override public boolean canDoLightning(Chunk chunk) { return false; }

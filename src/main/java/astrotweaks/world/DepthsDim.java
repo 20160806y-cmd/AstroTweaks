@@ -56,7 +56,8 @@ import astrotweaks.block.*;
 
 
 public class DepthsDim {
-	public static int DIMID = -6000;
+	//private static int RAWDIMID = -6000;
+	public static final int DIMID = -6000;
 	public static DimensionType dtype;
 	public DepthsDim() {}
 

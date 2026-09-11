@@ -8,6 +8,8 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ITeleporter;
 
+import java.util.HashSet;
+
 /**
  * Places the entity at a fixed position, skipping the nether-portal math of Teleporter.
  *
@@ -32,29 +34,41 @@ public class MultiverseTeleporter implements ITeleporter {
     private final boolean createExitPortal;
 
     private static final IBlockState OBSIDIAN = Blocks.OBSIDIAN.getDefaultState();
+    private static final int CHUNK = 16 * 2;
+
+    private boolean precomputedFeet;
+
+
 
     public MultiverseTeleporter(BlockPos pos) {
-        this(pos, false);
+        this(pos, false, false);
     }
     public MultiverseTeleporter(BlockPos pos, boolean createExitPortal) {
+        this(pos, createExitPortal, false); 
+    }
+    public MultiverseTeleporter(BlockPos pos, boolean createExitPortal, boolean precomputedFeet) {
         this.pos = pos;
         this.createExitPortal = createExitPortal;
+        this.precomputedFeet = precomputedFeet;
     }
 
     @Override
     public void placeEntity(World world, Entity entity, float yaw) {
         int x = pos.getX();
         int z = pos.getZ();
-        int groundY = findTopSolidBelow(world, x, z, pos.getY());
-        if (groundY < 0) {
-            groundY = findTopSolidBelow(world, x, z, world.getHeight() - 1);
+        int scanStart = pos.getY();
+        if (world.provider.getDimensionType() == net.minecraft.world.DimensionType.NETHER) {
+            scanStart = 100;
+        }
+        int safeY = precomputedFeet ? pos.getY() : findSafeSpawnY(world, x, z, scanStart);
+        if (safeY < 0) {
+            safeY = Math.max(pos.getY(), 4);
         }
         if (createExitPortal && world.provider.getDimension() != MultiverseDims.GLOBAL_DIM) {
-            int portalBase = clampPortalBase(Math.max(groundY, 0) + 1, world);
+            int portalBase = clampPortalBase(safeY, world);
             buildReturnPortal(world, x, portalBase, z);
             entity.setPositionAndUpdate(x + 0.5, portalBase + 1.0, z + 0.5);
         } else {
-            int safeY = Math.max(pos.getY(), Math.max(groundY, 0) + 1);
             entity.setPositionAndUpdate(x + 0.5, safeY, z + 0.5);
         }
         entity.motionX = 0.0;
@@ -70,17 +84,66 @@ public class MultiverseTeleporter implements ITeleporter {
     }
 
     /**
-     * Highest solid (non-liquid, standable) block at or below {@code startY} in the
-     * column, or -1 if the whole column below is open. In the nether this returns the
-     * FLOOR (bedrock/ground), never the bedrock ceiling at the top of the world.
+     * Chunk-grid search for a safe spawn position.
+     * Checks the initial column, then expands outward in 16-block (1 chunk) steps,
+     * tracking visited chunks to avoid re-checks. A column is valid when:
+     * solid non-liquid block at Y, and Y+1 / Y+2 are non-liquid and passable.
+     * Returns the feet Y, or -1 if nothing found within 32 rings (~512 blocks).
      */
-    private static int findTopSolidBelow(World world, int x, int z, int startY) {
-        int top = Math.min(startY, world.getHeight() - 1);
-        BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
-        for (int yy = top; yy >= 0; yy--) {
-            if (world.getBlockState(mpos.setPos(x, yy, z)).isTopSolid()) {
-                return yy;
+    public static int findSafeSpawnY(World world, int x, int z, int startY) {
+        int result = findSafeYInColumn(world, x, z, startY);
+        if (result >= 0) return result;
+
+        HashSet<Long> checked = new HashSet<>();
+        checked.add(chunkKey(x, z));
+
+        for (int ring = 1; ring <= 32; ring++) {
+            int range = ring * CHUNK;
+            for (int dx = -range; dx <= range; dx += CHUNK) {
+                for (int dz = -range; dz <= range; dz += CHUNK) {
+                    if (Math.abs(dx) < range && Math.abs(dz) < range) continue;
+                    int nx = x + dx;
+                    int nz = z + dz;
+                    long key = chunkKey(nx, nz);
+                    if (checked.contains(key)) continue;
+                    checked.add(key);
+
+                    result = findSafeYInColumn(world, nx, nz, startY);
+                    if (result >= 0) return result;
+                }
             }
+        }
+        return -1;
+    }
+
+    private static long chunkKey(int x, int z) {
+        return ((long) (x >> 4) << 32) | ((z >> 4) & 0xFFFFFFFFL);
+    }
+
+    /**
+     * Scans a single column from {@code startY} downward. A position Y is safe when:
+     * block at Y is solid non-liquid, blocks at Y+1 and Y+2 are passable non-liquid.
+     * Returns feet Y (Y+1) or -1.
+     */
+    private static int findSafeYInColumn(World world, int x, int z, int startY) {
+        BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
+        int top = Math.min(startY, world.getHeight() - 3);
+        for (int yy = top; yy >= 1; yy--) {
+            IBlockState below = world.getBlockState(mpos.setPos(x, yy, z));
+            boolean belowSolid  = below.getCollisionBoundingBox(world, mpos) != null;
+            boolean belowLiquid = below.getMaterial().isLiquid();
+            // ВАЖНО: вода теперь валидная опора — не пропускаем её.
+            if (!belowSolid && !belowLiquid) continue;
+
+            IBlockState feet = world.getBlockState(mpos.setPos(x, yy + 1, z));
+            if (feet.getMaterial().isLiquid()) continue;
+            if (feet.getCollisionBoundingBox(world, mpos) != null) continue;
+
+            IBlockState head = world.getBlockState(mpos.setPos(x, yy + 2, z));
+            if (head.getMaterial().isLiquid()) continue;
+            if (head.getCollisionBoundingBox(world, mpos) != null) continue;
+
+            return yy + 1;
         }
         return -1;
     }

@@ -159,7 +159,7 @@ public class ArkGUI {
 	                //if (delayTicks > 0) {
 	                // delay with TileEntity (ITickable)
 					if (delayTicks < 5) { delayTicks = 5;}
-					if (!(delayTicks == 5)) { player.sendMessage(new TextComponentTranslation(TextFormatting.AQUA + "ark.delayed_start", delayTicks)); }
+					if (!(delayTicks == 5)) { player.sendMessage(new TextComponentTranslation("ark.delayed_start", delayTicks)); }
 
                     teArk.startDelayedTransfer(player, pos, resolvedDim, targetX,targetY,targetZ, message.clearMode, message.captureEntities, message.captureItems, delayTicks);
 

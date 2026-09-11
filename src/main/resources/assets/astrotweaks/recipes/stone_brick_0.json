@@ -2,7 +2,8 @@
   "type": "minecraft:crafting_shapeless",
   "ingredients": [
     {
-      "item": "minecraft:stonebrick"
+      "item": "minecraft:stonebrick",
+      "data": 0
     }],
   "result": {
     "item": "astrotweaks:stone_brick",

@@ -36,10 +36,7 @@ public class MultiverseEvents {
     private static final Set<UUID> SKIP_PORTAL_REMAP = new HashSet<>();
 
     private int tickCounter;
-
-
     private MinecraftServer server;
-
 
 
     /**
@@ -71,12 +68,9 @@ public class MultiverseEvents {
 
     @SubscribeEvent
     public void onWorldLoaded(WorldEvent.Load event) {
-        if (event.getWorld() == null || event.getWorld().isRemote) {
-            return;
-        }
-        if (event.getWorld().provider == null || event.getWorld().provider.getDimension() != 0) {
-            return;
-        }
+        if (event.getWorld() == null || event.getWorld().isRemote)  return;
+        if (event.getWorld().provider == null || event.getWorld().provider.getDimension() != 0)  return;
+
         server = event.getWorld().getMinecraftServer();
         if (server != null) {
             LevelManager.getInstance().onWorldLoaded(server);
@@ -87,31 +81,27 @@ public class MultiverseEvents {
 
     @SubscribeEvent
     public void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.player == null || event.player.world.isRemote) {
-            return;
-        }
-        if (!(event.player instanceof EntityPlayerMP)) {
-            return;
-        }
+        if (event.player == null || event.player.world.isRemote)  return;
+        if (!(event.player instanceof EntityPlayerMP))  return;
+
+
         final EntityPlayerMP player = (EntityPlayerMP) event.player;
         final MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
         if (server == null) return;
-        
+
         // PlayerLoggedInEvent fires before the target WorldServer is guaranteed to be
         // attached and before the client knows the DimensionType. Defer the restore to
         // the next server tick so the login sequence completes first.
         server.addScheduledTask(() -> {
-            if (player.isDead) {
-                return;
-            }
+            if (player.isDead)  return;
+
             LevelManager lm = LevelManager.getInstance();
             LevelManager.PlayerEntry entry = lm.getPlayerEntry(player.getUniqueID());
-            if (entry == null) {
-                return;
-            }
-            if (!lm.restorePlayer(player)) {
+            if (entry == null)  return;
+
+            if (!lm.restorePlayer(player)) 
                 System.err.println("[MULTIVERSE] Failed to restore " + player.getName() + " to dimension " + entry.dimension);
-            }
+
         });
     }
 
@@ -121,14 +111,12 @@ public class MultiverseEvents {
     public void onTravelToDimension(EntityTravelToDimensionEvent event) {
         Entity entity = event.getEntity();
         if (entity == null || entity.getEntityWorld() == null || entity.getEntityWorld().isRemote) return;
-        
 
         EntityPlayerMP player = entity instanceof EntityPlayerMP ? (EntityPlayerMP) entity : null;
         // Skip both players AND non-players that are being moved by our own code:
         // the custom nether portal and /mv already computed exactly where the entity
         // should land, which is never the vanilla nether/end mapping.
         if (SKIP_PORTAL_REMAP.remove(entity.getUniqueID())) return;
-        
 
         int from = entity.dimension;
         int to = event.getDimension();
@@ -152,12 +140,11 @@ public class MultiverseEvents {
         if (server == null) return;
 
         event.setCanceled(true);
-        System.out.println("[MULTIVERSE] Portal remap: dim " + from + " -> " + to
-                + " remapped to " + targetType + " in level '" + data.name + "'");
+        System.out.println("[MULTIVERSE] Portal remap: dim " + from + " -> " + to + " remapped to " + targetType + " in level '" + data.name + "'");
 
         WorldServer targetWorld = lm.getOrCreateWorld(server, data, targetType);
         if (targetWorld == null) return;
-        
+
 
         int corrected = data.dimensionId(targetType);
 
@@ -177,12 +164,11 @@ public class MultiverseEvents {
                     (int) (entity.posZ * scale));
         }
 
-        boolean portalPair = targetType == LevelDimensionType.NETHER
-                || (targetType == LevelDimensionType.OVERWORLD && data.typeOf(from) == LevelDimensionType.NETHER);
+        boolean portalPair = targetType == LevelDimensionType.NETHER || (targetType == LevelDimensionType.OVERWORLD && data.typeOf(from) == LevelDimensionType.NETHER);
         ITeleporter teleporter = new MultiverseTeleporter(targetPos, portalPair);
 
         if (player != null) {
-            AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(data.baseId), player);
+            AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(data.baseId, data.seed), player);
             player.changeDimension(corrected, teleporter);
         } else {
             entity.changeDimension(corrected, teleporter);
@@ -207,28 +193,16 @@ public class MultiverseEvents {
         }
         switch (from) {
             case OVERWORLD:
-                if (to == -1) {
-                    return LevelDimensionType.NETHER;
-                }
-                if (to == 1) {
-                    return LevelDimensionType.END;
-                }
+                if (to == -1) return LevelDimensionType.NETHER;
+                if (to == 1)  return LevelDimensionType.END;
                 return null;
             case NETHER:
-                if (to == -1 || to == 0) {
-                    return LevelDimensionType.OVERWORLD;
-                }
-                if (to == 1) {
-                    return LevelDimensionType.END;
-                }
+                if (to == -1 || to == 0)return LevelDimensionType.OVERWORLD;
+                if (to == 1)            return LevelDimensionType.END;
                 return null;
             case END:
-                if (to == -1) {
-                    return LevelDimensionType.NETHER;
-                }
-                if (to == 0 || to == 1) {
-                    return LevelDimensionType.OVERWORLD;
-                }
+                if (to == -1)           return LevelDimensionType.NETHER;
+                if (to == 0 || to == 1) return LevelDimensionType.OVERWORLD;
                 return null;
             default:
                 return null;
@@ -267,9 +241,9 @@ public class MultiverseEvents {
         }
         event.setCanceled(true);
         LevelDimensionType type = data.typeOf(dim);
-        if (type != LevelDimensionType.OVERWORLD && type != LevelDimensionType.NETHER) {
+        if (type != LevelDimensionType.OVERWORLD && type != LevelDimensionType.NETHER) 
             return;
-        }
+        
         NetherPortalGeometry.Geometry geometry = NetherPortalGeometry.findFrame(event.getWorld(), event.getPos());
         if (geometry != null) {
             final net.minecraft.world.World world = event.getWorld();
@@ -288,7 +262,7 @@ public class MultiverseEvents {
     public void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (event.player == null || event.player.world.isRemote) return;
         if (!(event.player instanceof EntityPlayerMP)) return;
-        
+
         EntityPlayerMP player = (EntityPlayerMP) event.player;
         LevelManager lm = LevelManager.getInstance();
         int dim = player.dimension;
@@ -303,7 +277,7 @@ public class MultiverseEvents {
     public void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.player == null || event.player.world.isRemote) return;
         if (!(event.player instanceof EntityPlayerMP)) return;
-        
+
         EntityPlayerMP player = (EntityPlayerMP) event.player;
         LevelManager lm = LevelManager.getInstance();
         int dim = player.dimension;
@@ -322,17 +296,16 @@ public class MultiverseEvents {
 
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+        if (event.phase != TickEvent.Phase.END)  return;
 
         NetherPortalLink.onEndTick();
 
-        if (++tickCounter % 100 != 0) {
+        if (++tickCounter % 100 != 0) 
             return;
-        }
+        
         server = FMLCommonHandler.instance().getMinecraftServerInstance();
-        if (server == null || server.getWorld(0) == null) {
-            return;
-        }
+        if (server == null || server.getWorld(0) == null)   return;
+        
         LevelManager.getInstance().unloadEmptyDimensions(server);
     }
 }

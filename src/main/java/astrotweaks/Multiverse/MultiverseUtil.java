@@ -8,7 +8,7 @@ public final class MultiverseUtil {
 	public static final int REL_OVERWORLD = 0;
 	public static final int REL_NETHER = -1;
 	public static final int REL_END = 1;
-	public static final int REL_DEPTHS = -6000;
+	public static final int REL_DEPTHS = DepthsDim.DIMID;
 
 	private MultiverseUtil() {}
 
@@ -50,7 +50,7 @@ public final class MultiverseUtil {
 
 	/**
 	 * Одна ли вселенная у двух измерений.
-	 * Глобальное (-1000000) считается отдельной вселенной.
+	 * Глобальное (-1000000) считается отдельной вселенной без доступа к дополнительным измерениям.
 	 * Два MV-измерения в одной вселенной iff принадлежат одному LevelData.
 	 * Если хотя бы одно измерение из MV, а второе ванильное - разные вселенные.
 	 */
@@ -65,5 +65,4 @@ public final class MultiverseUtil {
 		}
 		return true;
 	}
-
 }

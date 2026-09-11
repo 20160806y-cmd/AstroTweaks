@@ -18,7 +18,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.util.NonNullList;
 
 import astrotweaks.ModVariables;
-import astrotweaks.creativetab.ATCreativeTabs;
 
 
 
@@ -33,11 +32,10 @@ public class BlockQmBlock {
 			setResistance(1000000F);
 			setLightLevel(1F);
 			//setLightOpacity(255);
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 			setBlockUnbreakable();
 		}
-		@Override
-		public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) {
+		@Override public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) {
 			return MapColor.IRON;
 		}
 		@Override
@@ -48,12 +46,9 @@ public class BlockQmBlock {
 	    	return true;
 	    }
 		@Override public void getDrops(NonNullList<ItemStack> drops, IBlockAccess world, BlockPos pos, IBlockState state, int fortune) {}
-		@Override
-		public void onBlockClicked(World world, BlockPos pos, EntityPlayer entity) {
+		@Override public void onBlockClicked(World world, BlockPos pos, EntityPlayer entity) {
 			super.onBlockClicked(world, pos, entity);
-			int x = pos.getX();
-			int y = pos.getY();
-			int z = pos.getZ();
+			int x = pos.getX(); int y = pos.getY(); int z = pos.getZ();
 			boolean Break = true;
 
 			QM_is_hot(entity, world, x, y, z, Break);

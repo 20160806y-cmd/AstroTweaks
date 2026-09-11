@@ -108,6 +108,7 @@ public class ConfigManager {
 			ModVariables.Enable_Depths_Dim_Bedrock_TP = safeGetBoolean(config, "Enable_Depths_Dim_Bedrock_TP", "World", ModVariables.Enable_Depths_Dim_Bedrock_TP, "Allow access to the Depths via Bedrock? (y/n)");
 			ModVariables.MULTIVERSE = safeGetBoolean(config, "MULTIVERSE", "World", ModVariables.MULTIVERSE, "Enable the Multiverse system (y/n)");
 			ModVariables.MULTIVERSE_MAX_UNIVERSES = safeGetInt(config, "MULTIVERSE_MAX_UNIVERSES", "World", ModVariables.MULTIVERSE_MAX_UNIVERSES, 1, 100, "Maximum number of universes. Slot 100 is the recycle slot (1-100)");
+			ModVariables.Enable_uVOID = safeGetBoolean(config, "Enable_uVOID", "World", ModVariables.Enable_uVOID, "Enable Cross-world University with DimID == -1000000 (y/n)");
 
 			
 			//// # Tweaks

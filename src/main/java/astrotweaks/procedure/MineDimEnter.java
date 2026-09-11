@@ -88,7 +88,7 @@ public final class MineDimEnter {
             LevelDimensionType mvTargetType = mvData.typeOf(targetDim);
             LevelManager.getInstance().getOrCreateWorld(server, mvData, mvTargetType);
             if (player instanceof EntityPlayerMP) {
-                AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(mvData.baseId), (EntityPlayerMP) player);
+                AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(mvData.baseId, mvData.seed), (EntityPlayerMP) player);
             }
         }
 		

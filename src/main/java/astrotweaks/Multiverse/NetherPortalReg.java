@@ -17,9 +17,13 @@ public final class NetherPortalReg {
 
     private NetherPortalReg() {}
 
+    private static boolean registered;
+
     @SubscribeEvent
     public static void registerBlocks(RegistryEvent.Register<Block> event) {
         if (!astrotweaks.ModVariables.MULTIVERSE) return;
+        if (registered) return;
+        registered = true;
         event.getRegistry().register(BlockNetherPortal.BLOCK);
         GameRegistry.registerTileEntity(TileNetherPortal.class, "astrotweaks:nether_portal");
     }

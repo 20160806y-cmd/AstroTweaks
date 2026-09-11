@@ -36,7 +36,6 @@ import astrotweaks.AstrotweaksMod;
 import astrotweaks.Multiverse.LevelData;
 import astrotweaks.Multiverse.LevelDimensionType;
 import astrotweaks.Multiverse.LevelManager;
-import astrotweaks.Multiverse.MessageMultiverse;
 import astrotweaks.Multiverse.MultiverseUtil;
 
 
@@ -57,7 +56,7 @@ public class TDArkGUI {
 
 	    public TDArkActionMessage() {}
 
-		public TDArkActionMessage(int buttonID, int blockX, int blockY, int blockZ, String uid, String seed, String dim, String x, String y, String z,
+		public TDArkActionMessage(int buttonID, int blockX, int blockY, int blockZ, String seed, String uid, String dim, String x, String y, String z,
  					boolean clearMode, boolean captureEntities, boolean captureItems) {
 	        this.buttonID = buttonID;
 	        this.blockX = blockX; this.blockY = blockY; this.blockZ = blockZ;
@@ -71,7 +70,7 @@ public class TDArkGUI {
 	    public void toBytes(ByteBuf buf) {
 	        buf.writeInt(buttonID);
 	        buf.writeInt(blockX); buf.writeInt(blockY); buf.writeInt(blockZ);
-	        writeString(buf, uidStr); writeString(buf, seedStr); writeString(buf, dimStr);
+	        writeString(buf, seedStr); writeString(buf, uidStr); writeString(buf, dimStr);
 	        writeString(buf, xStr); writeString(buf, yStr); writeString(buf, zStr);
 	        buf.writeBoolean(clearMode);
 	        buf.writeBoolean(captureEntities);
@@ -81,7 +80,7 @@ public class TDArkGUI {
 	    public void fromBytes(ByteBuf buf) {
 	        buttonID = buf.readInt();
 	        blockX = buf.readInt(); blockY = buf.readInt(); blockZ = buf.readInt();
-	        uidStr = readString(buf); seedStr = readString(buf); dimStr = readString(buf);
+	        seedStr = readString(buf); uidStr = readString(buf); dimStr = readString(buf);
 	        xStr = readString(buf); yStr = readString(buf); zStr = readString(buf);
 	        clearMode = buf.readBoolean();
 	        captureEntities = buf.readBoolean();
@@ -133,11 +132,14 @@ public class TDArkGUI {
             } catch (NumberFormatException e) {
                 parseOk = false;
             }
+            System.out.println("[TDArk] handle buttonID=" + message.buttonID
+                    + " seedStr=\"" + message.seedStr + "\" parsedSeed=" + seed
+                    + " uid=\"" + uid + "\" dim=" + targetDim);
 
             // 1 = сохранение при закрытии GUI: просто пишем сырые значения в TE.
             if (message.buttonID == 1) {
-                teTDArk.setTargetUid(uid);
                 teTDArk.setTargetSeed(seed);
+                teTDArk.setTargetUid(uid);
                 if (parseOk) {
                     teTDArk.setTargetDim(targetDim);
                     teTDArk.setTargetX(targetX);
@@ -161,9 +163,11 @@ public class TDArkGUI {
                 LevelData target;
 
                 // Разрешаем UID -> вселенная
-                if (uid.isEmpty()) {
+                if (uid.isEmpty() || uid.equals("0")) {
                     // Случайная вселенная: если слот занят - перемещение, если свободен - создание.
-                    target = lm.getRandomLevelOrCreate(player.getServer(), seed == 0 ? new Random().nextLong() : seed);
+                    long effectiveSeed = seed == 0 ? new Random().nextLong() : seed;
+                    System.out.println("[TDArk] uid empty, effectiveSeed=" + effectiveSeed + " (original seed=" + seed + ")");
+                    target = lm.getRandomLevelOrCreate(player.getServer(), effectiveSeed);
                 } else {
                     LevelData existing = lm.getLevelByUid(uid);
                     if (existing != null) {
@@ -175,8 +179,10 @@ public class TDArkGUI {
                             player.sendMessage(new TextComponentTranslation("tdark.err.bad_hash"));
                             return;
                         }
-                        // Не созданная ранее вселенная с предсказанным UID: создаём (сид только при создании).
-                        target = lm.getOrCreateLevel(player.getServer(), number, seed == 0 ? new Random().nextLong() : seed);
+                    // Не созданная ранее вселенная с предсказанным UID: создаём (сид только при создании).
+                    long effectiveSeed2 = seed == 0 ? new Random().nextLong() : seed;
+                    System.out.println("[TDArk] uid known, creating number=" + number + " effectiveSeed=" + effectiveSeed2);
+                    target = lm.getOrCreateLevel(player.getServer(), number, effectiveSeed2);
                     }
                 }
                 if (target == null) {
@@ -203,17 +209,11 @@ public class TDArkGUI {
                     return;
                 }
 
-                // Клиенту нужно знать id измерений ЦЕЛЕВОЙ вселенной ДО респавна.
-                int currentAnchor = MultiverseUtil.anchorBaseOf(world.provider.getDimension());
-                if (target.baseId != currentAnchor) {
-                    AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(target.baseId), player);
-                }
+                // MessageMultiverse with seed is now sent in performTeleport (right before
+                // the actual teleport) so the client seed-stamp fires on the correct WorldClient.
+	            player.sendMessage(new TextComponentTranslation("tdark.delayed_start", BlockTDArk.TileEntityCustom.TRANSFER_DELAY));
 
-	            player.sendMessage(new TextComponentTranslation(TextFormatting.AQUA + "tdark.delayed_start",
-                        BlockTDArk.TileEntityCustom.TRANSFER_DELAY));
-
-                teTDArk.startDelayedTransfer(player, pos, resolvedDim, targetX, targetY, targetZ,
-                    message.clearMode, message.captureEntities, message.captureItems);
+                teTDArk.startDelayedTransfer(player, pos, resolvedDim, targetX, targetY, targetZ, message.clearMode, message.captureEntities, message.captureItems);
             }
 	    }
 	}
@@ -229,20 +229,17 @@ public class TDArkGUI {
 			this.internal = inv;
 
 			if (internal != null) {
-			    // 3 слота для алмазов (размещение/отображение - за пользователем)
-				// Относительно GUI
-			    this.addSlotToContainer(new Slot(internal, 0, -83, 152));
-			    this.addSlotToContainer(new Slot(internal, 1, -63, 152));
-			    this.addSlotToContainer(new Slot(internal, 2, -43, 152));
+			    // 3 слота Относительно GUI
+			    this.addSlotToContainer(new Slot(internal, 0, -83, 153));
+			    this.addSlotToContainer(new Slot(internal, 1, -61, 153));
+			    this.addSlotToContainer(new Slot(internal, 2, -39, 153));
 			}
-
 			for (int si = 0; si < 3; ++si)
 				for (int sj = 0; sj < 9; ++sj)
 					this.addSlotToContainer(new Slot(player.inventory, sj + (si + 1) * 9, sj * 18 + 44, 94 + si * 18));
 			for (int si = 0; si < 9; ++si)
 				this.addSlotToContainer(new Slot(player.inventory, si, 8 + si * 18 + 36, 152));
 		}
-
 		@Override
 		public boolean canInteractWith(EntityPlayer player) {
 			return internal != null && internal.isUsableByPlayer(player);
@@ -433,15 +430,9 @@ public class TDArkGUI {
 
 	    }
 
-	    private String getClearModeText() {
-	        return clearMode ? "Destroy" : "Replace";
-	    }
-	    private String getCaptureEntitiesText() {
-	        return captureEntities ? "Entities: ON" : "Entities: OFF";
-	    }
-	    private String getCaptureItemsText() {
-	        return captureItems ? "Items: ON" : "Items: OFF";
-	    }
+	    private String getClearModeText() { return clearMode ? "Destroy" : "Replace"; }
+	    private String getCaptureEntitiesText() { return captureEntities ? "Entities: ON" : "Entities: OFF"; }
+	    private String getCaptureItemsText() { return captureItems ? "Items: ON" : "Items: OFF"; }
 	    @Override
 	    protected void actionPerformed(GuiButton button) throws IOException {
 	        if (button.id == 0) { // SEND

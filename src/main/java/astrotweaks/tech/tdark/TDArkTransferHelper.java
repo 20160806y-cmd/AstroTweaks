@@ -50,6 +50,11 @@ import net.minecraft.world.Teleporter;
 
 import astrotweaks.tech.ATTechnologies;
 import astrotweaks.tech.qts.SuppressorManager;
+import astrotweaks.AstrotweaksMod;
+import astrotweaks.Multiverse.LevelManager;
+import astrotweaks.Multiverse.LevelData;
+import astrotweaks.Multiverse.LevelDimensionType;
+import astrotweaks.Multiverse.MessageMultiverse;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -139,11 +144,31 @@ public class TDArkTransferHelper {
         }
         // Check X,Z boundaries (standard)
 
-        // 4. Get target world
-	    WorldServer targetWorld = player.getServer().getWorld(targetDim);
+        // 4. Get target world (use getOrCreateWorld to rebuild if it was idle-unloaded
+        //    during the delay, instead of vanilla getWorld which creates a phantom)
+	    LevelManager lm = LevelManager.getInstance();
+	    LevelData targetLevel = lm.getLevelByDimensionId(targetDim);
+	    WorldServer targetWorld;
+	    if (targetLevel != null) {
+	        LevelDimensionType type = targetLevel.typeOf(targetDim);
+	        if (type != null) {
+	            targetWorld = lm.getOrCreateWorld(player.getServer(), targetLevel, type);
+	        } else {
+	            targetWorld = player.getServer().getWorld(targetDim);
+	        }
+	    } else {
+	        targetWorld = player.getServer().getWorld(targetDim);
+	    }
 	    if (targetWorld == null) {
 	        player.sendMessage(new TextComponentTranslation("ark.err.target_world"));
 	        return;
+	    }
+
+	    // Send MessageMultiverse right before the teleport so the client's seed-stamp
+	    // fires on the NEW WorldClient (deferred to next tick via addScheduledTask),
+	    // not on the old one 100 ticks early.
+	    if (targetLevel != null) {
+	        AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(targetLevel.baseId, targetLevel.seed), player);
 	    }
 
 		// Загружаем чанки цели ДО проверок подавителя (>>4: чунки 16x16)
@@ -189,7 +214,7 @@ public class TDArkTransferHelper {
 
         // 6.5 Потребляем 1 алмаз из инвентаря машины (слот с наименьшим номером).
         if (!teTDArk.consumeDiamond()) {
-            player.sendMessage(new TextComponentTranslation("tdark.err.diamond"));
+            player.sendMessage(new TextComponentTranslation("tdark.err.item"));
             return;
         }
 

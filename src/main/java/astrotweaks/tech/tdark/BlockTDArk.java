@@ -31,6 +31,9 @@ import net.minecraft.util.text.TextFormatting;
 
 import astrotweaks.creativetab.ATCreativeTabs;
 import astrotweaks.AstrotweaksMod;
+import astrotweaks.Multiverse.LevelManager;
+import astrotweaks.Multiverse.LevelData;
+import astrotweaks.Multiverse.LevelDimensionType;
 
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
@@ -214,7 +217,21 @@ public class BlockTDArk {
 		        player.sendMessage(new TextComponentTranslation("ark.err.dim", dim).setStyle(new Style().setColor(TextFormatting.RED)));
 		        return;
 		    }
-		    WorldServer targetWorld = player.getServer().getWorld(dim);
+		    // Use getOrCreateWorld to rebuild if it was idle-unloaded during a prior delay,
+		    // instead of vanilla getWorld which creates a phantom WorldServerMulti.
+		    LevelManager lm = LevelManager.getInstance();
+		    LevelData targetLevel = lm.getLevelByDimensionId(dim);
+		    WorldServer targetWorld;
+		    if (targetLevel != null) {
+		        LevelDimensionType type = targetLevel.typeOf(dim);
+		        if (type != null) {
+		            targetWorld = lm.getOrCreateWorld(player.getServer(), targetLevel, type);
+		        } else {
+		            targetWorld = player.getServer().getWorld(dim);
+		        }
+		    } else {
+		        targetWorld = player.getServer().getWorld(dim);
+		    }
 		    if (targetWorld == null) {
 		        player.sendMessage(new TextComponentTranslation("ark.err.target_world").setStyle(new Style().setColor(TextFormatting.RED)));
 		        return;

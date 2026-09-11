@@ -25,8 +25,6 @@ import net.minecraft.block.SoundType;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.BlockFaceShape;
 
-import astrotweaks.world.SurfaceWorldGenerator;
-
 import java.util.Set;
 import java.util.Random;
 
@@ -44,8 +42,7 @@ public class BlockGroundRock2 {
 	public static void generateWorld(Random random, int chunkX, int chunkZ, World world, int dimID, IChunkGenerator cg, IChunkProvider cp) {
 	    if (world.provider.getDimensionType() != DimensionType.OVERWORLD) return;
 			rga = ModVariables.Rock_Gen_Attempts;
-		
-		    SurfaceWorldGenerator.generateSurface(random, chunkX, chunkZ, world, block, rgb, rga /*Double attempts*/, ModVariables.Rock_Gen_Min_Y /*min Y*/, ModVariables.Rock_Gen_Max_Y /*max Y*/);
+		    astrotweaks.world.SurfaceWorldGenerator.generateSurface(random, chunkX, chunkZ, world, block, rgb, rga /*Double attempts*/, ModVariables.Rock_Gen_Min_Y /*min Y*/, ModVariables.Rock_Gen_Max_Y /*max Y*/);
 	}
 
 	public static class BlockCustom extends Block {

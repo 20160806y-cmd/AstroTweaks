@@ -1,5 +1,6 @@
 package astrotweaks.block;
 
+
 import astrotweaks.creativetab.ATCreativeTabs;
 import astrotweaks.item.ATItems;
 import net.minecraft.block.Block;
@@ -107,6 +108,7 @@ public class ATBlocks {
 
     public static final Block FEXPLOSIVE = new BlockFexplosive();
 
+    public static final Block FALSE_BEDROCK = new BlockFBedrock();
 
 
 
@@ -165,7 +167,7 @@ DECO_BLOCK_1,DECO_BLOCK_GRID,METAL_FRAME,
 MINERAL_STEEL,RUBY_BLOCK,
 
 FEXPLOSIVE,
-NETHERSTAR_BLOCK,
+NETHERSTAR_BLOCK,FALSE_BEDROCK,
 NULL_BLOCK,
 
 
@@ -957,6 +959,20 @@ BlockUnknownBlock.block,
             setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
         }
         @Override public MapColor getMapColor(IBlockState state,IBlockAccess blockAccess,BlockPos pos) { return MapColor.QUARTZ; }
+    }
+
+    public static class BlockFBedrock extends Block {
+        public BlockFBedrock() {
+            super(Material.ROCK);
+            setRegistryName(MOD_ID, "bedrock");
+            setUnlocalizedName("bedrock");
+            setSoundType(SoundType.STONE);
+            setHarvestLevel("pickaxe", 5);
+            setHardness(100F);
+            setResistance(100F);
+            setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+        }
+        @Override public MapColor getMapColor(IBlockState state,IBlockAccess blockAccess,BlockPos pos) { return MapColor.GRAY; }
     }
 
 

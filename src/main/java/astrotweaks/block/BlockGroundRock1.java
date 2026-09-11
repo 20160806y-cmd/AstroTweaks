@@ -25,8 +25,6 @@ import net.minecraft.block.SoundType;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.BlockFaceShape;
 
-import astrotweaks.world.SurfaceWorldGenerator;
-
 import java.util.Set;
 import java.util.Random;
 
@@ -44,10 +42,8 @@ public class BlockGroundRock1 {
 	public static void generateWorld(Random random, int chunkX, int chunkZ, World world, int dimID, IChunkGenerator cg, IChunkProvider cp) {
 	    if (world.provider.getDimensionType() != DimensionType.OVERWORLD) return;
 			rga = ModVariables.Rock_Gen_Attempts;
-
-		    SurfaceWorldGenerator.generateSurface(random, chunkX, chunkZ, world, block, rgb, rga /*Double attempts*/, ModVariables.Rock_Gen_Min_Y /*min Y*/, ModVariables.Rock_Gen_Max_Y /*max Y*/);
+		    astrotweaks.world.SurfaceWorldGenerator.generateSurface(random, chunkX, chunkZ, world, block, rgb, rga /*Double attempts*/, ModVariables.Rock_Gen_Min_Y /*min Y*/, ModVariables.Rock_Gen_Max_Y /*max Y*/);
 	}
-
 	public static class BlockCustom extends Block {
 		public BlockCustom() {
 			super(Material.CLOTH);
@@ -55,72 +51,24 @@ public class BlockGroundRock1 {
 			setSoundType(SoundType.STONE);
 			setHardness(0F);
 			setResistance(0F);
-			//setLightLevel(0F);
 			setLightOpacity(0);
 		}
-
 		@SideOnly(Side.CLIENT)
-		@Override
-		public BlockRenderLayer getBlockLayer() {
-			return BlockRenderLayer.CUTOUT_MIPPED;
-		}
-		@Override
+		@Override public BlockRenderLayer getBlockLayer() { return BlockRenderLayer.CUTOUT_MIPPED; }
 		@javax.annotation.Nullable
-		public AxisAlignedBB getCollisionBoundingBox(IBlockState blockState, IBlockAccess worldIn, BlockPos pos) {
-			return NULL_AABB;
-		}
-		@Override
-		public boolean isPassable(IBlockAccess worldIn, BlockPos pos) {
-			return true;
-		}
-		@Override
-		public boolean isFullCube(IBlockState state) {
-			return false;
-		}
-		@Override
-		public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) {
+		@Override public AxisAlignedBB getCollisionBoundingBox(IBlockState blockState, IBlockAccess worldIn, BlockPos pos) { return NULL_AABB; }
+		@Override public boolean isPassable(IBlockAccess worldIn, BlockPos pos) { return true; }
+		@Override public boolean isFullCube(IBlockState state) { return false; }
+		@Override public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) {
 			return new AxisAlignedBB(0.3125, 0.0, 0.3125, 0.6875, 0.250, 0.6875);
 		}
-		@Override
-		public boolean isOpaqueCube(IBlockState state) {
-			return false;
-		}
-		@Override
-		public BlockFaceShape getBlockFaceShape(IBlockAccess world, IBlockState state, BlockPos pos, EnumFacing face) {
-		    return BlockFaceShape.UNDEFINED;
-		}
-		@Override
-		public boolean isReplaceable(IBlockAccess blockAccess, BlockPos pos) {
-			return true;
-		}
-		@Override
-		public void getDrops(NonNullList<ItemStack> drops, IBlockAccess world, BlockPos pos, IBlockState state, int fortune) {
+		@Override public boolean isOpaqueCube(IBlockState state) { return false; }
+		@Override public BlockFaceShape getBlockFaceShape(IBlockAccess world, IBlockState state, BlockPos pos, EnumFacing face) { return BlockFaceShape.UNDEFINED; }
+		@Override public boolean isReplaceable(IBlockAccess blockAccess, BlockPos pos) { return true; }
+		@Override public void getDrops(NonNullList<ItemStack> drops, IBlockAccess world, BlockPos pos, IBlockState state, int fortune) {
 		    drops.add(new ItemStack(ATItems.ROCK, 1));
 		}
-
-		/*
-		@Override
-		public Item getItemDropped(IBlockState state, Random rand, int fortune) {
-		    return ItemRock.block;
-		}
-		@Override
-		public boolean removedByPlayer(IBlockState state, World world, BlockPos pos, EntityPlayer player, boolean willHarvest) {
-		    //onBlockDestroyedByPlayer(world, pos, state);
-
-		    return super.removedByPlayer(state, world, pos, player, willHarvest);
-		}
-		@Override
-		public void onBlockDestroyedByPlayer(World world, BlockPos pos, IBlockState state) {
-		    if (!world.isRemote) {
-		        EntityPlayer player = world.getClosestPlayer(pos.getX(), pos.getY(), pos.getZ(), 5, false);
-		        if (player != null && !player.isCreative()) {
-		            spawnAsEntity(world, pos, new ItemStack(ItemRock.block, 1));
-		        }
-		    }
-		}*/
-
-		@Override
-		public boolean canPlaceBlockAt(World worldIn, BlockPos pos) {
+		@Override public boolean canPlaceBlockAt(World worldIn, BlockPos pos) {
 		    BlockPos below = pos.down();
 		    IBlockState stateBelow = worldIn.getBlockState(below);
 		    return stateBelow.isSideSolid(worldIn, below, EnumFacing.UP);
@@ -132,7 +80,6 @@ public class BlockGroundRock1 {
 			int x = pos.getX();
 			int y = pos.getY();
 			int z = pos.getZ();
-			//if (world.isBlockIndirectlyGettingPowered(new BlockPos(x, y, z)) > 0) {}
 
 			if ((((world.getBlockState(new BlockPos(x, y, z))).getBlock() == BlockGroundRock1.block.getDefaultState().getBlock())
 					&& ((world.getBlockState(new BlockPos(x, y - 1, z))).getBlock() == Blocks.AIR.getDefaultState().getBlock()))) {
@@ -146,7 +93,6 @@ public class BlockGroundRock1 {
 		        world.destroyBlock(pos, true);
 		    }
 		}
-
 		@Override
 		public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer entity, EnumHand hand, EnumFacing direction, float hitX, float hitY, float hitZ) {
 			super.onBlockActivated(world, pos, state, entity, hand, direction, hitX, hitY, hitZ);

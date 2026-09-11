@@ -16,12 +16,17 @@ public class MessageMultiverse implements IMessage {
     private static final int GLOBAL_SENTINEL = -1;
     private int baseDimId;
     private boolean global;
+    private long seed;
 
     public MessageMultiverse() {}
 
     public MessageMultiverse(int baseDimId) {
+        this(baseDimId, 0);
+    }
+    public MessageMultiverse(int baseDimId, long seed) {
         this.baseDimId = baseDimId;
         this.global = false;
+        this.seed = seed;
     }
     public static MessageMultiverse forGlobal() {
         MessageMultiverse message = new MessageMultiverse(GLOBAL_SENTINEL);
@@ -33,11 +38,13 @@ public class MessageMultiverse implements IMessage {
     public void fromBytes(ByteBuf buf) {
         this.baseDimId = buf.readInt();
         this.global = buf.readBoolean();
+        this.seed = buf.readLong();
     }
     @Override
     public void toBytes(ByteBuf buf) {
         buf.writeInt(this.baseDimId);
         buf.writeBoolean(this.global);
+        buf.writeLong(this.seed);
     }
 
     /**
@@ -52,6 +59,47 @@ public class MessageMultiverse implements IMessage {
                     MultiverseDims.registerGlobalDimension();
                 } else {
                     MultiverseDims.registerLevelDimensions(message.baseDimId);
+                }
+                if (message.seed != 0) {
+                    final long s = message.seed;
+                    net.minecraft.client.Minecraft.getMinecraft().addScheduledTask(() -> {
+                        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+                        if (mc.world != null && mc.world.getWorldInfo() != null) {
+                            net.minecraft.world.storage.WorldInfo info = mc.world.getWorldInfo();
+                            boolean applied = false;
+                            // Try known field names first (MCP → SRG fallback)
+                            for (String name : new String[]{"seed", "field_76100_a"}) {
+                                try {
+                                    java.lang.reflect.Field f =
+                                            net.minecraft.world.storage.WorldInfo.class.getDeclaredField(name);
+                                    f.setAccessible(true);
+                                    f.setLong(info, s);
+                                    applied = true;
+                                    break;
+                                } catch (Exception ignored) {}
+                            }
+                            // Fallback: find the long field whose current value matches getSeed()
+                            if (!applied) {
+                                long currentSeed = info.getSeed();
+                                for (java.lang.reflect.Field f :
+                                        net.minecraft.world.storage.WorldInfo.class.getDeclaredFields()) {
+                                    if (f.getType() == long.class) {
+                                        f.setAccessible(true);
+                                        try {
+                                            if (f.getLong(info) == currentSeed) {
+                                                f.setLong(info, s);
+                                                applied = true;
+                                                break;
+                                            }
+                                        } catch (Exception ignored) {}
+                                    }
+                                }
+                            }
+                            if (!applied) {
+                                System.err.println("[MULTIVERSE] Failed to set client world seed");
+                            }
+                        }
+                    });
                 }
             }
             return null;

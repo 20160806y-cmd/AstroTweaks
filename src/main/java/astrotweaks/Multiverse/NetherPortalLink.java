@@ -150,9 +150,20 @@ public final class NetherPortalLink {
     /**
      * Server tick decay for the standing counters: entities that did not touch a
      * portal block this tick lose progress (vanilla {@code portalCounter--}); the
-     * seen-set itself is reset every tick.
+     * seen-set itself is reset every tick. Stale pending intents and counters of
+     * dead or unloaded entities are dropped to avoid leaking UUIDs on servers
+     * that stay up for a long time.
      */
     public static void onEndTick() {
+        if (!PENDING.isEmpty()) {
+            for (Map.Entry<UUID, Intent> entry : PENDING.entrySet()) {
+                Entity target = entry.getValue().origin.getEntityFromUuid(entry.getKey());
+                if (target == null || target.isDead || target.world != entry.getValue().origin) {
+                    PENDING.remove(entry.getKey());
+                    PORTAL_COUNTERS.remove(entry.getKey());
+                }
+            }
+        }
         if (!PORTAL_COUNTERS.isEmpty()) {
             Iterator<Map.Entry<UUID, Integer>> it = PORTAL_COUNTERS.entrySet().iterator();
             while (it.hasNext()) {
@@ -203,7 +214,7 @@ public final class NetherPortalLink {
         }
 
         if (entity instanceof EntityPlayerMP) {
-            AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(intent.data != null ? intent.data.baseId : 0), (EntityPlayerMP) entity);
+            AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(intent.data != null ? intent.data.baseId : 0, intent.data != null ? intent.data.seed : 0), (EntityPlayerMP) entity);
         }
 
         Entity moved;

@@ -22,6 +22,7 @@ adv.money.descr=(opening our own mint)
 adv.money.title=Money!
 
 
+
 # Commands
 command.gm.changed=Your game mode has been updated to %s
 command.gm0.text=Survival
@@ -35,6 +36,7 @@ command.only_for_players=This command only for players!
 command.no_permissions=You don't have permission to use this command!
 
 
+
 # Infos
 info.line0=§dWelcome to the AstroTech world!
 info.line1=§bThis world uses a special progression system, so
@@ -43,31 +45,33 @@ info.line3=[i] Quest descriptions sometimes contain useful information!
 info.line4=A short guide is available in the dedicated quests section.
 info.line5=
 info.empty=
+
+mt.convert=Convert
+
 qts.change_range=Suppressor range set to %s blocks
 qts.no_tp=§cTeleportation failed!
 qts.no_tp_target=§cTeleportation to the target area is impossible!
 qts.no_changedim=§cMoving between dimensions is impossible  here!
 qts.tp_interrupted=§cTeleportation has been interrupted!
+
 ark.err.coords=§cError: coordinates must be numbers!
 ark.invalid_coords=§cError: invalid coordinates!
 ark.err.structure=§cError: Invalid structure!
 ark.err.dim=§cError: Dimension %s does not exist!
 ark.err.aow=§cError: Target position are out of world!
-ark.err.target_world=§cError: Failed to get target world!
+ark.err.target_world=§cError: Target world not found!
 ark.err.unbreakable_target=§cError: There is an Unbreakable block in target area ( %s )!
-ark.err.cross_universe=§cError: You cannot travel to another universe with the Ark!
+ark.err.cross_universe=§cError: Failed to establish connection with the target world!
 ark.delayed_start=§bTransfer will start in %s ticks.
 ark.interface=Dimensional Ark Interface
 ark.send=SEND
 ark.success=§aThe Ark has been successfully moved!
-mt.convert=Convert
 
-# TDARK
 tdark.interface=Trans-Dimensional Ark
 tdark.send=SEND
 tdark.success=§aThe TDArk has been successfully moved!
 tdark.err.bad_hash=§cError: no universe matches this Hash!
-tdark.err.diamond=§cError: the Ark needs 1 diamond to work!
+tdark.err.item=§cError: the Transdimensional Ark needs 1 fuel item to operate!
 tdark.delayed_start=§bTransfer will start in %s ticks.
 
 
@@ -351,14 +355,17 @@ item.y_anti_quant.name='Y' Anti-quant
 item.yellow_led.name=Yellow LED
 
 
+
 # Tabs
 itemGroup.astro_tweaks_ct=Astro Tweaks
 itemGroup.at_integration_ct=AT Integration
 
 
+
 # JEI
 JEI.container.money_table=Money table
 JEI.tooltip.consumes_durability=Consumes 1 durability per conversion
+
 
 
 # Blocks
@@ -538,4 +545,4 @@ tile.unknown_block.name=???
 
 
 
-#
+

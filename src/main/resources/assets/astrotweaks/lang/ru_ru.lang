@@ -22,6 +22,7 @@ adv.money.descr=(Открываем свой монетный двор)
 adv.money.title=Деньги!
 
 
+
 # Команды
 command.gm.changed=Ваш игровой режим изменён на %s
 command.gm0.text=Режим выживания
@@ -35,6 +36,7 @@ command.only_for_players=Эта команда только для игроко�
 command.no_permissions=У вас нет прав на использование этой команды!
 
 
+
 # Информация
 info.line0=§dДобро пожаловать в мир AstroTech!
 info.line1=§bВ этом мире используется особая система развития, поэтому
@@ -43,31 +45,33 @@ info.line3=[i] Также в описании квестов бывает пол
 info.line4=Краткая инструкция есть в специальном разделе квестов.
 info.line5=
 info.empty=
+
+mt.convert=Обменять
+
 qts.change_range=Дальность подавителя установлена на %s блоков
 qts.no_tp=§cТелепортация не удалась!
 qts.no_changedim=§cПеремещение между измерениями здесь невозможно!
 qts.tp_interrupted=§cТелепортация была прервана!
 qts.no_tp_target=§cТелепортация в целевую область невозможна!
+
 ark.err.coords=§cОшибка: координаты должны быть числами!
 ark.invalid_coords=§cОшибка: некорректные координаты!
 ark.err.structure=§cОшибка: Недопустимая структура!
 ark.err.dim=§cОшибка: Измерение %s не существует!
 ark.err.aow=§cОшибка: Целевая позиция находится за пределами мира!
-ark.err.target_world=§cОшибка: Не удалось получить целевой мир!
+ark.err.target_world=§cОшибка: Целевой мир не найден!
 ark.err.unbreakable_target=§cОшибка: В целевой области находится неразрушимый блок (%s)!
-ark.err.cross_universe=§cОшибка: Ковчег не может переместить вас в другую вселенную!
+ark.err.cross_universe=§cОшибка: Yе удалось установить связь с целевым миром!
 ark.delayed_start=§bПеремещение начнётся через %s тиков.
 ark.interface=Интерфейс Пространственного Ковчега
 ark.send=ВВОД
 ark.success=§aКовчег успешно перемещён!
-mt.convert=Обменять
 
-# TDARK
 tdark.interface=Межпространственный ковчег
 tdark.send=ВВОД
 tdark.success=§aКовчег успешно перемещён!
 tdark.err.bad_hash=§cОшибка: ни одна вселенная не соответствует этому Хешу!
-tdark.err.diamond=§cОшибка: для работы Ковчегу нужен 1 алмаз!
+tdark.err.item=§cОшибка: для работы Межнространственному ковчегу нужен 1 предмет топлива!
 tdark.delayed_start=§bПеремещение начнётся через %s тиков.
 
 
@@ -351,14 +355,17 @@ item.y_anti_quant.name='Y' Анти-квант
 item.yellow_led.name=Жёлтый светодиод
 
 
+
 # Вкладки
 itemGroup.astro_tweaks_ct=Astro Tweaks
 itemGroup.at_integration_ct=AT Integration
 
 
+
 # JEI
 JEI.container.money_table=Монетный стол
 JEI.tooltip.consumes_durability=Потребляет 1 прочность на преобразование
+
 
 
 # Блоки
@@ -535,4 +542,6 @@ tile.triple_compressed_quartz.name=Трижды сжатый кварц
 tile.u_destroyer_block.name=U Блок разрушения
 tile.u_killer_block.name=U Блок очищения
 tile.unknown_block.name=???
+
+
 
