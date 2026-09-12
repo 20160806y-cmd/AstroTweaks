@@ -31,7 +31,6 @@ import java.util.List;
 
 
 
-@Mod.EventBusSubscriber(modid = "astrotweaks")
 public class ATTechnologies {
 
     public static final Block MONEY_TABLE = new BlockMoneyTable.BlockCustom().setRegistryName("money_table");
@@ -62,13 +61,11 @@ public class ATTechnologies {
     private ATTechnologies() {}
 
 
-    @SubscribeEvent
     public static void registerBlocks(RegistryEvent.Register<Block> event) {
         event.getRegistry().registerAll(getBlocks());
         registerTileEntities();
     }
 
-    @SubscribeEvent
     public static void registerItems(RegistryEvent.Register<Item> event) {
         for (Block block : getBlocks()) {
             event.getRegistry().register(new ItemBlock(block).setRegistryName(block.getRegistryName()));

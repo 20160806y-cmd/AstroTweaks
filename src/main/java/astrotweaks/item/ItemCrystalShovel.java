@@ -8,7 +8,7 @@ import net.minecraft.item.ItemSpade;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.util.EnumHelper;
 
-import astrotweaks.creativetab.ATCreativeTabs;
+
 
 public final class ItemCrystalShovel {
     public static final Item SHOVEL = new ItemSpade(EnumHelper.addToolMaterial("CRYSTAL_SHOVEL", 4, 15000, 20f, 7.5f, 5)) {
@@ -20,7 +20,7 @@ public final class ItemCrystalShovel {
             ret.put("spade", 4);
             return ret.keySet();
         }
-    }.setRegistryName("astrotweaks", "crystal_shovel").setUnlocalizedName("crystal_shovel").setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+    }.setRegistryName("astrotweaks", "crystal_shovel").setUnlocalizedName("crystal_shovel").setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 
     private ItemCrystalShovel() {}
 }

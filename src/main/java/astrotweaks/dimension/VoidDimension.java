@@ -34,6 +34,9 @@ public class VoidDimension {
 	public VoidDimension() {}
 
     public static void preInit() {
+        // Привязка к конфигу: без Enable_uVOID измерение пустоты (-1000000)
+        // нигде не регистрируется (см. также MultiverseDims.registerGlobalDimension).
+        if (!astrotweaks.ModVariables.Enable_uVOID) return;
         if (DimensionManager.isDimensionRegistered(DIMID)) {
             DIMID = DimensionManager.getNextFreeDimId();
             System.err.println("Dimension ID is already registered. Fallback to ID: " + DIMID);

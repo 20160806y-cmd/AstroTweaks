@@ -22,7 +22,6 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerChangedDimensionEvent;
-import net.minecraft.client.resources.I18n;
 
 
 
@@ -54,7 +53,7 @@ public class SuppressorEventHandler {
 	        event.setCanceled(true);
 	        if (e instanceof EntityPlayerMP) {
 	            //sendMessage("Moving between dimensions is prohibited here!", (EntityPlayerMP) e);
-                sendMessage(I18n.format("qts.no_changedim"), (EntityPlayerMP) e);
+                sendMessage("qts.no_changedim", (EntityPlayerMP) e);
 	        }
 	        return;
 	    }
@@ -96,7 +95,7 @@ public class SuppressorEventHandler {
 	        if (!es.world.isRemote && SuppressorManager.isPositionBlocked(es.world, es.getPosition())) {
 	            event.setCanceled(true);
 	            //sendMessage("Teleportation is prohibited here!", (Entity) sender);
-                sendMessage(I18n.format("qts.no_tp"), (EntityPlayerMP) sender);
+                sendMessage("qts.no_tp", (EntityPlayerMP) sender);
 	            //act_msg(es);
 	            return;
 	        }
@@ -118,7 +117,7 @@ public class SuppressorEventHandler {
 	                if (SuppressorManager.isPositionBlocked(w, new BlockPos(x, y, z))) {
 	                    event.setCanceled(true);
 	                    //sendMessage("Teleportation has been interrupted!", sender);
-                        sendMessage(I18n.format("qts.tp_interrupted"), sender);
+                        sendMessage("qts.tp_interrupted", sender);
 	                    return;
 	                }
                 }
@@ -127,7 +126,7 @@ public class SuppressorEventHandler {
                 EntityPlayerMP target = server.getPlayerList().getPlayerByUsername(args[0]);
                 if (target != null && !target.world.isRemote && SuppressorManager.isPositionBlocked(target.world, target.getPosition())) {
                     event.setCanceled(true);
-                    sendMessage(I18n.format("qts.tp_interrupted"), target);
+                    sendMessage("qts.tp_interrupted", sender);
                     return;
                 }
             } else if (args.length == 2) {
@@ -135,7 +134,8 @@ public class SuppressorEventHandler {
                 EntityPlayerMP dest = server.getPlayerList().getPlayerByUsername(args[1]);
                 if (dest != null && !dest.world.isRemote && SuppressorManager.isPositionBlocked(dest.world, dest.getPosition())) {
                     event.setCanceled(true);
-                    sendMessage(I18n.format("qts.tp_interrupted"), dest);
+                    //sendMessage(I18n.format("qts.tp_interrupted"), dest);
+                    sendMessage("qts.tp_interrupted", sender);
                     return;
                 }
             } else if (args.length == 4) {
@@ -147,7 +147,8 @@ public class SuppressorEventHandler {
                     int z = parseInt(args[3]);
                     if (SuppressorManager.isPositionBlocked(destPlayer.world, new BlockPos(x, y, z))) {
                         event.setCanceled(true);
-						sendMessage(I18n.format("qts.tp_interrupted"), destPlayer);
+						//sendMessage(I18n.format("qts.tp_interrupted"), destPlayer);
+                        sendMessage("qts.tp_interrupted", sender);
                         return;
                     }
                 }
@@ -161,13 +162,13 @@ public class SuppressorEventHandler {
     
     private static void sendMessage(String mes, ICommandSender sender) {
 	    if (sender instanceof EntityPlayerMP) {
-	        ((EntityPlayerMP) sender).connection.sendPacket(new SPacketChat(new TextComponentString(TextFormatting.RED + mes), ChatType.GAME_INFO));
+	        ((EntityPlayerMP) sender).connection.sendPacket(new SPacketChat(new TextComponentTranslation(mes), ChatType.GAME_INFO));
 	    } else {
-	        sender.sendMessage(new TextComponentString(TextFormatting.RED + mes));
+	        sender.sendMessage(new TextComponentTranslation(mes));
 	    }
 	}
 	private static void sendMessage(String mes, EntityPlayerMP player) {
-	    player.connection.sendPacket(new SPacketChat(new TextComponentString(TextFormatting.RED + mes), ChatType.GAME_INFO));
+	    player.connection.sendPacket(new SPacketChat(new TextComponentTranslation(mes), ChatType.GAME_INFO));
 	}
 	private static int parseInt(String s) throws NumberFormatException {
 	    return Integer.parseInt(s);

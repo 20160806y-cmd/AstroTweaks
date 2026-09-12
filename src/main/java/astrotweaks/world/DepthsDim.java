@@ -2,9 +2,9 @@ package astrotweaks.world;
 
 import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.common.registry.GameRegistry;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.common.DimensionManager;
-
 import net.minecraft.world.gen.layer.IntCache;
 import net.minecraft.world.gen.layer.GenLayerZoom;
 import net.minecraft.world.gen.layer.GenLayerVoronoiZoom;
@@ -33,11 +33,9 @@ import net.minecraft.entity.EnumCreatureType;
 import net.minecraft.crash.CrashReportCategory;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.block.state.IBlockState;
-//import net.minecraft.block.material.Material;
 import net.minecraft.block.BlockFalling;
 import net.minecraft.entity.Entity;
 
-import net.minecraftforge.fml.common.registry.GameRegistry;
 import net.minecraft.world.gen.feature.WorldGenMinable;
 import net.minecraft.world.gen.MapGenCaves;
 //import net.minecraft.world.gen.MapGenRavine;

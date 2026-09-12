@@ -71,7 +71,7 @@ public class LevelManager {
 
     private static final int BASE_START = 10_000;
     private static final int STEP = 100;
-    private static final int BASE_MAX = 20_000;
+    //private static final int BASE_MAX = 20_000;
     private static final int DIMS_PER_LEVEL = 4;
     private static final String LEVEL_PREFIX = "MV_";
     private static final String ERRORED_FOLDER_NAME = "MULTIVERSE_ERRORED";
@@ -159,9 +159,11 @@ public class LevelManager {
                 // recreate them as phantom worlds in the new save.
                 unregisterLevelDimensions(oldServer, data);
             }
-            unloadWorldNow(oldServer, MultiverseDims.GLOBAL_DIM, true);
-            if (DimensionManager.isDimensionRegistered(MultiverseDims.GLOBAL_DIM)) {
-                DimensionManager.unregisterDimension(MultiverseDims.GLOBAL_DIM);
+            if (MultiverseDims.isGlobalDimensionEnabled()) {
+                unloadWorldNow(oldServer, MultiverseDims.GLOBAL_DIM, true);
+                if (DimensionManager.isDimensionRegistered(MultiverseDims.GLOBAL_DIM)) {
+                    DimensionManager.unregisterDimension(MultiverseDims.GLOBAL_DIM);
+                }
             }
             saveAll(oldServer);
         }
@@ -181,10 +183,12 @@ public class LevelManager {
         if (!multiverseFolder.exists() && !multiverseFolder.mkdirs()) {
             throw new IllegalStateException("Cannot create MULTIVERSE folder: " + multiverseFolder);
         }
-        if (!globalFolder.exists() && !globalFolder.mkdirs()) {
-            throw new IllegalStateException("Cannot create MULTIVERSE_GLOBAL folder: " + globalFolder);
+        if (MultiverseDims.isGlobalDimensionEnabled()) {
+            if (!globalFolder.exists() && !globalFolder.mkdirs()) {
+                throw new IllegalStateException("Cannot create MULTIVERSE_GLOBAL folder: " + globalFolder);
+            }
+            //System.out.println("[MULTIVERSE] Shared global dimension folder: " + globalFolder);
         }
-        System.out.println("[MULTIVERSE] Shared global dimension folder: " + globalFolder);
 
         worldSeed = readWorldSeed(world0);
         ensureRegistry(server);
@@ -211,6 +215,7 @@ public class LevelManager {
     }
 
     private void registerGlobalDimensionIfMissing() {
+        if (!MultiverseDims.isGlobalDimensionEnabled()) return;
         if (!DimensionManager.isDimensionRegistered(MultiverseDims.GLOBAL_DIM)) {
             MultiverseDims.registerGlobalDimension();
         }
@@ -246,7 +251,9 @@ public class LevelManager {
         for (LevelData data : levels.values()) {
             forEachDim(data, ownedIds::add);
         }
-        ownedIds.add(MultiverseDims.GLOBAL_DIM);
+        if (MultiverseDims.isGlobalDimensionEnabled()) {
+            ownedIds.add(MultiverseDims.GLOBAL_DIM);
+        }
 
         for (int dimId : ownedIds) {
             File dimFolder = new File(saveRoot, "DIM" + dimId);
@@ -358,8 +365,7 @@ public class LevelManager {
             }
 
             if (number < 1 || number > max) {
-                System.err.println("[MULTIVERSE] Skipping registry entry '" + name
-                        + "': number " + number + " is outside 1.." + max);
+                System.err.println("[MULTIVERSE] Skipping registry entry '" + name + "': number " + number + " is outside 1.." + max);
                 continue;
             }
             // baseId однозначно выводится из слота; хранимый baseId не расходится.
@@ -438,8 +444,7 @@ public class LevelManager {
             if (n >= 1 && n <= maxUniverses()) {
                 fixedNumber = n;
             } else {
-                System.err.println("[MULTIVERSE] Numeric level name " + name
-                        + " is outside 1.." + maxUniverses());
+                System.err.println("[MULTIVERSE] Numeric level name " + name + " is outside 1.." + maxUniverses());
                 return null;
             }
         } catch (NumberFormatException ignored) {
@@ -449,8 +454,7 @@ public class LevelManager {
         // 3) Проверяем конфликт по слоту для числового имени.
         if (fixedNumber != null && universeByNumber.containsKey(fixedNumber)) {
             LevelData other = universeByNumber.get(fixedNumber);
-            System.err.println("[MULTIVERSE] Slot " + fixedNumber + " is occupied by '"
-                    + other.name + "'; refusing to create " + name);
+            System.err.println("[MULTIVERSE] Slot " + fixedNumber + " is occupied by '" + other.name + "'; refusing to create " + name);
             return null;
         }
 
@@ -469,14 +473,12 @@ public class LevelManager {
             }
             if (number < 0) {
                 // Все слоты 1..max-1 заняты. Проверяем, есть ли ещё слот max.
-                if (!universeByNumber.containsKey(maxUniverses())
-                        && countUniverses() < maxUniverses()) {
+                if (!universeByNumber.containsKey(maxUniverses()) && countUniverses() < maxUniverses()) {
                     number = maxUniverses();
                 } else {
                     victim = findRecyclableLevel();
                     if (victim == null) {
-                        System.err.println("[MULTIVERSE] Cannot create '" + name
-                                + "': universe limit reached and no recyclable numeric level");
+                        System.err.println("[MULTIVERSE] Cannot create '" + name + "': universe limit reached and no recyclable numeric level");
                         return null;
                     }
                     number = victim.number;
@@ -486,16 +488,14 @@ public class LevelManager {
 
         // 5) Перезапись жертвы (только числовая, никогда кастомная).
         if (victim != null) {
-            System.out.println("[MULTIVERSE] Recycling numeric universe '"
-                    + victim.name + "' (slot " + victim.number + ") to free slot for " + name);
+            System.out.println("[MULTIVERSE] Recycling numeric universe '" + victim.name + "' (slot " + victim.number + ") to free slot for " + name);
             recycleLevel(server, victim);
         }
 
         // 6) Создаём или подхватываем папку.
         File folder = new File(multiverseFolder, name);
         if (folder.isDirectory() && isLevelDataPresent(folder)) {
-            long usedSeed = resolveSeedForExisting(server, folder, seed, number,
-                    "getOrCreateLevel('" + name + "')");
+            long usedSeed = resolveSeedForExisting(server, folder, seed, number, "getOrCreateLevel('" + name + "')");
             LevelData data = registerNewLevel(server, name, number, usedSeed, folder);
             if (data != null) markRegistryDirty();
             return data;
@@ -554,16 +554,13 @@ public class LevelManager {
         for (int n = 1; n < maxUniverses(); n++) {
             if (!universeByNumber.containsKey(n)) {
                 LevelData result = getOrCreateLevel(server, n, seed);
-                System.out.println("[MULTIVERSE] getRandomLevelOrCreate: seed=" + seed + " slot=" + n
-                        + " result=" + (result != null ? result.name : "null"));
+                System.out.println("[MULTIVERSE] getRandomLevelOrCreate: seed=" + seed + " slot=" + n + " result=" + (result != null ? result.name : "null"));
                 return result;
             }
         }
-        if (!universeByNumber.containsKey(maxUniverses())
-                && countUniverses() < maxUniverses()) {
+        if (!universeByNumber.containsKey(maxUniverses()) && countUniverses() < maxUniverses()) {
             LevelData result = getOrCreateLevel(server, maxUniverses(), seed);
-            System.out.println("[MULTIVERSE] getRandomLevelOrCreate: seed=" + seed + " slot=" + maxUniverses()
-                    + " result=" + (result != null ? result.name : "null"));
+            System.out.println("[MULTIVERSE] getRandomLevelOrCreate: seed=" + seed + " slot=" + maxUniverses() + " result=" + (result != null ? result.name : "null"));
             return result;
         }
         LevelData victim = findRecyclableLevel();
@@ -575,8 +572,7 @@ public class LevelManager {
         System.out.println("[MULTIVERSE] getRandomLevelOrCreate: recycling " + victim.name + " (slot " + slot + ")");
         recycleLevel(server, victim);
         LevelData result = getOrCreateLevel(server, slot, seed);
-        System.out.println("[MULTIVERSE] getRandomLevelOrCreate: seed=" + seed + " slot=" + slot
-                + " result=" + (result != null ? result.name : "null"));
+        System.out.println("[MULTIVERSE] getRandomLevelOrCreate: seed=" + seed + " slot=" + slot + " result=" + (result != null ? result.name : "null"));
         return result;
     }
 
@@ -768,21 +764,17 @@ public class LevelManager {
                 if (isValidMinecraftWorld(child)) {
                     File target = new File(multiverseFolder, LEVEL_PREFIX + name);
                     if (target.exists()) {
-                        System.err.println("[MULTIVERSE] Cannot migrate '" + name
-                                + "' -> '" + target.getName() + "': target exists. Moving to ERRORED.");
+                        System.err.println("[MULTIVERSE] Cannot migrate '" + name + "' -> '" + target.getName() + "': target exists. Moving to ERRORED.");
                         moveToErrored(child, errored);
                     } else if (child.renameTo(target)) {
-                        System.out.println("[MULTIVERSE] Migrated folder '" + name
-                                + "' -> '" + target.getName() + "'");
+                        System.out.println("[MULTIVERSE] Migrated folder '" + name + "' -> '" + target.getName() + "'");
                         onDisk.add(target.getName());
                     } else {
-                        System.err.println("[MULTIVERSE] Rename failed for '" + name
-                                + "'. Moving to ERRORED.");
+                        System.err.println("[MULTIVERSE] Rename failed for '" + name + "'. Moving to ERRORED.");
                         moveToErrored(child, errored);
                     }
                 } else {
-                    System.out.println("[MULTIVERSE] Folder '" + name
-                            + "' is not a valid Minecraft world. Moving to ERRORED.");
+                    System.out.println("[MULTIVERSE] Folder '" + name + "' is not a valid Minecraft world. Moving to ERRORED.");
                     moveToErrored(child, errored);
                 }
                 changed = true;
@@ -790,8 +782,7 @@ public class LevelManager {
             }
 
             if (!isValidMinecraftWorld(child)) {
-                System.err.println("[MULTIVERSE] Folder '" + name
-                        + "' has no valid level.dat. Moving to ERRORED.");
+                System.err.println("[MULTIVERSE] Folder '" + name + "' has no valid level.dat. Moving to ERRORED.");
                 moveToErrored(child, errored);
                 changed = true;
                 continue;
@@ -811,8 +802,7 @@ public class LevelManager {
         while (it.hasNext()) {
             java.util.Map.Entry<String, LevelData> e = it.next();
             if (!onDisk.contains(e.getKey())) {
-                System.err.println("[MULTIVERSE] Registry has '" + e.getKey()
-                        + "' but folder is missing. Removing from registry.");
+                System.err.println("[MULTIVERSE] Registry has '" + e.getKey() + "' but folder is missing. Removing from registry.");
                 LevelData d = e.getValue();
                 universeByNumber.remove(d.number);
                 uidToNumber.remove(d.uid);
@@ -849,12 +839,8 @@ public class LevelManager {
         int number;
         if (fixedNumber > 0) {
             if (universeByNumber.containsKey(fixedNumber)) {
-                System.err.println("[MULTIVERSE] Folder '" + name + "' wants slot "
-                        + fixedNumber + " but it's occupied by '"
-                        + universeByNumber.get(fixedNumber).name
-                        + "'. Moving folder to ERRORED.");
-                moveToErrored(folder,
-                        new File(multiverseFolder.getParentFile(), ERRORED_FOLDER_NAME));
+                System.err.println("[MULTIVERSE] Folder '" + name + "' wants slot " + fixedNumber + " but it's occupied by '" + universeByNumber.get(fixedNumber).name + "'. Moving folder to ERRORED.");
+                moveToErrored(folder, new File(multiverseFolder.getParentFile(), ERRORED_FOLDER_NAME));
                 return true;
             }
             number = fixedNumber;
@@ -871,10 +857,8 @@ public class LevelManager {
                         && countUniverses() < maxUniverses()) {
                     number = maxUniverses();
                 } else {
-                    System.err.println("[MULTIVERSE] Cannot register '" + name
-                            + "': no free slot. Moving folder to ERRORED.");
-                    moveToErrored(folder,
-                            new File(multiverseFolder.getParentFile(), ERRORED_FOLDER_NAME));
+                    System.err.println("[MULTIVERSE] Cannot register '" + name + "': no free slot. Moving folder to ERRORED.");
+                    moveToErrored(folder, new File(multiverseFolder.getParentFile(), ERRORED_FOLDER_NAME));
                     return true;
                 }
             }
@@ -890,8 +874,7 @@ public class LevelManager {
         universeByNumber.put(number, data);
         uidToNumber.put(uid, number);
         linkDimensions(data);
-        System.out.println("[MULTIVERSE] Registered existing folder '" + name
-                + "' as slot " + number + " seed=" + seed);
+        System.out.println("[MULTIVERSE] Registered existing folder '" + name + "' as slot " + number + " seed=" + seed);
         return true;
     }
 
@@ -1000,7 +983,7 @@ public class LevelManager {
             if (isSameFolder(existingDir, data.folder)) {
                 return existing;
             }
-            System.out.println("[MULTIVERSE] Unloading world for dim " + dimId + " pointing at wrong folder: " + existingDir + " (expected " + data.folder + ")");
+            //System.out.println("[MULTIVERSE] Unloading world for dim " + dimId + " pointing at wrong folder: " + existingDir + " (expected " + data.folder + ")");
             unloadWorldNow(server, dimId, true);
         }
 
@@ -1010,8 +993,9 @@ public class LevelManager {
         return constructWorld(server, data.folder, dimId, data.name, data.seed, type == LevelDimensionType.END);
     }
 
-    /** Loads (or creates) the shared global dimension world. */
+    /** Loads (or creates) the shared global dimension world. Returns null when Enable_uVOID is off (folder never touched). */
     public WorldServer getOrCreateGlobalWorld(MinecraftServer server) {
+        if (!MultiverseDims.isGlobalDimensionEnabled()) return null;
         ensureActive(server);
         WorldServer existing = DimensionManager.getWorld(MultiverseDims.GLOBAL_DIM);
         if (existing != null) {
@@ -1021,8 +1005,7 @@ public class LevelManager {
             if (isSameFolder(existingDir, globalFolder)) {
                 return existing;
             }
-            System.out.println("[MULTIVERSE] Unloading global world pointing at wrong folder: "
-                    + existingDir + " (expected " + globalFolder + ")");
+            //System.out.println("[MULTIVERSE] Unloading global world pointing at wrong folder: " + existingDir + " (expected " + globalFolder + ")");
             unloadWorldNow(server, MultiverseDims.GLOBAL_DIM, true);
         }
         MultiverseDims.registerGlobalDimension();
@@ -1041,7 +1024,7 @@ public class LevelManager {
         } else if (seed != 0 && info.getSeed() != seed) {
             info.populateFromWorldSettings(new WorldSettings(seed, GameType.SURVIVAL, true, false, WorldType.DEFAULT));
         }
-        System.out.println("[MULTIVERSE] constructWorld dim=" + dimId + " fresh=" + fresh + " requestedSeed=" + seed + " finalSeed=" + info.getSeed());
+        //System.out.println("[MULTIVERSE] constructWorld dim=" + dimId + " fresh=" + fresh + " requestedSeed=" + seed + " finalSeed=" + info.getSeed());
 
         WorldServer world = new WorldServer(server, saveHandler, info, dimId, server.profiler);
         world.init();
@@ -1052,9 +1035,7 @@ public class LevelManager {
         // any stale world (e.g. a Forge WorldServerMulti hotspot for this id) is
         // atomically replaced instead of ticking alongside us.
         DimensionManager.setWorld(dimId, world, server);
-        System.out.println("[MULTIVERSE] Constructed world dim=" + dimId + " folder=" + folder
-                + " world@" + System.identityHashCode(world)
-                + " handler@" + System.identityHashCode(saveHandler));
+        //System.out.println("[MULTIVERSE] Constructed world dim=" + dimId + " folder=" + folder + " world@" + System.identityHashCode(world) + " handler@" + System.identityHashCode(saveHandler));
 
         // Pull spawn chunks first so findSpawn() has loaded terrain to scan.
         for (int cx = -1; cx <= 1; cx++) {
@@ -1077,17 +1058,21 @@ public class LevelManager {
         return world;
     }
 
-    /** Mirrors the vanilla end exit at (100,49,0) so a fresh MV end is never a dead end. */
+    /** Builds the vanilla end spawn platform (5x5 obsidian) at (100,49,0) so a fresh MV end is never a dead end. */
     private void buildEndExitPortal(WorldServer world) {
-        BlockPos base = new BlockPos(100, 49, 0);
+        //BlockPos base = new BlockPos(100, 49, 0);
+        BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
         for (int dx = -2; dx <= 2; dx++) {
             for (int dz = -2; dz <= 2; dz++) {
-                world.setBlockState(base.add(dx, 0, dz), Blocks.OBSIDIAN.getDefaultState());
-            }
-        }
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
-                world.setBlockState(base.add(dx, 1, dz), Blocks.END_PORTAL.getDefaultState());
+                // Обсидиан
+                mpos.setPos(100 + dx, 49, dz);
+                world.setBlockState(mpos, Blocks.OBSIDIAN.getDefaultState(), 2);
+
+                // Воздух над платформой
+                for (int dy = 1; dy <= 3; dy++) {
+                    mpos.setPos(100 + dx, 49 + dy, dz);
+                    world.setBlockState(mpos, Blocks.AIR.getDefaultState(), 2);
+                }
             }
         }
     }
@@ -1184,6 +1169,15 @@ public class LevelManager {
         if (server == null) return false;
 
         ensureActive(server);
+
+        // The global void dimension may be disabled in the config while a player
+        // entry from an earlier session still points at it: drop the entry instead
+        // of re-creating the MULTIVERSE_GLOBAL folder / phantom dimension.
+        if (entry.dimension == MultiverseDims.GLOBAL_DIM && !MultiverseDims.isGlobalDimensionEnabled()) {
+            System.err.println("[MULTIVERSE] Dropping restore for " + player.getName() + ": global void dimension is disabled");
+            clearPlayer(player.getUniqueID());
+            return false;
+        }
 
         LevelData data = dimensionToLevel.get(entry.dimension);
         if (data == null && entry.dimension != MultiverseDims.GLOBAL_DIM) {
@@ -1303,7 +1297,7 @@ public class LevelManager {
         }
         MinecraftForge.EVENT_BUS.post(new WorldEvent.Unload(world));
         DimensionManager.setWorld(dim, null, server);
-        System.out.println("[MULTIVERSE] Unloaded dimension " + dim + " (world@" + System.identityHashCode(world) + " dropped from tick list)");
+        //System.out.println("[MULTIVERSE] Unloaded dimension " + dim + " (world@" + System.identityHashCode(world) + " dropped from tick list)");
     }
 
     // ------------------------------------------------------------------ unregister
@@ -1349,9 +1343,11 @@ public class LevelManager {
             forEachDim(data, dim -> unloadWorldNow(server, dim, false));
             unregisterLevelDimensions(server, data);
         }
-        unloadWorldNow(server, MultiverseDims.GLOBAL_DIM, false);
-        if (DimensionManager.isDimensionRegistered(MultiverseDims.GLOBAL_DIM)) {
-            DimensionManager.unregisterDimension(MultiverseDims.GLOBAL_DIM);
+        if (MultiverseDims.isGlobalDimensionEnabled()) {
+            unloadWorldNow(server, MultiverseDims.GLOBAL_DIM, false);
+            if (DimensionManager.isDimensionRegistered(MultiverseDims.GLOBAL_DIM)) {
+                DimensionManager.unregisterDimension(MultiverseDims.GLOBAL_DIM);
+            }
         }
 
         levels.clear();
@@ -1370,7 +1366,9 @@ public class LevelManager {
         for (LevelData data : levels.values()) {
             forEachDim(data, dim -> unloadIfEmpty(server, dim, ignore));
         }
-        unloadIfEmpty(server, MultiverseDims.GLOBAL_DIM, ignore);
+        if (MultiverseDims.isGlobalDimensionEnabled()) {
+            unloadIfEmpty(server, MultiverseDims.GLOBAL_DIM, ignore);
+        }
     }
 
     private void unloadIfEmpty(MinecraftServer server, int dim, UUID... ignore) {
@@ -1414,7 +1412,9 @@ public class LevelManager {
         for (LevelData data : levels.values()) {
             forEachDim(data, dim -> saveWorldIfLoaded(dim));
         }
-        saveWorldIfLoaded(MultiverseDims.GLOBAL_DIM);
+        if (MultiverseDims.isGlobalDimensionEnabled()) {
+            saveWorldIfLoaded(MultiverseDims.GLOBAL_DIM);
+        }
     }
 
     private void saveWorldIfLoaded(int dim) {

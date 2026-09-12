@@ -19,7 +19,6 @@ import java.util.Random;
 
 import astrotweaks.util.DropHandler;
 import astrotweaks.util.DropHandler.DropEntry;
-import astrotweaks.creativetab.ATCreativeTabs;
 
 
 
@@ -53,7 +52,7 @@ public class BlockMineralsOre {
 			setHarvestLevel("pickaxe", 2);
 			setHardness(2F);
 			setResistance(10F);
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 		}
         private static final DropEntry[] DE_TABLE = new DropEntry[] {
             new DropEntry("oreIron",      1, 11.0),

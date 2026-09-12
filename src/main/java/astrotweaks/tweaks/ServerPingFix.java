@@ -21,20 +21,17 @@ public final class ServerPingFix { /* Это то же самое, что и в 
     private static GuiScreen trackedScreen;
     private static long lastRefreshMs;
 
-    private static final boolean EnableSPF = ModVariables.ServerPingFix;
-
     private ServerPingFix() {}
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        if (!ModVariables.ServerPingFix) return;
-
-    	if (EnableSPF) {
+        if (!ModVariables.ServerPingFix) {
             trackedScreen = null;
             lastRefreshMs = 0L;
             return;
         }
+
 
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.currentScreen == null) {

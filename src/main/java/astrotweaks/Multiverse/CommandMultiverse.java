@@ -127,8 +127,12 @@ public class CommandMultiverse extends CommandBase {
         player.sendMessage(new TextComponentString("Returned to the original world"));
     }
 
-    /** layer &lt;0: the shared global dimension. */
+    /** layer &lt;0: the shared global dimension. No-op (and no folder/registration access) when Enable_uVOID is off. */
     private void joinGlobal(MinecraftServer server, ICommandSender sender, EntityPlayerMP player, LevelManager lm) {
+        if (!MultiverseDims.isGlobalDimensionEnabled()) {
+            sender.sendMessage(new TextComponentString("The Void dimension is disabled (Enable_uVOID = false in the config)"));
+            return;
+        }
         AstrotweaksMod.PACKET_HANDLER.sendTo(MessageMultiverse.forGlobal(), player);
         WorldServer global = lm.getOrCreateGlobalWorld(server);
         if (global == null) {
@@ -167,7 +171,12 @@ public class CommandMultiverse extends CommandBase {
     }
     private BlockPos spawnFor(WorldServer world, LevelDimensionType type) {
         if (type == LevelDimensionType.END) {
-            BlockPos endSpawn = new BlockPos(0, 100, 0);
+            // Vanilla arrival point in the End: the obsidian spawn platform at
+            // (100,49,0), feet on Y=50 (WorldProviderEnd.getSpawnCoordinate()).
+            BlockPos endSpawn = world.getSpawnCoordinate();
+            if (endSpawn == null) {
+                endSpawn = new BlockPos(100, 50, 0);
+            }
             world.getWorldInfo().setSpawn(endSpawn);
             return endSpawn;
         }

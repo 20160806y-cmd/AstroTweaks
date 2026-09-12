@@ -7,8 +7,6 @@ import net.minecraft.block.SoundType;
 import net.minecraft.block.BlockStairs;
 import net.minecraft.block.Block;
 
-import astrotweaks.creativetab.ATCreativeTabs;
-
 
 
 public class BlockCobbledDeepslateStairs {
@@ -22,7 +20,7 @@ public class BlockCobbledDeepslateStairs {
 			setHardness(3.5F);
 			setResistance(12F);
 			setLightOpacity(255);
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 		}
 	}
 }

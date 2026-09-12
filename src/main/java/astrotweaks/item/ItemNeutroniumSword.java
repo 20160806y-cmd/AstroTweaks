@@ -13,7 +13,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemSword;
 import net.minecraftforge.common.util.EnumHelper;
 
-import astrotweaks.creativetab.ATCreativeTabs;
+
 
 public final class ItemNeutroniumSword {
     public static final Item SWORD = new ItemSword(EnumHelper.addToolMaterial("NEUTRONIUM_SWORD", 6, 100000, 48f, 196f, 1)) {
@@ -34,7 +34,7 @@ public final class ItemNeutroniumSword {
             ret.put("sword", 6);
             return ret.keySet();
         }
-    }.setRegistryName("astrotweaks", "neutronium_sword").setUnlocalizedName("neutronium_sword").setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+    }.setRegistryName("astrotweaks", "neutronium_sword").setUnlocalizedName("neutronium_sword").setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 
     private ItemNeutroniumSword() {}
 }

@@ -36,6 +36,7 @@ import astrotweaks.AstrotweaksMod;
 import astrotweaks.Multiverse.LevelData;
 import astrotweaks.Multiverse.LevelDimensionType;
 import astrotweaks.Multiverse.LevelManager;
+import astrotweaks.Multiverse.MultiverseDims;
 import astrotweaks.Multiverse.MultiverseUtil;
 
 
@@ -117,6 +118,9 @@ public class TDArkGUI {
             if (!(te instanceof BlockTDArk.TileEntityCustom)) return;
             BlockTDArk.TileEntityCustom teTDArk = (BlockTDArk.TileEntityCustom) te;
 
+            // Compute core position for area broadcasting
+            BlockPos corePos = TDArkTransferHelper.findCore(world, pos);
+
             String uid = message.uidStr == null ? "" : message.uidStr.trim().toLowerCase(Locale.ROOT);
 
             // Parse strings
@@ -159,6 +163,21 @@ public class TDArkGUI {
                     return;
                 }
 
+                // Строка "void" в поле UID -> перенос во вселенную пустоты (DimID -1000000). 
+				// У неё нет подвселенных, поэтому DimID из GUI игнорируется
+                if (uid.equals("void")) {
+                    if (!MultiverseDims.isGlobalDimensionEnabled()) {
+                        TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("tdark.err.bad_hash"));
+                        return;
+                    }
+                    System.out.println("[TDArk] Easter egg 'void': transfer to the Void dimension (-1000000), "
+                            + "targetX=" + targetX + " targetY=" + targetY + " targetZ=" + targetZ);
+                    TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("tdark.delayed_start", BlockTDArk.TileEntityCustom.TRANSFER_DELAY));
+                    teTDArk.startDelayedTransfer(player, pos, MultiverseDims.GLOBAL_DIM, targetX, targetY, targetZ,
+                            message.clearMode, message.captureEntities, message.captureItems);
+                    return;
+                }
+
                 LevelManager lm = LevelManager.getInstance();
                 LevelData target;
 
@@ -176,7 +195,7 @@ public class TDArkGUI {
                     } else {
                         int number = lm.numberForUid(uid);
                         if (number < 0) {
-                            player.sendMessage(new TextComponentTranslation("tdark.err.bad_hash"));
+                            TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("tdark.err.bad_hash"));
                             return;
                         }
                     // Не созданная ранее вселенная с предсказанным UID: создаём (сид только при создании).
@@ -186,7 +205,7 @@ public class TDArkGUI {
                     }
                 }
                 if (target == null) {
-                    player.sendMessage(new TextComponentTranslation("ark.err.target_world"));
+                    TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.target_world"));
                     return;
                 }
 
@@ -199,19 +218,19 @@ public class TDArkGUI {
                     targetWorld = lm.getOrCreateWorld(player.getServer(), target, tt);
                 } else {
                     if (!DimensionManager.isDimensionRegistered(resolvedDim)) {
-                        player.sendMessage(new TextComponentTranslation("ark.err.dim", targetDim));
+                        TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.dim", targetDim));
                         return;
                     }
                     targetWorld = player.getServer().getWorld(resolvedDim);
                 }
                 if (targetWorld == null) {
-                    player.sendMessage(new TextComponentTranslation("ark.err.target_world"));
+                    TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.target_world"));
                     return;
                 }
 
                 // MessageMultiverse with seed is now sent in performTeleport (right before
                 // the actual teleport) so the client seed-stamp fires on the correct WorldClient.
-	            player.sendMessage(new TextComponentTranslation("tdark.delayed_start", BlockTDArk.TileEntityCustom.TRANSFER_DELAY));
+	            TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("tdark.delayed_start", BlockTDArk.TileEntityCustom.TRANSFER_DELAY));
 
                 teTDArk.startDelayedTransfer(player, pos, resolvedDim, targetX, targetY, targetZ, message.clearMode, message.captureEntities, message.captureItems);
             }
@@ -336,7 +355,7 @@ public class TDArkGUI {
 			// Это рисуется относительно GUI по умолчанию
 	        fontRenderer.drawString(I18n.format("tdark.interface"), 40, 0, 0x8020FF);
 	        fontRenderer.drawString("Seed", -8, 12, 0xEEEEEE);
-	        fontRenderer.drawString("Hash", -16,32, 0xEEEEEE);
+	        fontRenderer.drawString("UID",  -16,32, 0xEEEEEE);
 	        fontRenderer.drawString("DimID",-16,52, 0xEEEEEE);
 	        fontRenderer.drawString("X", -16, 72, 0xEEEEEE);
 	        fontRenderer.drawString("Y", -16, 92, 0xEEEEEE);
@@ -345,14 +364,40 @@ public class TDArkGUI {
 
 	    @Override
 	    public void updateScreen() {
-	        super.updateScreen();
-	        fieldSeed.updateCursorCounter();
-	        fieldUid.updateCursorCounter();
-	        fieldDim.updateCursorCounter();
-	        TW_X.updateCursorCounter();
-	        TW_Y.updateCursorCounter();
-	        TW_Z.updateCursorCounter();
-	    }
+        super.updateScreen();
+        fieldSeed.updateCursorCounter();
+        fieldUid.updateCursorCounter();
+        fieldDim.updateCursorCounter();
+        TW_X.updateCursorCounter();
+        TW_Y.updateCursorCounter();
+        TW_Z.updateCursorCounter();
+
+        // Live sync: if the TileEntity was updated over the network, refresh this open
+        // GUI so changes are visible without reopening it.
+        if (world != null && teTDArk != null && teTDArk.consumeGuiDirtyFlag()) {
+            syncFieldsFromTE();
+        }
+    }
+
+    /** Обновляет поля GUI из актуального состояния TileEntity. */
+    private void syncFieldsFromTE() {
+        boolean anyFocused = fieldSeed.isFocused() || fieldUid.isFocused() || fieldDim.isFocused()
+                || TW_X.isFocused() || TW_Y.isFocused() || TW_Z.isFocused();
+        if (!anyFocused) {
+            fieldSeed.setText(String.valueOf(teTDArk.getTargetSeed()));
+            fieldUid.setText(teTDArk.getTargetUid());
+            fieldDim.setText(String.valueOf(teTDArk.getTargetDim()));
+            TW_X.setText(String.valueOf(teTDArk.getTargetX()));
+            TW_Y.setText(String.valueOf(teTDArk.getTargetY()));
+            TW_Z.setText(String.valueOf(teTDArk.getTargetZ()));
+        }
+        clearMode = teTDArk.getClearMode();
+        captureEntities = teTDArk.getCaptureEntities();
+        captureItems = teTDArk.getCaptureItems();
+        if (btnClearMode != null) btnClearMode.displayString = getClearModeText();
+        if (btnCaptureEntities != null) btnCaptureEntities.displayString = getCaptureEntitiesText();
+        if (btnCaptureItems != null) btnCaptureItems.displayString = getCaptureItemsText();
+    }
 	    @Override
 	    protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
 	        super.mouseClicked(mouseX, mouseY, mouseButton);

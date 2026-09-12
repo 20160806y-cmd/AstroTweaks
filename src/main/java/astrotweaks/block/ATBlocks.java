@@ -47,7 +47,6 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 
 
 
-@Mod.EventBusSubscriber(modid = "astrotweaks")
 public class ATBlocks {
     public static final String MOD_ID = "astrotweaks";
 
@@ -219,11 +218,9 @@ BlockUnknownBlock.block,
 
     };
 
-    @SubscribeEvent
     public static void registerBlocks(RegistryEvent.Register<Block> event) {
         event.getRegistry().registerAll(BLOCKS_TO_REGISTER);
     }
-    @SubscribeEvent
     public static void registerItems(RegistryEvent.Register<Item> event) {
         for (Block blk : BLOCKS_TO_REGISTER) {
             if (blk instanceof BlockSlab) {
@@ -968,8 +965,8 @@ BlockUnknownBlock.block,
             setUnlocalizedName("bedrock");
             setSoundType(SoundType.STONE);
             setHarvestLevel("pickaxe", 5);
-            setHardness(100F);
-            setResistance(100F);
+            setHardness(200F);
+            setResistance(200F);
             setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
         }
         @Override public MapColor getMapColor(IBlockState state,IBlockAccess blockAccess,BlockPos pos) { return MapColor.GRAY; }

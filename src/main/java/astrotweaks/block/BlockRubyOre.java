@@ -20,7 +20,6 @@ import net.minecraft.block.Block;
 import java.util.Random;
 
 import astrotweaks.item.ATItems;
-import astrotweaks.creativetab.ATCreativeTabs;
 
 
 
@@ -51,7 +50,7 @@ public class BlockRubyOre {
 			setHarvestLevel("pickaxe", 2);
 			setHardness(5F);
 			setResistance(15F);
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 		}
 		@Override public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) { return MapColor.STONE; }
 		@Override public void getDrops(NonNullList<ItemStack> drops, IBlockAccess world, BlockPos pos, IBlockState state, int fortune) {

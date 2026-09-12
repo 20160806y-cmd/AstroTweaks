@@ -33,18 +33,18 @@ import net.minecraft.item.Item;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 
-import astrotweaks.world.CavernMobModifier;
-import astrotweaks.world.GrassGrowth;
+//import astrotweaks.world.CavernMobModifier;
 import astrotweaks.gui.GUIHandler;
-import astrotweaks.procedure.FoodEffectHandler;
-import astrotweaks.procedure.MineDimEnter;
+//import astrotweaks.procedure.FoodEffectHandler;
+//import astrotweaks.procedure.MineDimEnter;
 import astrotweaks.world.BushDecorator;
-import astrotweaks.gameplay.NoDamageShaking;
+import astrotweaks.world.NaturesPower.GrassGrowth;
+//import astrotweaks.gameplay.NoDamageShaking;
 import astrotweaks.gameplay.RealisticBreak;
-import astrotweaks.gameplay.StepUp;
-import astrotweaks.recipe.CombinedFuelHandler;
+//import astrotweaks.gameplay.StepUp;
+//import astrotweaks.recipe.CombinedFuelHandler;
 import astrotweaks.recipe.RecipeHandler;
-import astrotweaks.creativetab.ATCreativeTabs;
+//import astrotweaks.creativetab.ATCreativeTabs;
 
 
 
@@ -108,6 +108,19 @@ public class AstrotweaksMod {
 		if (ModVariables.Enable_Ground_Elements) astrotweaks.world.DecorateGroundElements.register();
 		astrotweaks.world.BlockWorldGen.register();
 
+		// UPDATE class vars
+		astrotweaks.block.BlockGroundRock1.updVars();
+		astrotweaks.block.BlockGroundRock2.updVars();
+		astrotweaks.block.BlockGroundStick.updVars();
+
+		GrassGrowth.updVars();
+		astrotweaks.tech.qts.BlockQTPSupressor.updVars();
+
+
+
+
+
+
 
 
 		// BUS  events
@@ -124,22 +137,20 @@ public class AstrotweaksMod {
 		}
 
 
-		if (ModVariables.Extra_Fuels) MinecraftForge.EVENT_BUS.register(new CombinedFuelHandler());
-		if (ModVariables.Enable_Depths_Dimension) MinecraftForge.EVENT_BUS.register(new CavernMobModifier());
-		if (ModVariables.Enable_StepUp) MinecraftForge.EVENT_BUS.register(new StepUp());
-		if (ModVariables.Food_Negative_Effects) MinecraftForge.EVENT_BUS.register(new FoodEffectHandler());
+		if (ModVariables.Extra_Fuels) MinecraftForge.EVENT_BUS.register(new astrotweaks.recipe.CombinedFuelHandler());
+		if (ModVariables.Enable_Depths_Dimension) MinecraftForge.EVENT_BUS.register(new astrotweaks.world.CavernMobModifier());
+		if (ModVariables.Enable_StepUp) MinecraftForge.EVENT_BUS.register(new astrotweaks.gameplay.StepUp());
+		if (ModVariables.Food_Negative_Effects) MinecraftForge.EVENT_BUS.register(new astrotweaks.procedure.FoodEffectHandler());
 		if (ModVariables.GG_ENABLED) MinecraftForge.EVENT_BUS.register(new GrassGrowth());
-    	if (ModVariables.Enable_Depths_Dim_Bedrock_TP) MinecraftForge.EVENT_BUS.register(new MineDimEnter());
+    	if (ModVariables.Enable_Depths_Dim_Bedrock_TP) MinecraftForge.EVENT_BUS.register(new astrotweaks.procedure.MineDimEnter());
 		if (ModVariables.No_Potion_Icons) MinecraftForge.EVENT_BUS.register(new astrotweaks.gameplay.NoEffectIcons());
-		if (ModVariables.No_Damage_Shaking) MinecraftForge.EVENT_BUS.register(new NoDamageShaking());
+		//if (ModVariables.No_Damage_Shaking) MinecraftForge.EVENT_BUS.register(new astrotweaks.gameplay.NoDamageShaking());
 		//MinecraftForge.EVENT_BUS.register(new LetMeDisconnect());
 
 
 	}
 
-	//private DepthsDim depthsDim;
-	//private ConfigManager cfg;
-	//private RealisticBreak realBreak;
+
 
 
 	@Mod.EventHandler
@@ -147,7 +158,7 @@ public class AstrotweaksMod {
 		proxy.init(event);
 		astrotweaks.ModVariables.init();
 
-		ATCreativeTabs.init();
+		astrotweaks.creativetab.ATCreativeTabs.init();
 
 		astrotweaks.oredict.UOredictRegistrar.init();
 		astrotweaks.oredict.OreDictQuantsT.init();
@@ -182,9 +193,6 @@ public class AstrotweaksMod {
 
 
 
-
-
-		//GrassGrowth.reloadFromConfig();
 
 
 
@@ -222,6 +230,28 @@ public class AstrotweaksMod {
 	        idx++;
 	    }
 		RecipeHandler.RECIPES_TO_REGISTER.clear(); // удаляем мусор из памяти
+	}
+
+	@SubscribeEvent
+	public void registerBlocks(RegistryEvent.Register<Block> event) {
+		// ЕДИНСТВЕННАЯ точка регистрации блоков. Порядок строго фиксирован,
+		// чтобы registryID не зависели от порядка загрузки классов (одинаковый ID у всех игроков/перезаходов):
+		// 1) основные блоки, 2) технологии, 3) mined-блоки, 4) блок портала мультиверса
+		astrotweaks.block.ATBlocks.registerBlocks(event);
+		astrotweaks.tech.ATTechnologies.registerBlocks(event);
+		astrotweaks.block.MinedBlocks.registerBlocks(event);
+		astrotweaks.Multiverse.NetherPortalReg.registerBlocks(event);
+	}
+
+	@SubscribeEvent
+	public void registerItems(RegistryEvent.Register<Item> event) {
+		// ЕДИНСТВЕННАЯ точка регистрации предметов. Порядок строго фиксирован:
+		// 1) предметы, 2) процессоры, 3) ItemBlock'и основных блоков, 4) ItemBlock'и технологий, 5) mined-предметы
+		astrotweaks.item.ATItems.registerItems(event);
+		astrotweaks.item.ItemProcessors.registerItems(event);
+		astrotweaks.block.ATBlocks.registerItems(event);
+		astrotweaks.tech.ATTechnologies.registerItems(event);
+		astrotweaks.block.MinedBlocks.registerItems(event);
 	}
 
 

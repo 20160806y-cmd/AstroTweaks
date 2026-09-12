@@ -14,17 +14,16 @@ import net.minecraft.item.Item;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.Entity;
 
+
+
 public final class ItemXpBoxU {
 	public static final Item XP_BOX = new ItemXpBoxU.ItemCustom().setRegistryName("astrotweaks", "xp_box").setUnlocalizedName("xp_box");
 	private ItemXpBoxU() {}
 	public static class ItemCustom extends Item {
 		public ItemCustom() {}
 
-		@Override
 		@SideOnly(Side.CLIENT)
-		public boolean hasEffect(ItemStack itemstack) {
-			return true;
-		}
+		@Override public boolean hasEffect(ItemStack itemstack) { return true; }
 		@Override
 		public ActionResult<ItemStack> onItemRightClick(World world, EntityPlayer entity, EnumHand hand) {
 			ItemStack itemstack = entity.getHeldItem(hand);

@@ -3,49 +3,21 @@ package astrotweaks.tech.tdark;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityList;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.nbt.NBTTagDouble;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.DimensionManager;
-import net.minecraft.util.text.Style;
 import net.minecraft.util.text.TextComponentTranslation;
-import net.minecraft.client.resources.I18n;
-import net.minecraft.util.text.TextFormatting;
 import net.minecraft.entity.EntityLivingBase;
 
-import net.minecraft.server.management.PlayerChunkMap;
-import net.minecraft.world.chunk.Chunk;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.network.play.server.SPacketChunkData;
-import net.minecraft.network.play.server.SPacketUnloadChunk;
-
-import net.minecraft.network.play.server.SPacketSpawnObject;
-import net.minecraft.network.play.server.SPacketSpawnMob;
-import net.minecraft.network.play.server.SPacketEntityMetadata;
-import net.minecraft.network.play.server.SPacketEntityTeleport;
-import net.minecraft.network.play.server.SPacketEntityHeadLook;
-import net.minecraft.network.play.server.SPacketEntityEquipment;
-import net.minecraft.network.play.server.SPacketPlayerPosLook;
-import net.minecraft.network.play.server.SPacketEntity;
-import net.minecraft.network.Packet;
-import net.minecraft.network.play.server.SPacketSpawnExperienceOrb;
-import net.minecraft.network.play.server.SPacketSpawnPainting;
-import net.minecraft.network.play.server.SPacketSpawnGlobalEntity;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.item.ItemStack;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.entity.EntityLiving;
 import net.minecraft.world.Teleporter;
 
 import astrotweaks.tech.ATTechnologies;
@@ -55,6 +27,9 @@ import astrotweaks.Multiverse.LevelManager;
 import astrotweaks.Multiverse.LevelData;
 import astrotweaks.Multiverse.LevelDimensionType;
 import astrotweaks.Multiverse.MessageMultiverse;
+import astrotweaks.Multiverse.MultiverseDims;
+import astrotweaks.Multiverse.MultiverseEvents;
+import astrotweaks.Multiverse.MultiverseTeleporter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,6 +38,30 @@ import java.util.List;
 
 
 public class TDArkTransferHelper {
+    // Область переноса TDARK: ±7 X/Z, ±5 Y от ядра (куб 15x11x15)
+    public static final int AREA_RX = 7, AREA_RY = 5, AREA_RZ = 7;
+
+    /**
+     * Отправляет сообщение всем игрокам в области переноса.
+     * Если corePos == null, сообщение отправляется только инициатору.
+     */
+    public static void broadcastToArea(World world, BlockPos corePos, EntityPlayerMP initiator, net.minecraft.util.text.ITextComponent message) {
+        if (world.isRemote) return;
+        if (corePos == null) {
+            initiator.sendMessage(message);
+            return;
+        }
+        AxisAlignedBB area = new AxisAlignedBB(corePos).grow(AREA_RX, AREA_RY, AREA_RZ);
+        boolean initiatorReached = false;
+        for (EntityPlayer p : world.getEntitiesWithinAABB(EntityPlayer.class, area)) {
+            p.sendMessage(message);
+            if (p == initiator) initiatorReached = true;
+        }
+        if (!initiatorReached) {
+            initiator.sendMessage(message);
+        }
+    }
+
     // Helper class for saving blocks
     public static class BlockSave {
         public IBlockState state;
@@ -123,13 +122,13 @@ public class TDArkTransferHelper {
 	        return;
 	    }
 	    if (!DimensionManager.isDimensionRegistered(targetDim)) {
-	        player.sendMessage(new TextComponentTranslation("ark.err.dim", targetDim));
+	        broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.dim", targetDim));
 	        return;
 	    }
 	    
 		// ########## Checking the suppressor in the source world
 		if (SuppressorManager.isPositionBlocked(world, corePos)) {
-		    player.sendMessage(new TextComponentTranslation("qts.no_tp"));
+		    broadcastToArea(world, corePos, player, new TextComponentTranslation("qts.no_tp"));
 		    return;
 		}
 
@@ -139,7 +138,7 @@ public class TDArkTransferHelper {
         int maxY = coreTargetY + 5;
         final int border = 29999990;
         if ((minY < 3 || maxY > 253) || (Math.abs(targetX) > border || Math.abs(targetZ) > border)) {
-            player.sendMessage(new TextComponentTranslation("ark.err.aow"));
+            broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.aow"));
             return;
         }
         // Check X,Z boundaries (standard)
@@ -149,7 +148,12 @@ public class TDArkTransferHelper {
 	    LevelManager lm = LevelManager.getInstance();
 	    LevelData targetLevel = lm.getLevelByDimensionId(targetDim);
 	    WorldServer targetWorld;
-	    if (targetLevel != null) {
+	    if (targetDim == MultiverseDims.GLOBAL_DIM) {
+	        // The global void world (-1000000) lives in MULTIVERSE_GLOBAL, never in a
+	        // save-local DIM-1000000. Load it through LevelManager so vanilla/Forge
+	        // cannot create a phantom WorldServerMulti in the save root.
+	        targetWorld = lm.getOrCreateGlobalWorld(player.getServer());
+	    } else if (targetLevel != null) {
 	        LevelDimensionType type = targetLevel.typeOf(targetDim);
 	        if (type != null) {
 	            targetWorld = lm.getOrCreateWorld(player.getServer(), targetLevel, type);
@@ -160,14 +164,16 @@ public class TDArkTransferHelper {
 	        targetWorld = player.getServer().getWorld(targetDim);
 	    }
 	    if (targetWorld == null) {
-	        player.sendMessage(new TextComponentTranslation("ark.err.target_world"));
+	        broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.target_world"));
 	        return;
 	    }
 
 	    // Send MessageMultiverse right before the teleport so the client's seed-stamp
 	    // fires on the NEW WorldClient (deferred to next tick via addScheduledTask),
 	    // not on the old one 100 ticks early.
-	    if (targetLevel != null) {
+	    if (targetDim == MultiverseDims.GLOBAL_DIM) {
+	        AstrotweaksMod.PACKET_HANDLER.sendTo(MessageMultiverse.forGlobal(), player);
+	    } else if (targetLevel != null) {
 	        AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(targetLevel.baseId, targetLevel.seed), player);
 	    }
 
@@ -191,13 +197,13 @@ public class TDArkTransferHelper {
         // Переносим куб 15x11x15 блоков
 		
 		if (isSuppressorInArea(targetWorld, targetMin, targetMax)) {
-		    player.sendMessage(new TextComponentTranslation("qts.tp_interrupted")); // Целевая область защищена подавителем
+		    broadcastToArea(world, corePos, player, new TextComponentTranslation("qts.tp_interrupted")); // Целевая область защищена подавителем
 		    return;
 		}
 
 		// ########## Checking the suppressor in the target world (after receiving targetWorld and corePosTarget)
 		if (SuppressorManager.isPositionBlocked(targetWorld, corePosTarget)) {
-		    player.sendMessage(new TextComponentTranslation("qts.no_tp_target"));
+		    broadcastToArea(world, corePos, player, new TextComponentTranslation("qts.no_tp_target"));
 		    return;
 		}
 
@@ -206,7 +212,7 @@ public class TDArkTransferHelper {
             IBlockState state = targetWorld.getBlockState(p);
             if (state.getBlockHardness(targetWorld, p) < 0) { // hardness < 0 => unbreakable
             	System.out.println("[TDArk] ERROR: Unbreakable block at " + p);
-                player.sendMessage(new TextComponentTranslation("ark.err.unbreakable_target",  state.getBlock().getLocalizedName()));
+                broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.unbreakable_target",  state.getBlock().getLocalizedName()));
                 return;
             }
         }
@@ -214,7 +220,7 @@ public class TDArkTransferHelper {
 
         // 6.5 Потребляем 1 алмаз из инвентаря машины (слот с наименьшим номером).
         if (!teTDArk.consumeDiamond()) {
-            player.sendMessage(new TextComponentTranslation("tdark.err.item"));
+            broadcastToArea(world, corePos, player, new TextComponentTranslation("tdark.err.item"));
             return;
         }
 
@@ -247,6 +253,10 @@ public class TDArkTransferHelper {
 	        } else {
 	            entitiesToTransfer.add(entity);
 	        }
+	    }
+	    // Ensure the initiator always receives notification messages
+	    if (!playersInArea.contains(player)) {
+	        playersInArea.add(player);
 	    }
 
 		// Loading chunks of the target area (done earlier, before the suppressor checks).
@@ -316,6 +326,17 @@ public class TDArkTransferHelper {
 		            mp.setRotationYawHead(mp.rotationYaw);
 		            mp.prevRotationYawHead = mp.rotationYaw;
 		            mp.setRenderYawOffset(mp.rotationYaw);
+		        } else if (targetDim == MultiverseDims.GLOBAL_DIM) {
+		            // The global void world (-1000000) is managed by LevelManager and lives
+		            // in MULTIVERSE_GLOBAL. Go through the MV teleporter so vanilla/Forge
+		            // cannot spin up a save-local DIM-1000000 phantom WorldServerMulti.
+		            Entity moved = MultiverseEvents.teleportIgnoringPortalRemap(mp, targetDim,
+		                    new MultiverseTeleporter(new BlockPos((int) newX, (int) newY, (int) newZ)));
+		            EntityPlayerMP mm = moved instanceof EntityPlayerMP ? (EntityPlayerMP) moved : mp;
+		            mm.connection.setPlayerLocation(newX, newY, newZ, mm.rotationYaw, mm.rotationPitch);
+		            mm.setRotationYawHead(mm.rotationYaw);
+		            mm.prevRotationYawHead = mm.rotationYaw;
+		            mm.setRenderYawOffset(mm.rotationYaw);
 		        } else {
 		            // Different dimensions - use the standard method
 		            MinecraftServer server = player.getServer();
@@ -354,7 +375,27 @@ public class TDArkTransferHelper {
                 }
 		        success = true;
 		        System.out.println("[TDArk] Repositioned entity in same dim: " + entity);
-		    } else {
+		    } else if (targetDim == MultiverseDims.GLOBAL_DIM) {
+                // Global void world: use the MV teleporter so vanilla/Forge cannot
+                // create a save-local DIM-1000000 phantom WorldServerMulti.
+				Entity newEntity = MultiverseEvents.teleportIgnoringPortalRemap(entity, targetDim,
+				        new MultiverseTeleporter(new BlockPos((int) newX, (int) newY, (int) newZ)));
+				if (newEntity != null && !newEntity.isDead) {
+				    newEntity.setPositionAndUpdate(newX, newY, newZ);
+				    newEntity.motionX = 0.0D;
+				    newEntity.motionY = 0.0D;
+				    newEntity.motionZ = 0.0D;
+				    if (newEntity instanceof EntityLivingBase) {
+				        EntityLivingBase living = (EntityLivingBase) newEntity;
+				        living.setRotationYawHead(living.rotationYaw);
+				        living.prevRotationYawHead = living.rotationYaw;
+				        living.setRenderYawOffset(living.rotationYaw);
+		            }
+		            success = true;
+                } else {
+                    System.out.println("[TDArk] Failed to transfer entity to global dim: " + entity);
+                }
+            } else {
                 // Different dimension: use changeDimension with default teleporter, then adjust pos
                 // Temporarily set pos in entity before transfer (teleporter will override if custom, but we use default)
                 //entity.setPositionAndUpdate(newX, newY, newZ); // Pre-set for safety
@@ -387,8 +428,11 @@ public class TDArkTransferHelper {
             world.setBlockState(p, Blocks.AIR.getDefaultState(), 3);
             world.getChunkFromBlockCoords(p).markDirty();
         }
-        // Notify the player
-        player.sendMessage(new TextComponentTranslation("tdark.success"));
+        // Notify the players in the transfer area
+        TextComponentTranslation successMsg = new TextComponentTranslation("tdark.success");
+        for (EntityPlayer areaPlayer : playersInArea) {
+            areaPlayer.sendMessage(successMsg);
+        }
 
     }
 

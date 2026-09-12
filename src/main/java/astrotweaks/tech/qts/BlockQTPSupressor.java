@@ -29,7 +29,9 @@ import astrotweaks.AstrotweaksMod;
 
 public class BlockQTPSupressor {
 
-	private static final int Max_Range = ModVariables.QTS_Max_Range;
+	private static int Max_Range;
+	public static void updVars() { Max_Range = ModVariables.QTS_Max_Range; }
+	
 
 	public static class BlockCustom extends Block implements net.minecraft.block.ITileEntityProvider {
 		public BlockCustom() {
@@ -53,7 +55,7 @@ public class BlockQTPSupressor {
 		@Override public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer player, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
 			if (!world.isRemote) {
 				TileEntity te = world.getTileEntity(pos);
-				if (te instanceof TileEntityCustom) {
+				//if (te instanceof TileEntityCustom) {
 					TileEntityCustom sup = (TileEntityCustom) te;
 					int currentRange = sup.getRange();
 					int lmod = calc_lmod(currentRange);
@@ -63,25 +65,25 @@ public class BlockQTPSupressor {
 
 					sup.setRange(newRange);
 					if (player instanceof EntityPlayerMP) {
-						((EntityPlayerMP) player).sendMessage(new TextComponentTranslation("qts.change_range", newRange));
+						player.sendStatusMessage(new TextComponentTranslation("qts.change_range", newRange), true);
 					}
-				}
+				//}
 			}
 			return true;
 		}
 		@Override public void onBlockClicked(World world, BlockPos pos, EntityPlayer player) {
 			if (!world.isRemote) {
 				TileEntity te = world.getTileEntity(pos);
-				if (te instanceof TileEntityCustom) {
+				//if (te instanceof TileEntityCustom) {
 					TileEntityCustom sup = (TileEntityCustom) te;
 					int currentRange = sup.getRange();
 					int lmod = calc_lmod(currentRange);
 					int newRange = currentRange - lmod;
 					sup.setRange(newRange);
 					if (player instanceof EntityPlayerMP) {
-						((EntityPlayerMP) player).sendMessage(new TextComponentTranslation("qts.change_range", newRange));
+						player.sendStatusMessage(new TextComponentTranslation("qts.change_range", newRange), true);
 					}
-				}
+				//}
 			}
 			super.onBlockClicked(world, pos, player);
 		}

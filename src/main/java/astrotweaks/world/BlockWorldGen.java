@@ -4,9 +4,6 @@ import net.minecraft.world.gen.IChunkGenerator;
 import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.common.IWorldGenerator;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.registry.GameRegistry;
 
 import java.util.Random;
@@ -17,6 +14,8 @@ import astrotweaks.block.BlockQuartzOreStone;
 import astrotweaks.block.BlockRubyOre;
 
 import astrotweaks.ModVariables;
+
+
 
 public class BlockWorldGen {
 

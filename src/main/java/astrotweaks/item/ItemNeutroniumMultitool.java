@@ -12,11 +12,11 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
-import astrotweaks.creativetab.ATCreativeTabs;
+
 
 public final class ItemNeutroniumMultitool {
     public static final Item MULTITOOL = new ItemToolCustom() {
-    }.setRegistryName("astrotweaks", "neutronium_multitool").setUnlocalizedName("neutronium_multitool").setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+    }.setRegistryName("astrotweaks", "neutronium_multitool").setUnlocalizedName("neutronium_multitool").setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 
     private ItemNeutroniumMultitool() {}
     private static class ItemToolCustom extends Item {
@@ -29,8 +29,7 @@ public final class ItemNeutroniumMultitool {
         public Multimap<String, AttributeModifier> getItemAttributeModifiers(EntityEquipmentSlot equipmentSlot) {
             Multimap<String, AttributeModifier> multimap = super.getItemAttributeModifiers(equipmentSlot);
             if (equipmentSlot == EntityEquipmentSlot.MAINHAND) {
-                multimap.put(SharedMonsterAttributes.ATTACK_DAMAGE.getName(),
-                        new AttributeModifier(ATTACK_DAMAGE_MODIFIER, "Tool modifier", 199f, 0));
+                multimap.put(SharedMonsterAttributes.ATTACK_DAMAGE.getName(),new AttributeModifier(ATTACK_DAMAGE_MODIFIER, "Tool modifier", 199f, 0));
                 multimap.put(SharedMonsterAttributes.ATTACK_SPEED.getName(), new AttributeModifier(ATTACK_SPEED_MODIFIER, "Tool modifier", -2.7, 0));
             }
             return multimap;

@@ -20,7 +20,6 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 
 import astrotweaks.creativetab.ATCreativeTabs;
 
-@Mod.EventBusSubscriber(modid = "astrotweaks")
 public final class ATItems {
 
     public static final String MOD_ID = "astrotweaks";
@@ -375,21 +374,23 @@ ItemVoidAntimatter.VOID_ANTIMATTER,
 
     };
 
-    @SubscribeEvent
     public static void registerItems(RegistryEvent.Register<Item> event) {
         event.getRegistry().registerAll(
             ItemsToRegister
         );
     }
 
-    @SideOnly(Side.CLIENT)
-    @SubscribeEvent
-    public static void registerModels(ModelRegistryEvent event) {
-        for (Item item : ItemsToRegister) { registerModel(item); }
-    }
-    @SideOnly(Side.CLIENT)
-    private static void registerModel(Item item) {
-        ModelLoader.setCustomModelResourceLocation( item, 0, new ModelResourceLocation(item.getRegistryName(), "inventory") );
+    @Mod.EventBusSubscriber(modid = MOD_ID, value = Side.CLIENT)
+    public static class ClientHandler {
+        @SideOnly(Side.CLIENT)
+        @SubscribeEvent
+        public static void registerModels(ModelRegistryEvent event) {
+            for (Item item : ItemsToRegister) { registerModel(item); }
+        }
+        @SideOnly(Side.CLIENT)
+        private static void registerModel(Item item) {
+            ModelLoader.setCustomModelResourceLocation(item, 0, new ModelResourceLocation(item.getRegistryName(), "inventory"));
+        }
     }
 
     private static Item createItem(String registryName, String unlocalizedName, CreativeTabs creativeTab, int maxStackSize, TooltipConsumer tooltipConsumer) {

@@ -4,7 +4,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
-import astrotweaks.creativetab.ATCreativeTabs;
 
 
 
@@ -15,7 +14,7 @@ public final class ItemAlphaQuant {
             super.onUpdate(itemstack, world, entity, slot, par5);
             astrotweaks.procedure.P_SQInvTick.exect(entity, itemstack);
         }
-    }.setCreativeTab(ATCreativeTabs.AT_INTEGRATION_CT).setRegistryName("astrotweaks", "alpha_quant").setUnlocalizedName("alpha_quant");
+    }.setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.AT_INTEGRATION_CT).setRegistryName("astrotweaks", "alpha_quant").setUnlocalizedName("alpha_quant");
 
     private ItemAlphaQuant() {}
 }

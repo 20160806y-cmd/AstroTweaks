@@ -18,8 +18,6 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.Entity;
 import net.minecraft.world.World;
 
-import astrotweaks.creativetab.ATCreativeTabs;
-
 
 
 public class BlockMine {
@@ -33,7 +31,7 @@ public class BlockMine {
 			setHardness(1F);
 			setResistance(5F);
 			setLightOpacity(0);
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 		}
 
 		@SideOnly(Side.CLIENT)

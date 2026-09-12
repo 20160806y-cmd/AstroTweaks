@@ -14,8 +14,6 @@ import net.minecraft.block.SoundType;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 
-import astrotweaks.creativetab.ATCreativeTabs;
-
 
 
 public class BlockUDestroyerBlock {
@@ -28,7 +26,7 @@ public class BlockUDestroyerBlock {
 			setSoundType(SoundType.METAL);
 			setHardness(1000F);
 			setResistance(1000F);
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 			setBlockUnbreakable();
 		}
 		@Override public net.minecraft.block.material.EnumPushReaction getMobilityFlag(IBlockState state) {

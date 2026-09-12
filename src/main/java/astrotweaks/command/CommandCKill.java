@@ -27,7 +27,7 @@ public class CommandCKill extends CommandBase {
 
         // Сбрасываем точку спавна (аналогично тому, как её сбрасывает кровать → world spawn)
         // setSpawnChunk(pos, forced, dimension) — при pos = null точка возрождения сбрасывается на спавн мира.
-        player.setSpawnChunk(null, false, player.dimension);
+        player.setSpawnChunk(null, false, 0);
         // Убиваем игрока (то же, что делает ванильный /kill без аргументов)
         player.onKillCommand();
     }

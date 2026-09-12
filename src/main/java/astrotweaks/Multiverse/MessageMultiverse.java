@@ -56,7 +56,10 @@ public class MessageMultiverse implements IMessage {
         public IMessage onMessage(MessageMultiverse message, MessageContext ctx) {
             if (ctx.side == Side.CLIENT) {
                 if (message.global) {
-                    MultiverseDims.registerGlobalDimension();
+                    // Server is authoritative: it only sends this when the player is
+                    // entering the void. Client registration is needed for rendering and
+                    // has no save side effects, so the local Enable_uVOID flag is bypassed.
+                    MultiverseDims.registerGlobalDimensionForClient();
                 } else {
                     MultiverseDims.registerLevelDimensions(message.baseDimId);
                 }

@@ -115,8 +115,12 @@ public class MultiverseWorldProviders {
     }
 
 
-    // Нужно сделать управление параметром ModVariables.Enable_uVOID
-    /** The shared global dimension -1000000: a void world over all saves. */
+    /**
+     * The shared global dimension -1000000: a void world over all saves.
+     * Registered only when {@code ModVariables.Enable_uVOID} is on — the gate lives
+     * in {@link MultiverseDims#registerGlobalDimension()}, and LevelManager/commands
+     * never touch its world/folder while the config flag is off.
+     */
     public static class MultiverseGlobal extends WorldProvider {
         @Override
         protected void init() {

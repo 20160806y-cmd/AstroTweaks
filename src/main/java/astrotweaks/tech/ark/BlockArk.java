@@ -19,17 +19,13 @@ import net.minecraft.block.material.EnumPushReaction;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.ITileEntityProvider;
 import net.minecraft.block.Block;
-import net.minecraft.util.text.Style;
 import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.world.WorldServer;
-import net.minecraft.util.ITickable;
 import net.minecraftforge.common.DimensionManager;
-import net.minecraft.util.text.TextFormatting;
 
-import astrotweaks.creativetab.ATCreativeTabs;
 import astrotweaks.AstrotweaksMod;
 
-import astrotweaks.tech.qts.SuppressorManager;
+
 
 public class BlockArk {
 	public static class BlockCustom extends Block implements ITileEntityProvider {
@@ -41,7 +37,7 @@ public class BlockArk {
 			setHardness(100F);
 			setResistance(100F);
 			setLightLevel(0.333333333333F);
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 		}
 		@Override public EnumPushReaction getMobilityFlag(IBlockState state) { return EnumPushReaction.BLOCK; }
 		@Override public MapColor getMapColor(IBlockState state,IBlockAccess blockAccess,BlockPos pos) { return MapColor.BLACK; }
@@ -66,7 +62,7 @@ public class BlockArk {
 		}
 	}
 
-	public static class TileEntityCustom extends TileEntity implements ITickable {
+	public static class TileEntityCustom extends TileEntity implements net.minecraft.util.ITickable {
 		// BlockArk
 	    private int targetDim = 0;
 	    private int targetX = 0;
@@ -83,6 +79,15 @@ public class BlockArk {
 	    private boolean pendingClearMode, pendingCaptureEntities, pendingCaptureItems;
 	    private BlockPos terminalPos; // BlockArk pos
 	    private EntityPlayerMP triggeringPlayer;
+
+	    /** Становится true при сетевом обновлении TE, чтобы открытое GUI могло обновиться. */
+	    private volatile boolean clientGuiDirty = false;
+
+		public boolean consumeGuiDirtyFlag() {
+		    boolean dirty = this.clientGuiDirty;
+		    this.clientGuiDirty = false;
+		    return dirty;
+		}
 
 		private final int border = 29999996;
 		private final int max_delay = 1728000;
@@ -165,16 +170,16 @@ public class BlockArk {
 	    public void startDelayedTransfer(EntityPlayerMP player,BlockPos termPos,int dim,int x,int y,int z,boolean clearMode,boolean captureEntities,boolean captureItems,int delay) {
 		    BlockPos corePos = ArkTransferHelper.findCore(world, termPos);
 		    if (corePos == null) {
-		        player.sendMessage(new TextComponentTranslation("ark.err.structure").setStyle(new Style().setColor(TextFormatting.RED)));
+		        player.sendMessage(new TextComponentTranslation("ark.err.structure"));
 		        return;
 		    }
 		    if (!DimensionManager.isDimensionRegistered(dim)) {
-		        player.sendMessage(new TextComponentTranslation("ark.err.dim", dim).setStyle(new Style().setColor(TextFormatting.RED)));
+		        ArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.dim", dim));
 		        return;
 		    }
 		    WorldServer targetWorld = player.getServer().getWorld(dim);
 		    if (targetWorld == null) {
-		        player.sendMessage(new TextComponentTranslation("ark.err.target_world").setStyle(new Style().setColor(TextFormatting.RED)));
+		        ArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.target_world"));
 		        return;
 		    }
 
@@ -281,6 +286,7 @@ public class BlockArk {
 		@Override
 		public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity pkt) {
 		    this.readFromNBT(pkt.getNbtCompound());
+		    this.clientGuiDirty = true;
 		    if (world != null) {
 		        IBlockState state = world.getBlockState(pos);
 		        world.notifyBlockUpdate(pos, state, state, 3);
@@ -290,6 +296,7 @@ public class BlockArk {
 		public void handleUpdateTag(NBTTagCompound tag) {
 		    super.handleUpdateTag(tag);
 		    this.readFromNBT(tag);
+		    this.clientGuiDirty = true;
 		}
 	    @Override
 	    public void update() {

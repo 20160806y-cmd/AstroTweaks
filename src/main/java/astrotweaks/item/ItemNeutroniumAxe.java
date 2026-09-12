@@ -11,11 +11,11 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemTool;
 import net.minecraftforge.common.util.EnumHelper;
 
-import astrotweaks.creativetab.ATCreativeTabs;
+
 
 public final class ItemNeutroniumAxe {
     public static final Item AXE = new ItemToolCustom() {
-    }.setRegistryName("astrotweaks", "neutronium_axe").setUnlocalizedName("neutronium_axe").setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+    }.setRegistryName("astrotweaks", "neutronium_axe").setUnlocalizedName("neutronium_axe").setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 
     private ItemNeutroniumAxe() {}
     private static class ItemToolCustom extends ItemTool {

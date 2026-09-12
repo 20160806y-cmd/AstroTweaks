@@ -12,11 +12,11 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
-import astrotweaks.creativetab.ATCreativeTabs;
+
 
 public final class ItemCrystalMultitool {
     public static final Item MULTITOOL = new ItemToolCustom() {
-    }.setRegistryName("astrotweaks", "crystal_multitool").setUnlocalizedName("crystal_multitool").setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+    }.setRegistryName("astrotweaks", "crystal_multitool").setUnlocalizedName("crystal_multitool").setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 
     private ItemCrystalMultitool() {}
     private static class ItemToolCustom extends Item {

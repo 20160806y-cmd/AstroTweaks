@@ -3,49 +3,21 @@ package astrotweaks.tech.ark;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityList;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.nbt.NBTTagDouble;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.DimensionManager;
-import net.minecraft.util.text.Style;
 import net.minecraft.util.text.TextComponentTranslation;
-import net.minecraft.client.resources.I18n;
-import net.minecraft.util.text.TextFormatting;
 import net.minecraft.entity.EntityLivingBase;
 
-import net.minecraft.server.management.PlayerChunkMap;
-import net.minecraft.world.chunk.Chunk;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.network.play.server.SPacketChunkData;
-import net.minecraft.network.play.server.SPacketUnloadChunk;
-
-import net.minecraft.network.play.server.SPacketSpawnObject;
-import net.minecraft.network.play.server.SPacketSpawnMob;
-import net.minecraft.network.play.server.SPacketEntityMetadata;
-import net.minecraft.network.play.server.SPacketEntityTeleport;
-import net.minecraft.network.play.server.SPacketEntityHeadLook;
-import net.minecraft.network.play.server.SPacketEntityEquipment;
-import net.minecraft.network.play.server.SPacketPlayerPosLook;
-import net.minecraft.network.play.server.SPacketEntity;
-import net.minecraft.network.Packet;
-import net.minecraft.network.play.server.SPacketSpawnExperienceOrb;
-import net.minecraft.network.play.server.SPacketSpawnPainting;
-import net.minecraft.network.play.server.SPacketSpawnGlobalEntity;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.item.ItemStack;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.entity.EntityLiving;
 import net.minecraft.world.Teleporter;
 
 import astrotweaks.tech.ATTechnologies;
@@ -59,6 +31,30 @@ import java.util.List;
 
 
 public class ArkTransferHelper {
+    // Область переноса ARK: ±3 X/Z, ±2 Y от ядра
+    public static final int AREA_RX = 3, AREA_RY = 2, AREA_RZ = 3;
+
+    /**
+     * Отправляет сообщение всем игрокам в области переноса.
+     * Если corePos == null, сообщение отправляется только инициатору.
+     */
+    public static void broadcastToArea(World world, BlockPos corePos, EntityPlayerMP initiator, net.minecraft.util.text.ITextComponent message) {
+        if (world.isRemote) return;
+        if (corePos == null) {
+            initiator.sendMessage(message);
+            return;
+        }
+        AxisAlignedBB area = new AxisAlignedBB(corePos).grow(AREA_RX, AREA_RY, AREA_RZ);
+        boolean initiatorReached = false;
+        for (EntityPlayer p : world.getEntitiesWithinAABB(EntityPlayer.class, area)) {
+            p.sendMessage(message);
+            if (p == initiator) initiatorReached = true;
+        }
+        if (!initiatorReached) {
+            initiator.sendMessage(message);
+        }
+    }
+
     // Helper class for saving blocks
     public static class BlockSave {
         public IBlockState state;
@@ -119,13 +115,13 @@ public class ArkTransferHelper {
 	        return;
 	    }
 	    if (!DimensionManager.isDimensionRegistered(targetDim)) {
-	        player.sendMessage(new TextComponentTranslation("ark.err.dim", targetDim));
+	        broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.dim", targetDim));
 	        return;
 	    }
 	    
 		// ########## Checking the suppressor in the source world
 		if (SuppressorManager.isPositionBlocked(world, corePos)) {
-		    player.sendMessage(new TextComponentTranslation("qts.no_tp"));
+		    broadcastToArea(world, corePos, player, new TextComponentTranslation("qts.no_tp"));
 		    return;
 		}
 
@@ -135,7 +131,7 @@ public class ArkTransferHelper {
         int maxY = coreTargetY + 2;
         final int border = 29999996;
         if ((minY < 3 || maxY > 253) || (Math.abs(targetX) > border || Math.abs(targetZ) > border)) {
-            player.sendMessage(new TextComponentTranslation("ark.err.aow"));
+            broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.aow"));
             return;
         }
         // Check X,Z boundaries (standard)
@@ -143,14 +139,14 @@ public class ArkTransferHelper {
         // 4. Get target world
 	    WorldServer targetWorld = player.getServer().getWorld(targetDim);
 	    if (targetWorld == null) {
-	        player.sendMessage(new TextComponentTranslation("ark.err.target_world"));
+	        broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.target_world"));
 	        return;
 	    }
 
 	    // Выйти за пределы своей вселенной можно только случайно; защищаемся повторно
 	    // (idempotent: относительные ID уже разрешены на этапе GUI).
 	    if (!MultiverseUtil.isSameUniverse(world.provider.getDimension(), targetDim)) {
-	        player.sendMessage(new TextComponentTranslation("ark.err.cross_universe"));
+	        broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.cross_universe"));
 	        return;
 	    }
 
@@ -175,14 +171,14 @@ public class ArkTransferHelper {
 	    BlockPos targetMax = corePosTarget.add(3, 2, 3);
 		
 		if (isSuppressorInArea(targetWorld, targetMin, targetMax)) {
-		    player.sendMessage(new TextComponentTranslation("qts.tp_interrupted")); // Целевая область защищена подавителем
+		    broadcastToArea(world, corePos, player, new TextComponentTranslation("qts.tp_interrupted")); // Целевая область защищена подавителем
 		    return;
 		}
 
 		// ########## Checking the suppressor in the target world (after receiving targetWorld and corePosTarget)
 		//targetWorld.getChunk(corePosTarget);
 		if (SuppressorManager.isPositionBlocked(targetWorld, corePosTarget)) {
-		    player.sendMessage(new TextComponentTranslation("qts.no_tp_target"));
+		    broadcastToArea(world, corePos, player, new TextComponentTranslation("qts.no_tp_target"));
 		    return;
 		}
 
@@ -191,7 +187,7 @@ public class ArkTransferHelper {
             IBlockState state = targetWorld.getBlockState(p);
             if (state.getBlockHardness(targetWorld, p) < 0) { // hardness < 0 => unbreakable
             	System.out.println("[Ark] ERROR: Unbreakable block at " + p);
-                player.sendMessage(new TextComponentTranslation("ark.err.unbreakable_target",  state.getBlock().getLocalizedName()));
+                broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.unbreakable_target",  state.getBlock().getLocalizedName()));
                 return;
             }
         }
@@ -227,6 +223,10 @@ public class ArkTransferHelper {
 	        } else {
 	            entitiesToTransfer.add(entity);
 	        }
+	    }
+	    // Ensure the initiator always receives notification messages
+	    if (!playersInArea.contains(player)) {
+	        playersInArea.add(player);
 	    }
 
 		// Loading chunks of the target area (performed before the suppressor checks,
@@ -384,8 +384,11 @@ public class ArkTransferHelper {
             //world.markBlockRangeForRenderUpdate(sourceMin, sourceMax);
         }
 
-        // Notify the player
-        player.sendMessage(new TextComponentTranslation("ark.success"));
+        // Notify the players in the transfer area
+        TextComponentTranslation successMsg = new TextComponentTranslation("ark.success");
+        for (EntityPlayer areaPlayer : playersInArea) {
+            areaPlayer.sendMessage(successMsg);
+        }
 
     }
 

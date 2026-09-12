@@ -1,4 +1,4 @@
-package astrotweaks.world;
+package astrotweaks.world.NaturesPower;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockDirt;
@@ -35,23 +35,41 @@ import astrotweaks.ModVariables;
 
 
 public class GrassGrowth {
-	private static int GRASS_DENSITY = ModVariables.GG_Density; // def 18
-	private static int TALL_GRASS_DENSITY = ModVariables.GG_Tall_Density; // def 9
-	private static int GIANT_GRASS_DENSITY = ModVariables.GG_Giant_Density; // def 4
-    private static int MIN_DELAY_TICKS = ModVariables.GG_MIN_DELAY_TICK;
-    private static int MAX_DELAY_TICKS = ModVariables.GG_MAX_DELAY_TICK;
-    //private static final BitSet BIOME_BLACKLIST = ModVariables.GGBlacklist;
-    private static int MAX_OPER_PER_TICK = ModVariables.GG_MAX_OPER_PER_TICK;
-    private static boolean GG_ON = ModVariables.GG_ENABLED;
+	private static int GRASS_DENSITY; // def 18
+	private static int TALL_GRASS_DENSITY; // def 9
+	private static int GIANT_GRASS_DENSITY; // def 4
+    private static int MIN_DELAY_TICKS;
+    private static int MAX_DELAY_TICKS;
+    private static int MAX_OPER_PER_TICK;
+    private static boolean GG_ON;
 
 	// Порог перехода на след. уровень высоты
-	private static final int GRASS_THRESHOLD = GRASS_DENSITY - 1;
-	private static final int TALL_GRASS_THRESHOLD = TALL_GRASS_DENSITY - 1;
-	//private static final int GIANT_GRASS_THRESHOLD = GIANT_GRASS_DENSITY - 1;
+	private static int GRASS_THRESHOLD;
+	private static int TALL_GRASS_THRESHOLD;
+	//private static int GIANT_GRASS_THRESHOLD;
 
-    //private static BitSet BIOME_BLACKLIST;
+
+	public static void updVars() {
+
+		GRASS_DENSITY = ModVariables.GG_Density; // def 18
+		TALL_GRASS_DENSITY = ModVariables.GG_Tall_Density; // def 9
+		GIANT_GRASS_DENSITY = ModVariables.GG_Giant_Density; // def 4
+		MIN_DELAY_TICKS = ModVariables.GG_MIN_DELAY_TICK;
+		MAX_DELAY_TICKS = ModVariables.GG_MAX_DELAY_TICK;
+		MAX_OPER_PER_TICK = ModVariables.GG_MAX_OPER_PER_TICK;
+		GG_ON = ModVariables.GG_ENABLED;
+
+		// Порог перехода на след. уровень высоты
+		GRASS_THRESHOLD = GRASS_DENSITY - 1;
+		TALL_GRASS_THRESHOLD = TALL_GRASS_DENSITY - 1;
+		//GIANT_GRASS_THRESHOLD = GIANT_GRASS_DENSITY - 1;
+
+
+	}
 
 	
+
+
 
 
 
@@ -107,14 +125,6 @@ public class GrassGrowth {
 	private static Map<Long, Long> getScheduledMap(int dim) {
 	    return scheduledTimes.computeIfAbsent(dim, k -> new ConcurrentHashMap<>());
 	}
-	/*
-	private static void addToQueue(int dim, ScheduledChunk chunk) {
-		if (chunk == null) return;
-		synchronized (STATE_LOCK) {
-			getQueue(dim).add(chunk);
-		}
-	}
-	*/
 	private static boolean isTurfBlock(IBlockState state) {
 		if (state.getBlock() == Blocks.GRASS) {
 			return true;
@@ -131,12 +141,12 @@ public class GrassGrowth {
 		return state.getMaterial() == Material.LEAVES;
 	}
 
+	private static IBlockState above_state;
+	private static IBlockState state;
 	private static BlockPos findGrassSurface(World world, int x, int z) {
 		int chunkX = x >> 4;
 		int chunkZ = z >> 4;
-
 		Chunk chunk = world.getChunkFromChunkCoords(chunkX, chunkZ);
-
 		int localX = x & 15;
 		int localZ = z & 15;
 
@@ -155,7 +165,7 @@ public class GrassGrowth {
 		*/
 		while (y >= 1) {
 			pos.setY(y);
-			IBlockState state = world.getBlockState(pos);
+			state = world.getBlockState(pos);
 
 			if (isTurfBlock(state)) {
 				BlockPos candidate = pos.toImmutable();
@@ -164,7 +174,8 @@ public class GrassGrowth {
 				* Для открытой поверхности там должен быть SkyLight 15.
 				*/
 				BlockPos above = candidate.up();
-				if (isReplaceableGrassAbove(world.getBlockState(above)) && world.getLightFor(EnumSkyBlock.SKY, above) == 15) {
+				above_state = world.getBlockState(above);
+				if (isReplaceableGrassAbove(above_state) && world.getLightFor(EnumSkyBlock.SKY, above) > 0 && !( above_state.getMaterial().isLiquid() )) {
 					return candidate;
 				}
 				return null;
@@ -331,7 +342,7 @@ public class GrassGrowth {
 	    int baseX = chunk.x * 16;
 	    int baseZ = chunk.z * 16;
 	    ThreadLocalRandom rnd = ThreadLocalRandom.current();
-		
+
 
 	    int x = baseX + rnd.nextInt(16);
 	    int z = baseZ + rnd.nextInt(16);
@@ -348,7 +359,7 @@ public class GrassGrowth {
 	    //Biome biome = world.getBiome(mpos);
 	    //if (isBiomeInBlacklist(biome)) return;
 
-	    IBlockState state;
+	    //IBlockState state;
 		Block block;
 
 		BlockPos grassPos = findGrassSurface(world, x, z);

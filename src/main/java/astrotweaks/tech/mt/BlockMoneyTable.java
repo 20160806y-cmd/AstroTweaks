@@ -32,9 +32,10 @@ import net.minecraft.block.SoundType;
 import net.minecraft.block.ITileEntityProvider;
 import net.minecraft.block.BlockHorizontal;
 import net.minecraft.block.Block;
-import astrotweaks.creativetab.ATCreativeTabs;
 
 import astrotweaks.AstrotweaksMod;
+
+
 
 public class BlockMoneyTable {
 	public static class BlockCustom extends Block implements ITileEntityProvider {
@@ -46,7 +47,7 @@ public class BlockMoneyTable {
 			setHarvestLevel("pickaxe", 1);
 			setHardness(5F);
 			setResistance(15F);
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 			this.setDefaultState(this.blockState.getBaseState().withProperty(FACING, EnumFacing.NORTH));
 		}
 		@Override

@@ -18,7 +18,7 @@ import java.util.List;
 
 import com.google.common.collect.Multimap;
 
-import astrotweaks.creativetab.ATCreativeTabs;
+
 
 public final class ItemSilkeBadge {
 	public static final Item SILKE_BADGE = new ItemSilkeBadge.ItemCustom().setRegistryName("astrotweaks", "silke_badge").setUnlocalizedName("silke_badge");
@@ -26,7 +26,7 @@ public final class ItemSilkeBadge {
 	public static class ItemCustom extends Item {
 		public ItemCustom() {
 			maxStackSize = 1;
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 			setContainerItem(this);
 		}
 

@@ -4,17 +4,17 @@ package astrotweaks.block;
 import net.minecraft.world.World;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.EnumHand;
+import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.boss.EntityDragon;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.material.MapColor;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.Block;
 import net.minecraft.util.math.AxisAlignedBB;
-
-import astrotweaks.creativetab.ATCreativeTabs;
 
 import java.util.List;
 
@@ -29,7 +29,7 @@ public class BlockUKillerBlock {
 			setSoundType(SoundType.METAL);
 			setHardness(1000F);
 			setResistance(1000F);
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 			setBlockUnbreakable();
 		}
 		@Override
@@ -56,14 +56,19 @@ public class BlockUKillerBlock {
 
 			List<Entity> entities = world.getEntitiesWithinAABB(Entity.class, box, e -> !(e instanceof EntityPlayer));
 			for (Entity e : entities) {
-				if (!e.isDead) {
-					try {
-						e.setDead();
-					} catch (NoSuchMethodError ex) { /* ignore */ }
+				if (e.isDead) continue;
+				
+				if (e instanceof EntityDragon) {
+					killDragon((EntityDragon) e);   // настоящая смерть + портал + яйцо + снятие боссбара
+				} else {
+					e.setDead();                    // как было: мгновенно, без дропа, без анимации
 				}
-			}
+					}
 			// remove the block itself
 			world.setBlockToAir(pos);
 		}
+	}
+	private static void killDragon(EntityDragon dragon) {
+		dragon.onKillCommand();
 	}
 }

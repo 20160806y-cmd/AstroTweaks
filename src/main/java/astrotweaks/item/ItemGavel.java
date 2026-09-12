@@ -19,8 +19,8 @@ import net.minecraft.block.state.IBlockState;
 import java.util.List;
 
 import com.google.common.collect.Multimap;
-import astrotweaks.creativetab.ATCreativeTabs;
-import astrotweaks.procedure.P_GavelRightClickedOnBlock;
+
+
 
 public final class ItemGavel {
 	public static final Item GAVEL = new ItemGavel.ItemCustom().setRegistryName("astrotweaks", "gavel").setUnlocalizedName("gavel");
@@ -29,7 +29,7 @@ public final class ItemGavel {
 		public ItemCustom() {
 			setMaxDamage(100);
 			maxStackSize = 1;
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 			setContainerItem(this);
 		}
 		@Override

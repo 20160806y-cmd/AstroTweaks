@@ -95,7 +95,6 @@ public final class Dirt2Path {
     }
     protected static boolean isDirtLike(IBlockState state) {
         Block b = state.getBlock();
-
 		if (b == Blocks.DIRT || b == Blocks.MYCELIUM || b == Blocks.FARMLAND) return true;
 
         return false;

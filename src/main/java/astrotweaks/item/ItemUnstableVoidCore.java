@@ -9,14 +9,14 @@ import net.minecraft.block.state.IBlockState;
 
 import com.google.common.collect.Multimap;
 
-import astrotweaks.creativetab.ATCreativeTabs;
+
 
 public final class ItemUnstableVoidCore {
 	public static final Item UNSTABLE_VOID_CORE = new ItemUnstableVoidCore.ItemCustom().setRegistryName("astrotweaks", "unstable_void_core").setUnlocalizedName("unstable_void_core");
 	private ItemUnstableVoidCore() {}
 	public static class ItemCustom extends Item {
 		public ItemCustom() {
-			setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 		}
 
 		@Override

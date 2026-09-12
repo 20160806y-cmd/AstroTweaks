@@ -41,12 +41,12 @@ import astrotweaks.ModVariables;
 public class BlockGroundStick {
 	public static final Block block = new BlockCustom().setRegistryName("astrotweaks", "ground_stick");
 
-	private static final Set<Biome> sgb = ModVariables.Rock_Gen_Biomes_Cached;
+	public static void updVars() { sgb = ModVariables.Stick_Gen_Biomes_Cached; sga = ModVariables.Stick_Gen_Attempts; }
+	private static Set<Biome> sgb;
 	private static double sga;
 
 	public static void generateWorld(Random random, int chunkX, int chunkZ, World world, int dimID, IChunkGenerator cg, IChunkProvider cp) {
 	    if (world.provider.getDimensionType() != DimensionType.OVERWORLD) return;
-			sga = ModVariables.Stick_Gen_Attempts;
 		    astrotweaks.world.SurfaceWorldGenerator.generateSurface(random, chunkX, chunkZ, world, block, sgb /*Biomes*/, sga /*attempts*/, ModVariables.Stick_Gen_Min_Y /*min Y*/, ModVariables.Stick_Gen_Max_Y /*max Y*/);
 	}
 	public static class BlockCustom extends Block {

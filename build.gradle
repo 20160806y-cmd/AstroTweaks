@@ -2,15 +2,19 @@ buildscript {
     repositories {
         maven { url = 'https://maven.minecraftforge.net' }
         mavenCentral()
-        //maven { url "https://maven.cleanroommc.com" }
+        //maven { url = 'https://maven.cleanroommc.com' }
+        //maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
     }
     dependencies {
         classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.53', changing: true
+        //classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
     }
 }
 
 apply plugin: 'net.minecraftforge.gradle'
-apply plugin: 'eclipse'
+//apply plugin: 'org.spongepowered.mixin'
+
+//apply plugin: 'eclipse'
 
 
 version = mod_version
@@ -18,6 +22,13 @@ group = project.findProperty('group') ?: 'astrotweaks'
 archivesBaseName = '[1.12.2] AstroTweaks'
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(8)
+
+/*
+mixin {
+    add sourceSets.main, 'astrotweaks.refmap.json'
+    config 'mixins.astrotweaks.json'
+}
+*/
 
 minecraft {
     mappings channel: 'snapshot', version: '20171003-1.12'
@@ -50,14 +61,22 @@ minecraft {
 
 repositories {
     mavenCentral()
-    maven { url 'https://maven.blamejared.com/' }
-    maven { url 'https://oss.sonatype.org/content/groups/public/' }
+    maven { url 'https://maven.blamejared.com/' } // JEI
+    //maven {
+    //    url 'https://maven.cleanroommc.com'
+    //}
 }
 
 dependencies {
     minecraft 'net.minecraftforge:forge:1.12.2-14.23.5.2860'
 
     compileOnly "mezz.jei:jei_1.12.2:4.16.1.302"
+
+    //def mixin = 'zone.rong:mixinbooter:11.0'
+
+    //compileOnly(mixin) { transitive = false }
+    // Генерирует refmap при компиляции
+    //annotationProcessor(mixin)
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -74,7 +93,8 @@ tasks.withType(JavaCompile).configureEach {
 jar {
     manifest {
         attributes(
-            //'FMLCorePlugin': 'astrotweaks.CoreModLoader',
+            //'MixinConfigs': 'mixins.astrotweaks.json',
+            //'FMLCorePlugin': 'astrotweaks.gameplay.NoDamageShaking',
             //'FMLCorePluginContainsFMLMod': 'true',
             'ForceLoadAsMod': 'true',
             'TweakOrder': '0',
@@ -89,7 +109,6 @@ jar {
             //'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         )
     }
-
     // If have resources, make sure they are copied
     from sourceSets.main.output.classesDirs
     from sourceSets.main.output.resourcesDir

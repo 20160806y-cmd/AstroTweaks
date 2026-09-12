@@ -7,17 +7,13 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.BlockRenderLayer;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.block.material.Material;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRail;
 import net.minecraft.entity.item.EntityMinecart;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.World;
-
-import astrotweaks.creativetab.ATCreativeTabs;
 
 
 
@@ -30,7 +26,7 @@ public class BlockRailMine {
 	        setSoundType(SoundType.METAL);
 	        setHardness(0.7F);
 	        setResistance(3.5F);
-	        setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+	        setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 	    }
 
 	    @Override

@@ -1,6 +1,5 @@
 package astrotweaks.block;
 
-import astrotweaks.creativetab.ATCreativeTabs;
 import astrotweaks.util.DropHandler;
 import astrotweaks.util.DropHandler.DropEntry;
 import net.minecraft.block.Block;
@@ -40,11 +39,10 @@ public class BlockGiantGrass {
             setHardness(0.0F);
             setResistance(0.0F);
             setLightOpacity(0);
-            setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+            //setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
             setTickRandomly(true);
 
-            setDefaultState(blockState.getBaseState().withProperty(PART, Part.LOWER)
-            );
+            setDefaultState(blockState.getBaseState().withProperty(PART, Part.LOWER));
 
             // Свойства горения примерно как у ванильной травы/растительности
             BlockFire fire = (BlockFire) net.minecraft.init.Blocks.FIRE;

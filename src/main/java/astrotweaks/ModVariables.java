@@ -28,10 +28,10 @@ public class ModVariables {
 	public static boolean EnableProgressionSystem = false;
 	public static boolean AstroTech_Environment = false;
 
-	public static boolean MULTIVERSE = true;
-	public static boolean Enable_TDARK = true; // ничего не делает в игре если MULTIVERSE == False
-	public static int MULTIVERSE_MAX_UNIVERSES = 100; // лимит числа вселенных (slot 100 перезаписывается)
-	public static boolean Enable_uVOID= true;
+	public static boolean MULTIVERSE = false;
+	public static boolean Enable_TDARK = false; // ничего не делает в игре если MULTIVERSE == False
+	public static int MULTIVERSE_MAX_UNIVERSES = 40; // лимит числа вселенных (slot 100 перезаписывается)
+	public static boolean Enable_uVOID = false;
 
 
 	//								   МИНУТ * сек * тик
@@ -50,7 +50,7 @@ public class ModVariables {
 	public static boolean ServerPingFix = true;
 	public static boolean Enable_StepUp = true;
 	public static boolean No_Potion_Icons = true;
-	public static boolean No_Damage_Shaking = true;
+
 
 
 
@@ -98,7 +98,7 @@ public class ModVariables {
 	public static boolean OW_Ruby_Gen = true;
 	public static boolean OW_Quartz_Gen = true;
 
-	public static int QTS_Max_Range = 8192;
+	public static int QTS_Max_Range = 2048;
 
 
 	public static boolean NoRedFlash = true;

@@ -107,13 +107,12 @@ public class ConfigManager {
 			ModVariables.Enable_Depths_Dimension = safeGetBoolean(config, "Enable_Depths_Dimension", "World", ModVariables.Enable_Depths_Dimension, "Should register Depths dimension? (y/n)");
 			ModVariables.Enable_Depths_Dim_Bedrock_TP = safeGetBoolean(config, "Enable_Depths_Dim_Bedrock_TP", "World", ModVariables.Enable_Depths_Dim_Bedrock_TP, "Allow access to the Depths via Bedrock? (y/n)");
 			ModVariables.MULTIVERSE = safeGetBoolean(config, "MULTIVERSE", "World", ModVariables.MULTIVERSE, "Enable the Multiverse system (y/n)");
-			ModVariables.MULTIVERSE_MAX_UNIVERSES = safeGetInt(config, "MULTIVERSE_MAX_UNIVERSES", "World", ModVariables.MULTIVERSE_MAX_UNIVERSES, 1, 100, "Maximum number of universes. Slot 100 is the recycle slot (1-100)");
+			ModVariables.MULTIVERSE_MAX_UNIVERSES = safeGetInt(config, "MULTIVERSE_MAX_UNIVERSES", "World", ModVariables.MULTIVERSE_MAX_UNIVERSES, 1, 1000, "Maximum number of universes. Last slot is the recycle slot (1-1000)");
 			ModVariables.Enable_uVOID = safeGetBoolean(config, "Enable_uVOID", "World", ModVariables.Enable_uVOID, "Enable Cross-world University with DimID == -1000000 (y/n)");
 
 			
 			//// # Tweaks
 			ModVariables.NoRedFlash = safeGetBoolean(config, "No_Red_Flash", "Tweaks", ModVariables.NoRedFlash, "Remove entities red flash when taking damage (y/n)");
-			ModVariables.No_Damage_Shaking = safeGetBoolean(config, "No_Damage_Shaking", "Tweaks", ModVariables.No_Damage_Shaking, "Removes the player's screen shake when taking damage (y/n)");
 			ModVariables.No_Potion_Icons = safeGetBoolean(config, "No_Potion_Icons", "Tweaks", ModVariables.No_Potion_Icons, "Disable Potion Icons in the top right of screen (y/n)");
 			ModVariables.ServerPingFix = safeGetBoolean(config, "ServerPingFix", "Tweaks", ModVariables.ServerPingFix, "Like in mod \"FIX MY PINGGGGGG\" (y/n)");
 			ModVariables.Better_Smelting = safeGetBoolean(config, "Better_Smelting", "Tweaks", ModVariables.Better_Smelting, "Enable more smelting recipes? (y/n)");

@@ -13,16 +13,11 @@ import net.minecraft.client.gui.GuiScreen;
 
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.text.TextComponentTranslation;
-import net.minecraft.util.text.Style;
-import net.minecraft.util.text.TextComponentString;
-import net.minecraft.util.text.TextFormatting;
-import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.nbt.NBTTagCompound;
 
 import io.netty.buffer.ByteBuf;
 import java.nio.charset.StandardCharsets;
@@ -106,6 +101,9 @@ public class ArkGUI {
 	            if (!(te instanceof BlockArk.TileEntityCustom)) return;
 	            BlockArk.TileEntityCustom teArk = (BlockArk.TileEntityCustom) te;
 
+	            // Compute core position for area broadcasting
+	            BlockPos corePos = ArkTransferHelper.findCore(world, pos);
+
 	            // Parse strings
 	            int targetDim = 0, targetX = 0, targetY = 65, targetZ = 0, delayTicks = 0;
 	            boolean parseOk = true;
@@ -148,18 +146,18 @@ public class ArkGUI {
 					int anchor = MultiverseUtil.anchorBaseOf(srcDim);
 					int resolvedDim = MultiverseUtil.resolveRelativeDim(anchor, targetDim);
 					if (!MultiverseUtil.isSameUniverse(srcDim, resolvedDim)) {
-						player.sendMessage(new TextComponentTranslation("ark.err.cross_universe"));
+						ArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.cross_universe"));
 						return;
 					}
 					if (!DimensionManager.isDimensionRegistered(resolvedDim)) {
-						player.sendMessage(new TextComponentTranslation("ark.err.dim", targetDim));
+						ArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.dim", targetDim));
 						return;
 					}
 
 	                //if (delayTicks > 0) {
 	                // delay with TileEntity (ITickable)
 					if (delayTicks < 5) { delayTicks = 5;}
-					if (!(delayTicks == 5)) { player.sendMessage(new TextComponentTranslation("ark.delayed_start", delayTicks)); }
+					if (!(delayTicks == 5)) { ArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.delayed_start", delayTicks)); }
 
                     teArk.startDelayedTransfer(player, pos, resolvedDim, targetX,targetY,targetZ, message.clearMode, message.captureEntities, message.captureItems, delayTicks);
 
@@ -226,12 +224,35 @@ public class ArkGUI {
 	    @Override
 	    public void updateScreen() {
 	        super.updateScreen();
-	        TargetDimID.updateCursorCounter();
-	        TW_X.updateCursorCounter();
-	        TW_Y.updateCursorCounter();
-	        TW_Z.updateCursorCounter();
-	        delayField.updateCursorCounter();
-	    }
+        TargetDimID.updateCursorCounter();
+        TW_X.updateCursorCounter();
+        TW_Y.updateCursorCounter();
+        TW_Z.updateCursorCounter();
+        delayField.updateCursorCounter();
+
+        // Live sync: if the TileEntity was updated over the network (e.g. another player
+        // saved the GUI settings), refresh this open GUI so changes are visible without
+        // reopening it.
+        if (world != null && teArk != null && teArk.consumeGuiDirtyFlag()) {
+            syncFieldsFromTE();
+        }
+    }
+
+    /** Обновляет поля GUI из актуального состояния TileEntity. */
+    private void syncFieldsFromTE() {
+        boolean anyFocused = TargetDimID.isFocused() || TW_X.isFocused() || TW_Y.isFocused() || TW_Z.isFocused() || delayField.isFocused();
+        if (!anyFocused) {
+            TargetDimID.setText(String.valueOf(teArk.getTargetDim()));
+            TW_X.setText(String.valueOf(teArk.getTargetX()));
+            TW_Y.setText(String.valueOf(teArk.getTargetY()));
+            TW_Z.setText(String.valueOf(teArk.getTargetZ()));
+            delayField.setText(String.valueOf(teArk.getDelayTicks()));
+        }
+        clearMode = teArk.getClearMode();
+        captureEntities = teArk.getCaptureEntities();
+        captureItems = teArk.getCaptureItems();
+        updateButtonsDisplay();
+    }
 	    @Override
 	    protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
 	        super.mouseClicked(mouseX, mouseY, mouseButton);

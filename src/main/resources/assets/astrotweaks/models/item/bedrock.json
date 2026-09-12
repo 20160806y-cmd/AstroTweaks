@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/bedrock",
+  "textures": {
+    "layer0": "minecraft:blocks/bedrock"
+  }
+}

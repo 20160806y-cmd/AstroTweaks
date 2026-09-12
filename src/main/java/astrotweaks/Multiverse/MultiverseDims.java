@@ -55,8 +55,31 @@ public final class MultiverseDims {
         }
     }
 
-    /** Registers the shared global dimension (-1000000). Idempotent + thread-safe. */
+    /**
+     * Whether the shared global void dimension (-1000000) is enabled in the mod
+     * config (ModVariables.Enable_uVOID). When disabled the dimension is never
+     * registered, never loaded and its MULTIVERSE_GLOBAL folder is never created.
+     */
+    public static boolean isGlobalDimensionEnabled() {
+        return astrotweaks.ModVariables.Enable_uVOID;
+    }
+
+    /** Registers the shared global dimension (-1000000). Idempotent + thread-safe. No-op when Enable_uVOID is off. */
     public static void registerGlobalDimension() {
+        if (!isGlobalDimensionEnabled()) return;
+        synchronized (DIMENSION_REGISTRATION_LOCK) {
+            registerOneLocked(GLOBAL_DIM, MultiverseWorldProviders.MultiverseGlobal.class);
+        }
+    }
+
+    /**
+     * Client-side registration of the global dimension, bypassing {@link #isGlobalDimensionEnabled()}.
+     * The server is authoritative here: it only sends {@code MessageMultiverse.forGlobal()} when it is
+     * about to move the player into the void, and registering a DimensionType on the client has no
+     * save-folder side effects. This keeps a client whose local Enable_uVOID differs from the server's
+     * from crashing when the respawn packet arrives for an unregistered dimension.
+     */
+    public static void registerGlobalDimensionForClient() {
         synchronized (DIMENSION_REGISTRATION_LOCK) {
             registerOneLocked(GLOBAL_DIM, MultiverseWorldProviders.MultiverseGlobal.class);
         }

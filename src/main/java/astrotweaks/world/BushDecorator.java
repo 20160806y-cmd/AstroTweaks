@@ -34,7 +34,6 @@ import astrotweaks.block.BlockFern1;
 
 
 public class BushDecorator {
-	//private static List<BushEntry> BUSHES = new ArrayList<>();
 	private static Map<Biome, List<BushEntry>> BUSH_MAP;
 
 	private static Set<Block> GROUND_BLOCKS;
@@ -112,8 +111,6 @@ public class BushDecorator {
 		System.out.println("Bush Decorator was Init !");
         Map<Biome, List<BushEntry>> map = new HashMap<>();
 
-
-
 		//		Block, 			  Biome, 		chance, count
 		//addBush(BlockBush1.block, Bush1_biomes_ch, 1.5, 8); // Forest
 		//addBush(BlockBush2.block, Bush2_biomes_ch, 1.9, 9); // swamp
@@ -124,7 +121,7 @@ public class BushDecorator {
 		//addBush(BlockBush7.block, Bush7_biomes_ch, 1.6, 9); // Jungle
 		//addBush(BlockFern1.block, Fern1_biomes_ch, 2.3, 12); //
 
-        addBush(map, BlockBush1.block, toBiomeSet(Bush1_biomes), 1.5, 8);
+        addBush(map, BlockBush1.block, toBiomeSet(Bush1_biomes), 1.6, 8);
         addBush(map, BlockBush2.block, toBiomeSet(Bush2_biomes), 1.9, 9);
         addBush(map, BlockBush3.block, toBiomeSet(Bush3_biomes), 1.7, 7);
         addBush(map, BlockBush4.block, toBiomeSet(Bush4_biomes), 1.8, 11);
@@ -133,10 +130,8 @@ public class BushDecorator {
         addBush(map, BlockBush7.block, toBiomeSet(Bush7_biomes), 1.6, 9);
         addBush(map, BlockFern1.block, toBiomeSet(Fern1_biomes), 2.3, 12);
 
-
 		// final
         Map<Biome, List<BushEntry>> immutableMap = new HashMap<>();
-
         for (Map.Entry<Biome, List<BushEntry>> entry : map.entrySet()) {
             immutableMap.put(
                 entry.getKey(),
@@ -237,7 +232,6 @@ public class BushDecorator {
 	    int x = originX + localX;
 	    int z = originZ + localZ;
 	
-        // OPT: Reusable MutableBlockPos for height and placement lookup
         BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
         int y = getGroundHeight(chunk, localX, localZ, mpos);
         if (y <= 0 || y < 59 || y > 210) return;
@@ -274,8 +268,6 @@ public class BushDecorator {
 
 	// Finds the height (y) of the top block of grass or earth in the given column,
 	// above which there is air (as for flowers).
-	// OPT: Use getHeightValue to speed up height lookups
-	// OPT: Pass a reusable MutableBlockPos
     private static int getGroundHeight(Chunk chunk, int localX, int localZ, BlockPos.MutableBlockPos mpos) {
         int baseX = (chunk.x << 4) + localX;
         int baseZ = (chunk.z << 4) + localZ;
@@ -296,17 +288,6 @@ public class BushDecorator {
             if (REPLACEABLE_BLOCKS.contains(above)) {
                 return y + 1;
             }
-
-            //IBlockState state = chunk.getBlockState(mpos);
-            //Block block = state.getBlock();
-
-            //mpos.setPos(baseX, y + 1, baseZ);
-            //IBlockState above = chunk.getBlockState(mpos);
-            //Block aboveBlock = above.getBlock();
-
-            //if (GROUND_BLOCKS.contains(block) && REPLACEABLE_BLOCKS.contains(aboveBlock)) {
-            //    return y + 1;
-            //}
         }
         return -1;
     }
@@ -320,8 +301,6 @@ public class BushDecorator {
         }
     }
 
-	// OPT: New signature - accept int coordinates instead of BlockPos
-	// OPT: Removed chunk boundary checking (it's already done in the calling code)
     private static boolean canPlaceBush(Chunk chunk, int x, int y, int z, IBlockState bushState) {
         // check that the position is replaceable
         IBlockState stateAtPos = chunk.getBlockState(x, y, z);

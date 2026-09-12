@@ -30,7 +30,6 @@ import java.util.List;
 
 import astrotweaks.ModVariables;
 
-@Mod.EventBusSubscriber(modid = "astrotweaks")
 public class MinedBlocks {
 	public static final String MOD_ID = "astrotweaks";
 
@@ -185,13 +184,11 @@ public class MinedBlocks {
         }
     }
 
-    @SubscribeEvent
     public static void registerBlocks(RegistryEvent.Register<Block> event) {
         build();
         for (Block block : groupBlocks) event.getRegistry().register(block);
     }
 
-    @SubscribeEvent
     public static void registerItems(RegistryEvent.Register<Item> event) {
         build();
         for (Item item : groupItems) event.getRegistry().register(item);

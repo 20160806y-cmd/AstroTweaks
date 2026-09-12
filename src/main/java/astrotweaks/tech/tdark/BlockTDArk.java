@@ -34,6 +34,7 @@ import astrotweaks.AstrotweaksMod;
 import astrotweaks.Multiverse.LevelManager;
 import astrotweaks.Multiverse.LevelData;
 import astrotweaks.Multiverse.LevelDimensionType;
+import astrotweaks.Multiverse.MultiverseDims;
 
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
@@ -103,6 +104,15 @@ public class BlockTDArk {
 	    private boolean pendingClearMode, pendingCaptureEntities, pendingCaptureItems;
 	    private BlockPos terminalPos; // BlockArk pos
 	    private EntityPlayerMP triggeringPlayer;
+
+	    /** Становится true при сетевом обновлении TE, чтобы открытое GUI могло обновиться. */
+	    private volatile boolean clientGuiDirty = false;
+
+		public boolean consumeGuiDirtyFlag() {
+		    boolean dirty = this.clientGuiDirty;
+		    this.clientGuiDirty = false;
+		    return dirty;
+		}
 
 		private final int border = 29999990;
 
@@ -210,11 +220,11 @@ public class BlockTDArk {
 	    public void startDelayedTransfer(EntityPlayerMP player,BlockPos termPos,int dim,int x,int y,int z,boolean clearMode,boolean captureEntities,boolean captureItems) {
 		    BlockPos corePos = TDArkTransferHelper.findCore(world, termPos);
 		    if (corePos == null) {
-		        player.sendMessage(new TextComponentTranslation("ark.err.structure").setStyle(new Style().setColor(TextFormatting.RED)));
+		        player.sendMessage(new TextComponentTranslation("ark.err.structure"));
 		        return;
 		    }
 		    if (!DimensionManager.isDimensionRegistered(dim)) {
-		        player.sendMessage(new TextComponentTranslation("ark.err.dim", dim).setStyle(new Style().setColor(TextFormatting.RED)));
+		        TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.dim", dim));
 		        return;
 		    }
 		    // Use getOrCreateWorld to rebuild if it was idle-unloaded during a prior delay,
@@ -222,7 +232,12 @@ public class BlockTDArk {
 		    LevelManager lm = LevelManager.getInstance();
 		    LevelData targetLevel = lm.getLevelByDimensionId(dim);
 		    WorldServer targetWorld;
-		    if (targetLevel != null) {
+		    if (dim == MultiverseDims.GLOBAL_DIM) {
+		        // The global void world (-1000000) lives in MULTIVERSE_GLOBAL, never in a
+		        // save-local DIM-1000000. Load it through LevelManager so vanilla/Forge
+		        // cannot create a phantom WorldServerMulti in the save root.
+		        targetWorld = lm.getOrCreateGlobalWorld(player.getServer());
+		    } else if (targetLevel != null) {
 		        LevelDimensionType type = targetLevel.typeOf(dim);
 		        if (type != null) {
 		            targetWorld = lm.getOrCreateWorld(player.getServer(), targetLevel, type);
@@ -233,7 +248,7 @@ public class BlockTDArk {
 		        targetWorld = player.getServer().getWorld(dim);
 		    }
 		    if (targetWorld == null) {
-		        player.sendMessage(new TextComponentTranslation("ark.err.target_world").setStyle(new Style().setColor(TextFormatting.RED)));
+		        TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.target_world"));
 		        return;
 		    }
 
@@ -356,6 +371,7 @@ public class BlockTDArk {
 		@Override
 		public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity pkt) {
 		    this.readFromNBT(pkt.getNbtCompound());
+		    this.clientGuiDirty = true;
 		    if (world != null) {
 		        IBlockState state = world.getBlockState(pos);
 		        world.notifyBlockUpdate(pos, state, state, 3);
@@ -365,6 +381,7 @@ public class BlockTDArk {
 		public void handleUpdateTag(NBTTagCompound tag) {
 		    super.handleUpdateTag(tag);
 		    this.readFromNBT(tag);
+		    this.clientGuiDirty = true;
 		}
 	    @Override
 	    public void update() {
