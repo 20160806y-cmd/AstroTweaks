@@ -68,8 +68,7 @@ public class MTGUI {
 		public Map<Integer, Slot> get() {
 			return customSlots;
 		}
-		@Override
-		public boolean canInteractWith(EntityPlayer player) {
+		@Override public boolean canInteractWith(EntityPlayer player) {
 			return internal.isUsableByPlayer(player);
 		}
 		@Override
@@ -155,13 +154,11 @@ public class MTGUI {
 		//@Override protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException { super.mouseClicked(mouseX, mouseY, mouseButton); }
 		@Override protected void keyTyped(char typedChar, int keyCode) throws IOException { super.keyTyped(typedChar, keyCode); }
 		@Override protected void drawGuiContainerForegroundLayer(int par1, int par2) {}
-		@Override
-		public void onGuiClosed() {
+		@Override public void onGuiClosed() {
 			super.onGuiClosed();
 			Keyboard.enableRepeatEvents(false);
 		}
-		@Override
-		public void initGui() {
+		@Override public void initGui() {
 			super.initGui();
 			this.guiLeft = (this.width - 178) / 2;
 			this.guiTop = (this.height - 166) / 2;
@@ -221,9 +218,7 @@ public class MTGUI {
 
 	private static void handleButtonAction(EntityPlayer entity, int buttonID, int x, int y, int z) {
 		World world = entity.world;
-		// security measure to prevent arbitrary chunk generation
-		//if (!world.isBlockLoaded(new BlockPos(x, y, z)))
-		//	return;
+
 		if (buttonID == 0) {
 			ProcedureMTConvert.exect(x, y, z, world);
 		}

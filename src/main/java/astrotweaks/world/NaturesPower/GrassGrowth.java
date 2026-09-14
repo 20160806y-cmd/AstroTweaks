@@ -1,5 +1,10 @@
 package astrotweaks.world.NaturesPower;
 
+import net.minecraftforge.common.BiomeDictionary;
+import net.minecraftforge.event.world.ChunkEvent;
+import net.minecraftforge.event.world.WorldEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockDirt;
 import net.minecraft.block.BlockTallGrass;
@@ -12,12 +17,6 @@ import net.minecraft.world.DimensionType;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.chunk.Chunk;
-import net.minecraftforge.common.BiomeDictionary;
-import net.minecraftforge.event.world.ChunkEvent;
-import net.minecraftforge.event.world.WorldEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
-
 import net.minecraft.block.BlockDoublePlant;
 import net.minecraft.block.BlockDoublePlant.EnumPlantType;
 import net.minecraft.block.material.Material;
@@ -25,7 +24,6 @@ import net.minecraft.block.BlockDoublePlant.EnumBlockHalf;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-
 import java.util.concurrent.ThreadLocalRandom;
 
 import astrotweaks.block.BlockGiantGrass;
@@ -80,9 +78,7 @@ public class GrassGrowth {
 	private static final Object STATE_LOCK = new Object();
 
     static {
-        if (MIN_DELAY_TICKS > MAX_DELAY_TICKS) {
-            MIN_DELAY_TICKS = MAX_DELAY_TICKS - 1;
-        }
+        if (MIN_DELAY_TICKS > MAX_DELAY_TICKS) MIN_DELAY_TICKS = MAX_DELAY_TICKS - 1;
 		if (MIN_DELAY_TICKS < 1) MIN_DELAY_TICKS = 1;
 		if (MAX_DELAY_TICKS < 1) MAX_DELAY_TICKS = 1;
     }
@@ -206,9 +202,9 @@ public class GrassGrowth {
     // -------- Chunk load/unload events --------
     @SubscribeEvent
     public void onChunkLoad(ChunkEvent.Load event) {
-    	if (!GG_ON) return;
+    	if (!GG_ON)  return;
         World world = event.getWorld();
-		if (/*world == null || */world.isRemote) return;
+		if (/*world == null || */world.isRemote)  return;
         if (world.provider.getDimensionType() != DimensionType.OVERWORLD) return;
 
         Chunk chunk = event.getChunk();
@@ -232,9 +228,9 @@ public class GrassGrowth {
 
     @SubscribeEvent
     public void onChunkUnload(ChunkEvent.Unload event) {
-    	if (!GG_ON) return;
+    	if (!GG_ON)  return;
         World world = event.getWorld();
-		if (/*world == null || */world.isRemote) return;
+		if (/*world == null || */world.isRemote)  return;
         if (world.provider.getDimensionType() != DimensionType.OVERWORLD) return;
 
         Chunk chunk = event.getChunk();
@@ -257,10 +253,10 @@ public class GrassGrowth {
     // -------- World tick processing --------
     @SubscribeEvent
     public void onWorldTick(TickEvent.WorldTickEvent event) {
-    	if (!GG_ON) return;
-        if (event.phase != TickEvent.Phase.END) return;
+    	if (!GG_ON)  return;
+        if (event.phase != TickEvent.Phase.END)  return;
         World world = event.world;
-        if (/*world == null || */world.isRemote) return; // server only
+        if (/*world == null || */world.isRemote)  return; // server only
         int dim = world.provider.getDimension();
         if (world.provider.getDimensionType() != DimensionType.OVERWORLD) return;
 
@@ -354,23 +350,20 @@ public class GrassGrowth {
 	        mcheck.setPos(x + OFFSET_X[i], 64, z + OFFSET_Z[i]);
 	        if (!world.isBlockLoaded(mcheck)) return;
 	    }
-        // 1. Check biome before any block scanning (must be allowed)
-	    //BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos(x, 64, z);
-	    //Biome biome = world.getBiome(mpos);
-	    //if (isBiomeInBlacklist(biome)) return;
 
 	    //IBlockState state;
-		Block block;
 
 		BlockPos grassPos = findGrassSurface(world, x, z);
 	    if (grassPos == null) return; // это важно, так как grassPos бывает null 
 
+		// Check biome before any block scanning (must be allowed)
 		Biome biome = world.getBiome(grassPos);
 		if (BiomeDictionary.hasType(biome, BiomeDictionary.Type.SNOWY)) {
 			return;
 		}
 
 
+		Block block;
 
 		// ---- Подсчёт травы в области 5x3x5 ----
 		int turfCount = 0;

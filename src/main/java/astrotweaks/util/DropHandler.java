@@ -8,10 +8,9 @@ import net.minecraft.world.World;
 
 import java.util.Random;
 import java.util.List;
-//import java.util.ArrayList;
 
 
-// Use:  
+
 public final class DropHandler {
     public static final class DropEntry {
         public final String source; // "none" | "ore:oreName" | "modid:item" | "oreName" (ore by default)
@@ -52,8 +51,8 @@ public final class DropHandler {
 
         for (int i = 0; i < n; i++) {
             DropEntry e = entries[i];
-            if (e == null) continue;
-            if (e.weight <= 0.0) continue;
+            if (e == null)  continue;
+            if (e.weight <= 0.0)  continue;
             // Check availability: either "none" (always available), or OreDictionary is not empty or Item exists
             if (isSourceAvailable(e.source)) {
                 total += e.weight;
@@ -63,7 +62,7 @@ public final class DropHandler {
             }
         }
 
-        if (count == 0 || total <= 0.0) return;
+        if (count == 0 || total <= 0.0)  return;
 
         for (int r = 0; r < rolls; r++) {
             double pick = rand.nextDouble() * total;
@@ -73,9 +72,8 @@ public final class DropHandler {
 
             DropEntry chosen = avail[idx];
             // Empty result ("none")
-            if (chosen.source.equalsIgnoreCase("none")) {
-                continue;
-            }
+            if (chosen.source.equalsIgnoreCase("none"))  continue;
+            
 
             // OreDictionary (if specified as "ore:NAME" or without prefix and contains "ore" at the beginning)
             if (isOreLookup(chosen.source)) {
@@ -108,38 +106,31 @@ public final class DropHandler {
     }
 
     private static boolean isOreLookup(String src) {
-        if (src == null) return false;
+        if (src == null)  return false;
         String s = src.toLowerCase();
         return s.startsWith("ore:") || !s.contains(":") /* no ':' - likely oredict name */;
     }
-
     private static String stripOrePrefix(String src) {
-        if (src == null) return src;
+        if (src == null)  return src;
         if (src.toLowerCase().startsWith("ore:")) return src.substring(4);
         return src;
     }
-
     private static boolean isSourceAvailable(String src) {
-        if (src == null) return false;
+        if (src == null)  return false;
         if (src.equalsIgnoreCase("none")) return true;
         if (isOreLookup(src)) {
             String ore = stripOrePrefix(src);
             return !OreDictionary.getOres(ore).isEmpty();
         }
-
         Item item = Item.getByNameOrId(stripMeta(src));
 
-        if (item != null && item != Items.AIR) {
-            return true;
-        }
+        if (item != null && item != Items.AIR)  return true;
 
         return !OreDictionary.getOres(src).isEmpty();
-        
     }
 
-
     private static String stripMeta(String source) {
-        if (source == null) return null;
+        if (source == null)  return null;
 
         int firstColon = source.indexOf(':');
         int lastColon = source.lastIndexOf(':');
@@ -151,15 +142,13 @@ public final class DropHandler {
             try {
                 Integer.parseInt(suffix);
                 return source.substring(0, lastColon);
-            } catch (NumberFormatException ignored) {
-            }
+            } catch (NumberFormatException ignored) {}
         }
-
         return source;
     }
 
     private static int metaFromSource(String source) {
-        if (source == null) return 0;
+        if (source == null)  return 0;
 
         int firstColon = source.indexOf(':');
         int lastColon = source.lastIndexOf(':');
@@ -169,10 +158,8 @@ public final class DropHandler {
 
             try {
                 return Integer.parseInt(suffix);
-            } catch (NumberFormatException ignored) {
-            }
+            } catch (NumberFormatException ignored) {}
         }
-
         return 0;
     }
 
@@ -180,5 +167,4 @@ public final class DropHandler {
         // Явно заданный meta имеет приоритет
         return entry.meta >= 0 ? entry.meta : metaFromSource(entry.source);
     }
-
 }

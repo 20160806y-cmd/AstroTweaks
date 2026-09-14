@@ -53,7 +53,7 @@ import astrotweaks.recipe.RecipeHandler;
 public class AstrotweaksMod {
 
 	public static final String MODID = "astrotweaks";
-	public static final String VERSION = "b6.1";
+	public static final String VERSION = "b6.2";
 
 
 	public static final SimpleNetworkWrapper PACKET_HANDLER = NetworkRegistry.INSTANCE.newSimpleChannel("astrotweaks:a");
@@ -112,6 +112,7 @@ public class AstrotweaksMod {
 		astrotweaks.block.BlockGroundRock1.updVars();
 		astrotweaks.block.BlockGroundRock2.updVars();
 		astrotweaks.block.BlockGroundStick.updVars();
+		astrotweaks.world.BushDecorator.updVars();
 
 		GrassGrowth.updVars();
 		astrotweaks.tech.qts.BlockQTPSupressor.updVars();

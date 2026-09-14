@@ -16,11 +16,6 @@ import net.minecraft.world.World;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.Event;
-import net.minecraftforge.fml.common.eventhandler.EventPriority;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-//import net.minecraftforge.fml.common.registry.GameRegistry;
-//import net.minecraftforge.oredict.OreDictionary;
-
 
 import java.util.Set;
 
@@ -30,10 +25,10 @@ import astrotweaks.ModVariables;
 
 @Mod.EventBusSubscriber(modid = "astrotweaks")
 public final class Dirt2Path {
-    @SubscribeEvent(priority = EventPriority.LOWEST)
+    @net.minecraftforge.fml.common.eventhandler.SubscribeEvent(priority = net.minecraftforge.fml.common.eventhandler.EventPriority.LOWEST)
     public static void onBlockRightclick(PlayerInteractEvent.RightClickBlock event) {
-        if (event.isCanceled() || event.getResult() == Event.Result.DENY) return;
-        if (!ModVariables.Enable_Dirt2Path) return;
+        if (event.isCanceled() || event.getResult() == Event.Result.DENY)  return;
+        if (!ModVariables.Enable_Dirt2Path)  return;
 
         EntityPlayer player = event.getEntityPlayer();
         World world = event.getWorld();

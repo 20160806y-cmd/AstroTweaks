@@ -1,4 +1,3 @@
-
 package astrotweaks.tech.mt;
 
 import net.minecraft.world.World;
@@ -51,15 +50,13 @@ public class BlockMoneyTable {
 			this.setDefaultState(this.blockState.getBaseState().withProperty(FACING, EnumFacing.NORTH));
 		}
 		@Override
- protected net.minecraft.block.state.BlockStateContainer createBlockState() {
+		protected net.minecraft.block.state.BlockStateContainer createBlockState() {
 			return new net.minecraft.block.state.BlockStateContainer(this, new IProperty[]{FACING});
 		}
-		@Override
- public IBlockState withRotation(IBlockState state, Rotation rot) {
+		@Override public IBlockState withRotation(IBlockState state, Rotation rot) {
 			return state.withProperty(FACING, rot.rotate((EnumFacing) state.getValue(FACING)));
 		}
-		@Override
- public IBlockState withMirror(IBlockState state, Mirror mirrorIn) {
+		@Override public IBlockState withMirror(IBlockState state, Mirror mirrorIn) {
 			return state.withRotation(mirrorIn.toRotation((EnumFacing) state.getValue(FACING)));
 		}
 		@Override
@@ -74,37 +71,20 @@ public class BlockMoneyTable {
 		    }
 		    return this.getDefaultState().withProperty(FACING, facing);
 		}
-		@Override
-		public int getMetaFromState(IBlockState state) {
-		    return ((EnumFacing) state.getValue(FACING)).getIndex();
-		}
-		@Override
-		public IBlockState getStateForPlacement(World worldIn, BlockPos pos, EnumFacing facing, float hitX, float hitY, float hitZ, int meta,
-				EntityLivingBase placer) {
+		@Override public int getMetaFromState(IBlockState state) { return ((EnumFacing) state.getValue(FACING)).getIndex(); }
+		@Override public IBlockState getStateForPlacement(World worldIn, BlockPos pos, EnumFacing facing, float hitX, float hitY, float hitZ, int meta, EntityLivingBase placer) {
 			return this.getDefaultState().withProperty(FACING, placer.getHorizontalFacing().getOpposite());
 		}
-		@Override
-		public EnumPushReaction getMobilityFlag(IBlockState state) {
-			return EnumPushReaction.IGNORE;
-		}
-		@Override
-		public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) {
-			return MapColor.GRAY;
-		}
-		@Override
-		public TileEntity createNewTileEntity(World worldIn, int meta) {
-			return new TileEntityCustom();
-		}
+		@Override public EnumPushReaction getMobilityFlag(IBlockState state) { return EnumPushReaction.IGNORE; }
+		@Override public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) { return MapColor.GRAY; }
+		@Override public TileEntity createNewTileEntity(World worldIn, int meta) { return new TileEntityCustom(); }
 		@Override
 		public boolean eventReceived(IBlockState state, World worldIn, BlockPos pos, int eventID, int eventParam) {
 			super.eventReceived(state, worldIn, pos, eventID, eventParam);
 			TileEntity tileentity = worldIn.getTileEntity(pos);
 			return tileentity == null ? false : tileentity.receiveClientEvent(eventID, eventParam);
 		}
-		@Override
-		public EnumBlockRenderType getRenderType(IBlockState state) {
-			return EnumBlockRenderType.MODEL;
-		}
+		@Override public EnumBlockRenderType getRenderType(IBlockState state) { return EnumBlockRenderType.MODEL; }
 		@Override
 		public void breakBlock(World world, BlockPos pos, IBlockState state) {
 			TileEntity tileentity = world.getTileEntity(pos);
@@ -113,10 +93,7 @@ public class BlockMoneyTable {
 			world.removeTileEntity(pos);
 			super.breakBlock(world, pos, state);
 		}
-		@Override
-		public boolean hasComparatorInputOverride(IBlockState state) {
-			return true;
-		}
+		@Override public boolean hasComparatorInputOverride(IBlockState state) { return true; }
 		@Override
 		public int getComparatorInputOverride(IBlockState blockState, World worldIn, BlockPos pos) {
 			TileEntity tileentity = worldIn.getTileEntity(pos);
@@ -151,33 +128,21 @@ public class BlockMoneyTable {
 
 	public static class TileEntityCustom extends TileEntityLockableLoot {
 		private NonNullList<ItemStack> stacks = NonNullList.<ItemStack>withSize(5, ItemStack.EMPTY);
-		@Override
-		public int getSizeInventory() {
-			return 5;
-		}
+		@Override public int getSizeInventory() { return 5; }
 		@Override
 		public boolean isEmpty() {
 			for (ItemStack itemstack : this.stacks)
-				if (!itemstack.isEmpty())
-					return false;
+				if (!itemstack.isEmpty())  return false;
 			return true;
 		}
 		@Override
 		public boolean isItemValidForSlot(int index, ItemStack stack) {
-			if (index == 1)
-				return false;
-			if (index == 3)
-				return false;
+			if (index == 1)  return false;
+			if (index == 3)  return false;
 			return true;
 		}
-		@Override
-		public ItemStack getStackInSlot(int slot) {
-			return stacks.get(slot);
-		}
-		@Override
-		public String getName() {
- return "container.money_table";
- }
+		@Override public ItemStack getStackInSlot(int slot) { return stacks.get(slot); }
+		@Override public String getName() { return "container.money_table"; }
 		@Override
 		public void readFromNBT(NBTTagCompound compound) {
 			super.readFromNBT(compound);
@@ -204,25 +169,14 @@ public class BlockMoneyTable {
 		public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity pkt) {
 			this.readFromNBT(pkt.getNbtCompound());
 		}
-		@Override
-		public void handleUpdateTag(NBTTagCompound tag) {
-			this.readFromNBT(tag);
+		@Override public void handleUpdateTag(NBTTagCompound tag) { this.readFromNBT(tag); }
+		@Override public int getInventoryStackLimit() {
+			return 100;
 		}
-		@Override
-		public int getInventoryStackLimit() {
-			return 200;
-		}
-		@Override
-		public String getGuiID() {
-			return "astrotweaks:money_table";
-		}
-		@Override
-		public Container createContainer(InventoryPlayer playerInventory, EntityPlayer playerIn) {
+		@Override public String getGuiID() { return "astrotweaks:money_table"; }
+		@Override public Container createContainer(InventoryPlayer playerInventory, EntityPlayer playerIn) {
 			return new MTGUI.GuiContainerMod(this.getWorld(), this.getPos().getX(), this.getPos().getY(), this.getPos().getZ(), playerIn);
 		}
-		@Override
-		protected NonNullList<ItemStack> getItems() {
-			return this.stacks;
-		}
+		@Override protected NonNullList<ItemStack> getItems() { return this.stacks; }
 	}
 }

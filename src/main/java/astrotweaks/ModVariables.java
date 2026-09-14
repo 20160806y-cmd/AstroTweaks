@@ -30,8 +30,8 @@ public class ModVariables {
 
 	public static boolean MULTIVERSE = false;
 	public static boolean Enable_TDARK = false; // ничего не делает в игре если MULTIVERSE == False
-	public static int MULTIVERSE_MAX_UNIVERSES = 40; // лимит числа вселенных (slot 100 перезаписывается)
-	public static boolean Enable_uVOID = false;
+	public static int MULTIVERSE_MAX_UNIVERSES = 40; // лимит числа вселенных ( LAST слот перезаписывается )
+	public static boolean Enable_uVOID = false; // вселенная пустоты
 
 
 	//								   МИНУТ * сек * тик
@@ -86,6 +86,18 @@ public class ModVariables {
 	public static Set<Biome> Rock_Gen_Biomes_Cached = null;
 
 	public static boolean Enable_Bushes = true;
+    public static double bush1gen = 1.6; // Forest
+    public static double bush2gen = 1.9; // swamp
+    public static double bush3gen = 1.7; // Taiga
+    public static double bush4gen = 1.8; // Jungle
+    public static double bush5gen = 1.0; // siren
+    public static double bush6gen = 0.65;// Plains
+    public static double bush7gen = 1.6; // Jungle
+    public static double fern1gen = 2.3;
+
+
+
+
 	public static boolean Extra_Fuels = true;
 	public static boolean doRegisterMinedBlocks = true;
 

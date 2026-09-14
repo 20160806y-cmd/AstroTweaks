@@ -29,6 +29,7 @@ public class UOredictRegistrar {
 		OreIngots();
 		OreOres();
 		OreRods();
+		OreTools();
 	}
 
 	//@SubscribeEvent public void preInit(FMLPreInitializationEvent event) {}
@@ -61,14 +62,6 @@ public class UOredictRegistrar {
         OreDictionary.registerOre("shard", new ItemStack(ATItems.BONE_SHARD, 1));
         OreDictionary.registerOre("shardDiamond", new ItemStack(ATItems.DIAMOND_SHARD, 1));
         OreDictionary.registerOre("shard", new ItemStack(ATItems.DIAMOND_SHARD, 1));
-
-		OreDictionary.registerOre("toolSaw", new ItemStack(ItemSawIron.IRON_SAW, 1));
-		OreDictionary.registerOre("toolSaw", new ItemStack(ItemSawDiamond.DIAMOND_SAW, 1));
-		OreDictionary.registerOre("toolSaw", new ItemStack(ItemGoldenSaw.GOLDEN_SAW, 1));
-		OreDictionary.registerOre("toolSaw", new ItemStack(ItemCopperSaw.COPPER_SAW, 1));
-		OreDictionary.registerOre("toolSaw", new ItemStack(ItemBronzeSaw.BRONZE_SAW, 1));
-		OreDictionary.registerOre("toolSaw", new ItemStack(ItemTinSaw.TIN_SAW, 1));
-		OreDictionary.registerOre("toolSaw", new ItemStack(ItemSteelSaw.STEEL_SAW, 1));
 
 		OreDictionary.registerOre("wireGold", new ItemStack(ATItems.COPPER_COIL, 1));
 		OreDictionary.registerOre("wireCopper", new ItemStack(ATItems.GOLDEN_COIL, 1));
@@ -307,6 +300,37 @@ public class UOredictRegistrar {
         OreDictionary.registerOre("rodUranium", new ItemStack(ATItems.URANIUM_STICK, 1));
         OreDictionary.registerOre("rodBrass", new ItemStack(ATItems.BRASS_STICK, 1));
         OreDictionary.registerOre("rodCarbon", new ItemStack(ATItems.CARBON_STICK, 1));
+
+	}
+
+	private static void OreTools() {
+		OreDictionary.registerOre("toolSaw", new ItemStack(ItemSawIron.IRON_SAW, 1));
+		OreDictionary.registerOre("toolSaw", new ItemStack(ItemSawDiamond.DIAMOND_SAW, 1));
+		OreDictionary.registerOre("toolSaw", new ItemStack(ItemGoldenSaw.GOLDEN_SAW, 1));
+		OreDictionary.registerOre("toolSaw", new ItemStack(ItemCopperSaw.COPPER_SAW, 1));
+		OreDictionary.registerOre("toolSaw", new ItemStack(ItemBronzeSaw.BRONZE_SAW, 1));
+		OreDictionary.registerOre("toolSaw", new ItemStack(ItemTinSaw.TIN_SAW, 1));
+		OreDictionary.registerOre("toolSaw", new ItemStack(ItemSteelSaw.STEEL_SAW, 1));
+
+		OreDictionary.registerOre("toolHoe", new ItemStack(Items.DIAMOND_HOE, 1));
+		OreDictionary.registerOre("toolHoe", new ItemStack(Items.IRON_HOE, 1));
+		OreDictionary.registerOre("toolHoe", new ItemStack(Items.GOLDEN_HOE, 1));
+		OreDictionary.registerOre("toolHoe", new ItemStack(Items.STONE_HOE, 1));
+		OreDictionary.registerOre("toolHoe", new ItemStack(ItemRubyHoe.HOE, 1));
+		OreDictionary.registerOre("toolHoe", new ItemStack(ItemEmeraldHoe.HOE, 1));
+		OreDictionary.registerOre("toolHoe", new ItemStack(ItemCrystalHoe.HOE, 1));
+		OreDictionary.registerOre("toolHoe", new ItemStack(ItemNeutroniumHoe.HOE, 1));
+
+		OreDictionary.registerOre("toolAxe", new ItemStack(ItemRubyAxe.AXE, 1));
+		OreDictionary.registerOre("toolAxe", new ItemStack(ItemEmeraldAxe.AXE, 1));
+		OreDictionary.registerOre("toolAxe", new ItemStack(ItemCrystalAxe.AXE, 1));
+		OreDictionary.registerOre("toolAxe", new ItemStack(ItemNeutroniumAxe.AXE, 1));
+		
+		OreDictionary.registerOre("toolPickaxe", new ItemStack(ItemRubyPickaxe.PICKAXE, 1));
+		OreDictionary.registerOre("toolPickaxe", new ItemStack(ItemEmeraldPickaxe.PICKAXE, 1));
+		OreDictionary.registerOre("toolPickaxe", new ItemStack(ItemCrystalPickaxe.PICKAXE, 1));
+		OreDictionary.registerOre("toolPickaxe", new ItemStack(ItemNeutroniumPickaxe.PICKAXE, 1));
+
 
 	}
 }

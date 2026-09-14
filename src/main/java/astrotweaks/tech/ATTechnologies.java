@@ -24,7 +24,6 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.registry.GameRegistry;
 import net.minecraftforge.fml.relauncher.Side;
-//import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.util.List;
 
@@ -53,7 +52,6 @@ public class ATTechnologies {
     private static final Block[] BLOCKS_BASE = {
         ARK, ARK_RESONATOR, MONEY_TABLE, QTP_SUPRESSOR
     };
-
     public static Block[] getBlocks() {
         return (ModVariables.MULTIVERSE && ModVariables.Enable_TDARK) ? BLOCKS_WITH_TDARK : BLOCKS_BASE;
     }

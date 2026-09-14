@@ -89,6 +89,17 @@ public class ConfigManager {
 			ModVariables.OW_Ruby_Gen = safeGetBoolean(config, "Ruby_Generation", "Worldgen", ModVariables.OW_Ruby_Gen, "Enable Ruby Generation (y/n)");
 			ModVariables.OW_Minerals_Gen = safeGetBoolean(config, "Overworld_Minerals_Generation", "Worldgen", ModVariables.OW_Minerals_Gen, "Enable Overworld Minerals Generation (y/n)");
 			ModVariables.Enable_Bushes = safeGetBoolean(config, "Enable_Bushes", "Worldgen", ModVariables.Enable_Bushes, "Enable bush generation in Overworld (y/n)");
+
+			ModVariables.bush1gen = safeGetDouble(config, "bush1_genAttempts", "Worldgen", ModVariables.bush1gen /*def*/, 0.0 /*min*/, 99.0 /*max*/, "Number of attempts to generate an element [default: " + ModVariables.bush1gen + "]");
+			ModVariables.bush2gen = safeGetDouble(config, "bush2_genAttempts", "Worldgen", ModVariables.bush2gen /*def*/, 0.0 /*min*/, 99.0 /*max*/, "Number of attempts to generate an element [default: " + ModVariables.bush2gen + "]");
+			ModVariables.bush3gen = safeGetDouble(config, "bush3_genAttempts", "Worldgen", ModVariables.bush3gen /*def*/, 0.0 /*min*/, 99.0 /*max*/, "Number of attempts to generate an element [default: " + ModVariables.bush3gen + "]");
+			ModVariables.bush4gen = safeGetDouble(config, "bush4_genAttempts", "Worldgen", ModVariables.bush4gen /*def*/, 0.0 /*min*/, 99.0 /*max*/, "Number of attempts to generate an element [default: " + ModVariables.bush4gen + "]");
+			ModVariables.bush5gen = safeGetDouble(config, "bush5_genAttempts", "Worldgen", ModVariables.bush5gen /*def*/, 0.0 /*min*/, 99.0 /*max*/, "Number of attempts to generate an element [default: " + ModVariables.bush5gen + "]");
+			ModVariables.bush6gen = safeGetDouble(config, "bush6_genAttempts", "Worldgen", ModVariables.bush6gen /*def*/, 0.0 /*min*/, 99.0 /*max*/, "Number of attempts to generate an element [default: " + ModVariables.bush6gen + "]");
+			ModVariables.bush7gen = safeGetDouble(config, "bush7_genAttempts", "Worldgen", ModVariables.bush7gen /*def*/, 0.0 /*min*/, 99.0 /*max*/, "Number of attempts to generate an element [default: " + ModVariables.bush7gen + "]");
+			ModVariables.fern1gen = safeGetDouble(config, "fern1_genAttempts", "Worldgen", ModVariables.fern1gen /*def*/, 0.0 /*min*/, 99.0 /*max*/, "Number of attempts to generate an element [default: " + ModVariables.fern1gen + "]");
+
+
 			ModVariables.Enable_Ground_Elements = safeGetBoolean(config, "Enable_Ground_Elements", "Worldgen", ModVariables.Enable_Ground_Elements, "Enable Ground elements generation (y/n)");
 			// Double values with validation of range and parsing
 			ModVariables.Stick_Gen_Attempts = safeGetDouble(config, "Stick_Gen_Attempts", "Worldgen", ModVariables.Stick_Gen_Attempts /*def*/, 0.0 /*min*/, 999.0 /*max*/, "Number of attempts to generate an element (double num) [default: 2.0]");

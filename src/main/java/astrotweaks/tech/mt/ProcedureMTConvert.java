@@ -6,7 +6,6 @@ import net.minecraft.tileentity.TileEntityLockableLoot;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.init.Blocks;
 import net.minecraftforge.oredict.OreDictionary;
 
 import java.util.Random;
@@ -19,8 +18,8 @@ import java.util.List;
 import astrotweaks.item.ATItems;
 import astrotweaks.item.ItemGavel;
 
-
 import astrotweaks.ModVariables;
+
 
 
 public class ProcedureMTConvert {
@@ -34,7 +33,6 @@ public class ProcedureMTConvert {
     private static final boolean Money_Can_Conversion = ModVariables.Money_Can_Conversion;
 
     private static final int ConvCount = ModVariables.Money_ConvCount;
-
 
 
     public ProcedureMTConvert() {}

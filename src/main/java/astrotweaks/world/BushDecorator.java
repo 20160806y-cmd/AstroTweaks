@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import astrotweaks.ModVariables;
 import astrotweaks.block.BlockBush1;
 import astrotweaks.block.BlockBush2;
 import astrotweaks.block.BlockBush3;
@@ -39,7 +40,29 @@ public class BushDecorator {
 	private static Set<Block> GROUND_BLOCKS;
 	private static Set<Block> REPLACEABLE_BLOCKS;
 
-    private static boolean initialized;
+    private static double b1gen;
+    private static double b2gen;
+    private static double b3gen;
+    private static double b4gen;
+    private static double b5gen;
+    private static double b6gen;
+    private static double b7gen;
+    private static double f1gen;
+
+    public static void updVars() {
+
+        b1gen = ModVariables.bush1gen;
+        b2gen = ModVariables.bush2gen;
+        b3gen = ModVariables.bush3gen;
+        b4gen = ModVariables.bush4gen;
+        b5gen = ModVariables.bush5gen;
+        b6gen = ModVariables.bush6gen;
+        b7gen = ModVariables.bush7gen;
+        f1gen = ModVariables.fern1gen;
+
+
+
+    }
 
 	private static Set<ResourceLocation> Bush1_biomes = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
 		new ResourceLocation("forest"),new ResourceLocation("taiga"),new ResourceLocation("forest_hills"), new ResourceLocation("taiga_hills"),
@@ -121,14 +144,14 @@ public class BushDecorator {
 		//addBush(BlockBush7.block, Bush7_biomes_ch, 1.6, 9); // Jungle
 		//addBush(BlockFern1.block, Fern1_biomes_ch, 2.3, 12); //
 
-        addBush(map, BlockBush1.block, toBiomeSet(Bush1_biomes), 1.6, 8);
-        addBush(map, BlockBush2.block, toBiomeSet(Bush2_biomes), 1.9, 9);
-        addBush(map, BlockBush3.block, toBiomeSet(Bush3_biomes), 1.7, 7);
-        addBush(map, BlockBush4.block, toBiomeSet(Bush4_biomes), 1.8, 11);
-        addBush(map, BlockBush5.block, toBiomeSet(Bush5_biomes), 1.0, 6);
-        addBush(map, BlockBush6.block, toBiomeSet(Bush6_biomes), 0.65, 8);
-        addBush(map, BlockBush7.block, toBiomeSet(Bush7_biomes), 1.6, 9);
-        addBush(map, BlockFern1.block, toBiomeSet(Fern1_biomes), 2.3, 12);
+        addBush(map, BlockBush1.block, toBiomeSet(Bush1_biomes), b1gen, 8); // Forest
+        addBush(map, BlockBush2.block, toBiomeSet(Bush2_biomes), b2gen, 9); // swamp
+        addBush(map, BlockBush3.block, toBiomeSet(Bush3_biomes), b3gen, 7); // Taiga
+        addBush(map, BlockBush4.block, toBiomeSet(Bush4_biomes), b4gen, 11);// Jungle
+        addBush(map, BlockBush5.block, toBiomeSet(Bush5_biomes), b5gen, 5); // siren
+        addBush(map, BlockBush6.block, toBiomeSet(Bush6_biomes), b6gen, 8); // Plains
+        addBush(map, BlockBush7.block, toBiomeSet(Bush7_biomes), b7gen, 8); // Plains
+        addBush(map, BlockFern1.block, toBiomeSet(Fern1_biomes), f1gen, 12);// Jungle
 
 		// final
         Map<Biome, List<BushEntry>> immutableMap = new HashMap<>();
