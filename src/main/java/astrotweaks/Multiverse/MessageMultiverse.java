@@ -14,6 +14,7 @@ import net.minecraftforge.fml.relauncher.Side;
 public class MessageMultiverse implements IMessage {
 
     private static final int GLOBAL_SENTINEL = -1;
+    private static final int PROXY_SENTINEL = -2;
     private int baseDimId;
     private boolean global;
     private long seed;
@@ -30,6 +31,11 @@ public class MessageMultiverse implements IMessage {
     }
     public static MessageMultiverse forGlobal() {
         MessageMultiverse message = new MessageMultiverse(GLOBAL_SENTINEL);
+        message.global = true;
+        return message;
+    }
+    public static MessageMultiverse forProxy() {
+        MessageMultiverse message = new MessageMultiverse(PROXY_SENTINEL);
         message.global = true;
         return message;
     }
@@ -55,11 +61,13 @@ public class MessageMultiverse implements IMessage {
         @Override
         public IMessage onMessage(MessageMultiverse message, MessageContext ctx) {
             if (ctx.side == Side.CLIENT) {
-                if (message.global) {
+                if (message.global && message.baseDimId == GLOBAL_SENTINEL) {
                     // Server is authoritative: it only sends this when the player is
                     // entering the void. Client registration is needed for rendering and
                     // has no save side effects, so the local Enable_uVOID flag is bypassed.
                     MultiverseDims.registerGlobalDimensionForClient();
+                } else if (message.global && message.baseDimId == PROXY_SENTINEL) {
+                    MultiverseDims.registerProxyDimensionForClient();
                 } else {
                     MultiverseDims.registerLevelDimensions(message.baseDimId);
                 }

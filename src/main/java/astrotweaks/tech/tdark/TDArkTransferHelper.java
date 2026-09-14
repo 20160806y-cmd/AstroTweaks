@@ -32,7 +32,11 @@ import astrotweaks.Multiverse.MultiverseEvents;
 import astrotweaks.Multiverse.MultiverseTeleporter;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
 
 
 
@@ -435,6 +439,208 @@ public class TDArkTransferHelper {
         }
 
     }
+
+	/**
+	 * Saves the 15x11x15 transfer area (blocks + tile entities) together with all
+	 * entities/players inside it AND their offsets from the core position. Used by the
+	 * synchronous proxy flow that runs BEFORE a universe is recycled, so the captured
+	 * data survives the source world being deleted.
+	 */
+	public static TeleportData saveTeleportData(World world, BlockPos corePos, boolean captureEntities, boolean captureItems) {
+	    BlockPos sourceMin = corePos.add(-7, -5, -7);
+	    BlockPos sourceMax = corePos.add(7, 5, 7);
+
+	    List<BlockSave> blocksToMove = new ArrayList<>();
+	    for (BlockPos p : BlockPos.getAllInBoxMutable(sourceMin, sourceMax)) {
+	        IBlockState state = world.getBlockState(p);
+	        TileEntity te = world.getTileEntity(p);
+	        NBTTagCompound teNBT = null;
+	        if (te != null) {
+	            teNBT = te.serializeNBT();
+	            teNBT.removeTag("x");
+	            teNBT.removeTag("y");
+	            teNBT.removeTag("z");
+	        }
+	        blocksToMove.add(new BlockSave(state, teNBT));
+	    }
+
+	    List<Entity> entitiesInArea = world.getEntitiesWithinAABB(Entity.class, new AxisAlignedBB(sourceMin, sourceMax.add(1, 1, 1)));
+	    List<Parked> parked = new ArrayList<>();
+	    for (Entity entity : entitiesInArea) {
+	        boolean isItem = entity instanceof EntityItem;
+	        if (isItem && !captureItems) continue;
+	        if (!(entity instanceof EntityPlayer) && !isItem && !captureEntities) continue;
+	        parked.add(new Parked(entity.getUniqueID(), entity instanceof EntityPlayer, 
+	                entity.posX - corePos.getX(), entity.posY - corePos.getY(), entity.posZ - corePos.getZ()));
+	    }
+
+	    return new TeleportData(blocksToMove, parked, corePos);
+	}
+
+	/**
+	 * Places a previously saved transfer area into the freshly (re)created universe and
+	 * teleports every parked player/entity from the proxy dimension to the exact spot
+	 * (target core + their original offset from the source core). Must be called after
+	 * the new target world is built. Returns true when the block transfer succeeded.
+	 */
+	public static boolean placeRecycledTeleportData(MinecraftServer server, LevelData targetLevel, WorldServer targetWorld,
+	        int targetDim, BlockPos corePosTarget, TeleportData data, boolean clearMode) {
+	    BlockPos targetMin = corePosTarget.add(-7, -5, -7);
+	    BlockPos targetMax = corePosTarget.add(7, 5, 7);
+
+	    int minChunkX = targetMin.getX() >> 4;
+	    int maxChunkX = targetMax.getX() >> 4;
+	    int minChunkZ = targetMin.getZ() >> 4;
+	    int maxChunkZ = targetMax.getZ() >> 4;
+	    for (int cx = minChunkX; cx <= maxChunkX; cx++) {
+	        for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
+	            targetWorld.getChunkProvider().provideChunk(cx, cz);
+	        }
+	    }
+
+	    if (isSuppressorInArea(targetWorld, targetMin, targetMax)) {
+	        return false;
+	    }
+	    if (SuppressorManager.isPositionBlocked(targetWorld, corePosTarget)) {
+	        return false;
+	    }
+	    for (BlockPos p : BlockPos.getAllInBoxMutable(targetMin, targetMax)) {
+	        IBlockState state = targetWorld.getBlockState(p);
+	        if (state.getBlockHardness(targetWorld, p) < 0) {
+	            return false;
+	        }
+	    }
+
+	    if (clearMode) {
+	        for (BlockPos p : BlockPos.getAllInBoxMutable(targetMin, targetMax)) {
+	            targetWorld.destroyBlock(p, true);
+	        }
+	    } else {
+	        for (BlockPos p : BlockPos.getAllInBoxMutable(targetMin, targetMax)) {
+	            targetWorld.destroyBlock(p, false);
+	        }
+	    }
+
+	    int index = 0;
+	    for (BlockPos p : BlockPos.getAllInBoxMutable(targetMin, targetMax)) {
+	        BlockSave save = data.blocks.get(index++);
+	        IBlockState state = save.state;
+	        targetWorld.setBlockState(p, state, 3);
+	        if (save.teNBT != null) {
+	            save.teNBT.setInteger("x", p.getX());
+	            save.teNBT.setInteger("y", p.getY());
+	            save.teNBT.setInteger("z", p.getZ());
+	            targetWorld.removeTileEntity(p);
+	            TileEntity newTe = TileEntity.create(targetWorld, save.teNBT);
+	            if (newTe != null) {
+	                targetWorld.setTileEntity(p, newTe);
+	                newTe.validate();
+	                newTe.markDirty();
+	            }
+	        }
+	        targetWorld.notifyBlockUpdate(p, state, state, 3);
+	        if (targetWorld instanceof WorldServer) {
+	            ((WorldServer) targetWorld).getPlayerChunkMap().markBlockForUpdate(p);
+	        }
+	    }
+
+// Teleport parked players/entities from the proxy into the fresh universe.
+	    // Deferred one tick: the park-in-proxy already performed a changeDimension in this
+	    // tick, and a second one immediately after is unsafe in Forge 1.12.2.
+	    server.addScheduledTask(() -> {
+	        WorldServer proxyWorld = DimensionManager.getWorld(MultiverseDims.PROXY_DIM);
+	        for (Parked parked : data.parked) {
+	            if (proxyWorld == null) break;
+	            Entity found = parked.isPlayer ? proxyWorld.getPlayerEntityByUUID(parked.uuid) : proxyWorld.getEntityFromUuid(parked.uuid);
+	            if (found == null || found.isDead) continue;
+
+	            double newX = corePosTarget.getX() + parked.dx;
+	            double newY = corePosTarget.getY() + parked.dy;
+	            double newZ = corePosTarget.getZ() + parked.dz;
+
+	            if (parked.isPlayer) {
+	                EntityPlayerMP mp = (EntityPlayerMP) found;
+	                AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(targetLevel.baseId, targetLevel.seed), mp);
+	                Entity moved = MultiverseEvents.teleportIgnoringPortalRemap(mp, targetDim,
+	                        new MultiverseTeleporter(new BlockPos((int) newX, (int) newY, (int) newZ)));
+	                if (moved instanceof EntityPlayerMP) {
+	                    EntityPlayerMP mm = (EntityPlayerMP) moved;
+	                    mm.connection.setPlayerLocation(newX, newY, newZ, mm.rotationYaw, mm.rotationPitch);
+	                    mm.setRotationYawHead(mm.rotationYaw);
+	                    mm.prevRotationYawHead = mm.rotationYaw;
+	                    mm.setRenderYawOffset(mm.rotationYaw);
+	                    mm.fallDistance = 0.0F;
+	                }
+	            } else {
+	                CustomTeleporter teleporter = new CustomTeleporter(targetWorld,
+	                        corePosTarget.getX(), corePosTarget.getY(), corePosTarget.getZ(),
+	                        parked.dx, parked.dy, parked.dz);
+	                Entity newEntity = MultiverseEvents.teleportIgnoringPortalRemap(found, targetDim, teleporter);
+	                if (newEntity != null) {
+	                    newEntity.motionX = 0.0D;
+	                    newEntity.motionY = 0.0D;
+	                    newEntity.motionZ = 0.0D;
+	                    if (newEntity instanceof EntityLivingBase) {
+	                        EntityLivingBase living = (EntityLivingBase) newEntity;
+	                        living.setRotationYawHead(living.rotationYaw);
+	                        living.prevRotationYawHead = living.rotationYaw;
+	                        living.setRenderYawOffset(living.rotationYaw);
+	                    }
+	                }
+	            }
+	        }
+	    });
+	    return true;
+	}
+
+	/** Captured 15x11x15 area (blocks + parked players/entities with core-relative offsets). */
+	public static class TeleportData {
+	    public final List<BlockSave> blocks;
+	    public final List<Parked> parked;
+	    public final BlockPos corePos;
+	    public TeleportData(List<BlockSave> blocks, List<Parked> parked, BlockPos corePos) {
+	        this.blocks = blocks;
+	        this.parked = parked;
+	        this.corePos = corePos;
+	    }
+	}
+
+	/** A player or entity that must be moved through the proxy, with its offset from the source core. */
+	public static class Parked {
+	    public final UUID uuid;
+	    public final boolean isPlayer;
+	    public final double dx, dy, dz;
+	    public Parked(UUID uuid, boolean isPlayer, double dx, double dy, double dz) {
+	        this.uuid = uuid;
+	        this.isPlayer = isPlayer;
+	        this.dx = dx;
+	        this.dy = dy;
+	        this.dz = dz;
+	    }
+	}
+
+	/**
+	 * Moves every player/entity recorded in {@code data} from the source world into the
+	 * proxy dimension, so the source universe can be recycled without stranding them.
+	 * {@link #placeRecycledTeleportData} later brings them into the fresh universe.
+	 */
+	public static void parkInProxy(World world, TeleportData data) {
+	    WorldServer proxy = LevelManager.getInstance().getOrCreateProxyWorld(world.getMinecraftServer());
+	    if (proxy == null) return;
+	    WorldServer sourceWorld = (WorldServer) world;
+	    BlockPos parkSpot = new BlockPos(0, 64, 0);
+	    for (Parked parked : data.parked) {
+	        Entity source = parked.isPlayer
+	                ? sourceWorld.getPlayerEntityByUUID(parked.uuid)
+	                : sourceWorld.getEntityFromUuid(parked.uuid);
+	        if (source == null || source.isDead) continue;
+	        if (parked.isPlayer) {
+	            AstrotweaksMod.PACKET_HANDLER.sendTo(MessageMultiverse.forProxy(), (EntityPlayerMP) source);
+	        }
+	        MultiverseEvents.teleportIgnoringPortalRemap(source, MultiverseDims.PROXY_DIM,
+	                new MultiverseTeleporter(parkSpot));
+	    }
+	}
 
 	// Search for core structure (QM block and resonator) 
 	public static BlockPos findCore(World world, BlockPos termPos) {

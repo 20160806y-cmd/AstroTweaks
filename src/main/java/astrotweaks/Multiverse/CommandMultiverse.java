@@ -73,6 +73,10 @@ public class CommandMultiverse extends CommandBase {
 
         // Numeric layer ids map directly to universe slots (folder is MV_<slot>);
         // named universes are normalized to MV_<name> inside getOrCreateLevel.
+        if (layerId != null && layerId > lm.getMaxUniverses()) {
+            executeRecreateMax(server, sender, player, lm, type, seed, layerId);
+            return;
+        }
         LevelData data;
         if (layerId != null) {
             data = lm.getOrCreateLevel(server, layerId, seed);
@@ -143,6 +147,101 @@ public class CommandMultiverse extends CommandBase {
         BlockPos target = new BlockPos(0, 64, 0);
         teleportTo(player, global, target);
         sender.sendMessage(new TextComponentString("Teleported to the Void dimension"));
+    }
+
+    /**
+     * /mv join with a layer_id beyond maxUniverses(): the id is clamped to the last
+     * slot and that universe is (re)created with the given (or random) seed. When the
+     * issuing player is standing inside the max universe it is routed through the proxy
+     * dimension first — recycling a universe the player is currently in is not supported
+     * by transferPlayerToDimension in Forge 1.12.2.
+     */
+    private void executeRecreateMax(MinecraftServer server, ICommandSender sender, EntityPlayerMP player, LevelManager lm, LevelDimensionType type, long seed, int requested) {
+        int max = lm.getMaxUniverses();
+        LevelData oldMax = lm.getLevelByNumber(max);
+        boolean playerInMax = oldMax != null && lm.getLevelByDimensionId(player.dimension) == oldMax;
+        System.out.println("[MULTIVERSE] /mv join " + requested + ": clamped to slot " + max);
+        sender.sendMessage(new TextComponentString("Layer " + requested + " exceeds the last slot " + max + " — will (re)create the last universe"));
+
+        if (!playerInMax) {
+            recreateAndTeleport(server, sender, player, lm, type, seed);
+            return;
+        }
+
+        // Park the player in the proxy dimension before its universe is recycled, then defer
+        // the recreate+return to the NEXT server tick. Two changeDimension calls fired in the
+        // same tick are unsafe in Forge 1.12.2 (the client has not finished switching worlds),
+        // which once left the player stranded in the void proxy.
+        AstrotweaksMod.PACKET_HANDLER.sendTo(MessageMultiverse.forProxy(), player);
+        WorldServer proxy = lm.getOrCreateProxyWorld(server);
+        if (proxy == null) {
+            sender.sendMessage(new TextComponentString("Failed to load the proxy dimension"));
+            return;
+        }
+        teleportTo(player, proxy, new BlockPos(0, 64, 0));
+
+        server.addScheduledTask(() -> {
+            try {
+                recreateAndTeleport(server, sender, player, lm, type, seed);
+            } catch (Exception e) {
+                System.err.println("[MULTIVERSE] Deferred recreate-and-return failed: " + e);
+                e.printStackTrace();
+            }
+            // Never leave anyone in the void proxy.
+            if (player.dimension == MultiverseDims.PROXY_DIM || player.isDead) {
+                returnPlayerToSafety(server, player);
+            }
+        });
+    }
+
+    private void recreateAndTeleport(MinecraftServer server, ICommandSender sender, EntityPlayerMP player, LevelManager lm, LevelDimensionType type, long seed) {
+        LevelData data = lm.recreateMaxLevel(server, seed);
+        if (data == null) {
+            sender.sendMessage(new TextComponentString("Failed to recreate the last universe"));
+            return;
+        }
+
+        // (Re)register the universe on the client before the respawn packet when it was recycled.
+        if (player.connection != null && !player.isDead) {
+            AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(data.baseId, data.seed), player);
+        }
+
+        WorldServer targetWorld = lm.getOrCreateWorld(server, data, type);
+        if (targetWorld == null) {
+            sender.sendMessage(new TextComponentString("Failed to load world for level '" + data.name + "'"));
+            return;
+        }
+        BlockPos target = spawnFor(targetWorld, type);
+        if (type == LevelDimensionType.DEPTHS) {
+            // Keep the same arrival pocket as in the normal join path.
+            targetWorld.destroyBlock(target, true);
+            targetWorld.destroyBlock(target.up(), true);
+        }
+        // Force the landing area to exist before sending the player there, so a freshly
+        // recreated world cannot dump him into an ungenerated void.
+        net.minecraft.world.gen.ChunkProviderServer cps = targetWorld.getChunkProvider();
+        int cx = target.getX() >> 4;
+        int cz = target.getZ() >> 4;
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                cps.loadChunk(cx + dx, cz + dz);
+            }
+        }
+        teleportTo(player, targetWorld, target);
+        sender.sendMessage(new TextComponentString("Teleported to level '" + data.name + "' (" + type.name().toLowerCase() + ")"));
+    }
+
+    /** Fallback when the deferred recreate-and-return failed: bring the player to overworld spawn. */
+    private void returnPlayerToSafety(MinecraftServer server, EntityPlayerMP player) {
+        try {
+            if (player.connection == null || player.isDead) return;
+            WorldServer world0 = net.minecraftforge.common.DimensionManager.getWorld(0);
+            if (world0 != null && player.dimension != 0) {
+                teleportTo(player, world0, world0.getSpawnPoint());
+            }
+        } catch (Exception e) {
+            System.err.println("[MULTIVERSE] returnPlayerToSafety failed: " + e);
+        }
     }
 
     /** /mv get: print the current level name and dimension id for debugging. */

@@ -17,6 +17,7 @@ import net.minecraft.world.ServerWorldEventHandler;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings;
 import net.minecraft.world.WorldType;
+import net.minecraft.world.chunk.storage.RegionFileCache;
 import net.minecraft.world.storage.WorldInfo;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.MinecraftForge;
@@ -89,6 +90,7 @@ public class LevelManager {
     private MinecraftServer cachedServer;
     private File multiverseFolder;
     private File globalFolder;
+    private File proxyFolder;
     private boolean registryLoaded;
     private long worldSeed;
 
@@ -112,6 +114,10 @@ public class LevelManager {
     // ------------------------------------------------------------------ config
 
     private int maxUniverses() {
+        return cachedMaxUniverses;
+    }
+
+    public int getMaxUniverses() {
         return cachedMaxUniverses;
     }
 
@@ -190,10 +196,16 @@ public class LevelManager {
             //System.out.println("[MULTIVERSE] Shared global dimension folder: " + globalFolder);
         }
 
+        proxyFolder = new File(multiverseFolder, "MV_PROXY");
+        if (!proxyFolder.exists() && !proxyFolder.mkdirs()) {
+            System.err.println("[MULTIVERSE] Cannot create MV_PROXY folder: " + proxyFolder);
+        }
+
         worldSeed = readWorldSeed(world0);
         ensureRegistry(server);
         writeBindingMarker(world0);
         registerGlobalDimensionIfMissing();
+        registerProxyDimensionIfMissing();
         reconcileWithDisk(server);
         loadPlayerData();
 
@@ -218,6 +230,12 @@ public class LevelManager {
         if (!MultiverseDims.isGlobalDimensionEnabled()) return;
         if (!DimensionManager.isDimensionRegistered(MultiverseDims.GLOBAL_DIM)) {
             MultiverseDims.registerGlobalDimension();
+        }
+    }
+
+    private void registerProxyDimensionIfMissing() {
+        if (!DimensionManager.isDimensionRegistered(MultiverseDims.PROXY_DIM)) {
+            MultiverseDims.registerProxyDimension();
         }
     }
 
@@ -576,6 +594,24 @@ public class LevelManager {
         return result;
     }
 
+    /**
+     * Пересоздаёт вселенную в максимальном слоте: выгружает старую, удаляет папку,
+     * создаёт новую с указанным сидом. Используется командой /mv join при номере > MAX
+     * и TDArk при пустом UID и достигнутом максимуме.
+     */
+    public LevelData recreateMaxLevel(MinecraftServer server, long seed) {
+        ensureActive(server);
+        int max = maxUniverses();
+        LevelData existing = universeByNumber.get(max);
+        if (existing != null) {
+            System.out.println("[MULTIVERSE] recreateMaxLevel: recycling existing #" + max + " (" + existing.name + ")");
+            recycleLevel(server, existing);
+        }
+        LevelData result = getOrCreateLevel(server, max, seed);
+        System.out.println("[MULTIVERSE] recreateMaxLevel: created #" + max + " seed=" + seed + " result=" + (result != null ? result.name : "null"));
+        return result;
+    }
+
     private boolean isLevelDataPresent(File folder) {
         return new File(folder, "level.dat").isFile();
     }
@@ -605,7 +641,11 @@ public class LevelManager {
         levels.remove(old.name);
         universeByNumber.remove(old.number);
         uidToNumber.remove(old.uid);
+        releaseRegionFileHandles();
         deleteRecursively(old.folder);
+        if (old.folder.exists()) {
+            System.err.println("[MULTIVERSE] WARNING: universe " + old.name + " folder was NOT fully deleted (files locked on disk?): " + old.folder);
+        }
         System.out.println("[MULTIVERSE] Recycled universe #" + old.number);
     }
 
@@ -627,24 +667,62 @@ public class LevelManager {
             for (int k = 0; k < DIMS_PER_LEVEL; k++) {
                 unloadWorldNow(server, baseForNumber(slot) + k, false);
             }
+            releaseRegionFileHandles();
             deleteWorldContents(folder);
         }
         return requestedSeed;
     }
 
+    /**
+     * The static {@link RegionFileCache} keeps open file handles for every region
+     * (.mca/.mcr) ever touched by the loaded chunk loaders. On Windows those handles
+     * block deletion, so they must be released before world folders are wiped.
+     */
+    private static void releaseRegionFileHandles() {
+        try {
+            RegionFileCache.clearRegionFileReferences();
+        } catch (Exception e) {
+            System.err.println("[MULTIVERSE] RegionFileCache.clearRegionFileReferences failed: " + e);
+        }
+    }
+
     private static void deleteRecursively(File file) {
         if (file == null || !file.exists()) return;
+        deleteTree(file);
+        if (file.exists()) {
+            releaseRegionFileHandles();
+            deleteTree(file);
+        }
+        if (file.exists()) {
+            System.err.println("[MULTIVERSE] WARNING: could not fully delete " + file + " (files locked on disk?)");
+        }
+    }
+
+    private static void deleteTree(File file) {
         try {
             Path path = file.toPath();
             Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
                 @Override
-                public FileVisitResult visitFile(Path p, BasicFileAttributes attrs) throws IOException {
-                    Files.deleteIfExists(p);
+                public FileVisitResult visitFile(Path p, BasicFileAttributes attrs) {
+                    try {
+                        Files.deleteIfExists(p);
+                    } catch (IOException e) {
+                        System.err.println("[MULTIVERSE] Cannot delete file " + p + ": " + e);
+                    }
                     return FileVisitResult.CONTINUE;
                 }
                 @Override
-                public FileVisitResult postVisitDirectory(Path p, IOException exc) throws IOException {
-                    Files.deleteIfExists(p);
+                public FileVisitResult postVisitDirectory(Path p, IOException exc) {
+                    try {
+                        Files.deleteIfExists(p);
+                    } catch (IOException e) {
+                        System.err.println("[MULTIVERSE] Cannot delete directory " + p + ": " + e);
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+                @Override
+                public FileVisitResult visitFileFailed(Path p, IOException exc) {
+                    System.err.println("[MULTIVERSE] Cannot access " + p + ": " + exc);
                     return FileVisitResult.CONTINUE;
                 }
             });
@@ -940,6 +1018,21 @@ public class LevelManager {
     public LevelData getLevelByNumber(int number) {
         return universeByNumber.get(number);
     }
+
+    /**
+     * True when the given numeric universe is the max-1 slot AND all numeric slots are
+     * occupied, i.e. the random pick falls back to recycling this very universe. Used
+     * by TDArk to detect that its own source universe will be destroyed by the transfer.
+     */
+    public boolean isRecycleVictim(LevelData level) {
+        if (level == null || universeByNumber.get(level.number) != level) return false;
+        if (level.number != maxUniverses()) return false;
+        for (int n = 1; n <= maxUniverses(); n++) {
+            if (!universeByNumber.containsKey(n)) return false;
+        }
+        return true;
+    }
+
     /** Число зарегистрированных вселенных. Корректно после {@link #reconcileWithDisk} — совпадает с числом валидных папок MV_* в MULTIVERSE/. */
     public int countUniverses() {
         return universeByNumber.size();
@@ -948,7 +1041,7 @@ public class LevelManager {
         return dimensionToLevel.get(id);
     }
     public boolean isMultiverseDimension(int id) {
-        return id == MultiverseDims.GLOBAL_DIM || dimensionToLevel.containsKey(id);
+        return id == MultiverseDims.GLOBAL_DIM || id == MultiverseDims.PROXY_DIM || dimensionToLevel.containsKey(id);
     }
 
     /**
@@ -1010,6 +1103,21 @@ public class LevelManager {
         }
         MultiverseDims.registerGlobalDimension();
         return constructWorld(server, globalFolder, MultiverseDims.GLOBAL_DIM, "__global", RNG.nextLong(), false);
+    }
+
+    /** Loads (or creates) the proxy dimension world used as temporary holding during universe recreation. */
+    public WorldServer getOrCreateProxyWorld(MinecraftServer server) {
+        ensureActive(server);
+        WorldServer existing = DimensionManager.getWorld(MultiverseDims.PROXY_DIM);
+        if (existing != null) {
+            File existingDir = existing.getSaveHandler().getWorldDirectory();
+            if (isSameFolder(existingDir, proxyFolder)) {
+                return existing;
+            }
+            unloadWorldNow(server, MultiverseDims.PROXY_DIM, true);
+        }
+        MultiverseDims.registerProxyDimension();
+        return constructWorld(server, proxyFolder, MultiverseDims.PROXY_DIM, "__proxy", RNG.nextLong(), false);
     }
 
     private WorldServer constructWorld(MinecraftServer server, File folder, int dimId, String saveName, long seed, boolean buildEndPortal) {
@@ -1349,6 +1457,10 @@ public class LevelManager {
                 DimensionManager.unregisterDimension(MultiverseDims.GLOBAL_DIM);
             }
         }
+        if (DimensionManager.isDimensionRegistered(MultiverseDims.PROXY_DIM)) {
+            unloadWorldNow(server, MultiverseDims.PROXY_DIM, false);
+            DimensionManager.unregisterDimension(MultiverseDims.PROXY_DIM);
+        }
 
         levels.clear();
         universeByNumber.clear();
@@ -1368,6 +1480,9 @@ public class LevelManager {
         }
         if (MultiverseDims.isGlobalDimensionEnabled()) {
             unloadIfEmpty(server, MultiverseDims.GLOBAL_DIM, ignore);
+        }
+        if (DimensionManager.isDimensionRegistered(MultiverseDims.PROXY_DIM)) {
+            unloadIfEmpty(server, MultiverseDims.PROXY_DIM, ignore);
         }
     }
 

@@ -40,6 +40,9 @@ public final class MultiverseDims {
     /** Shared "global" dimension: one overworld-like world over all saves. */
     public static final int GLOBAL_DIM = -1_000_000;
 
+    /** Proxy dimension used as a temporary holding area during universe recreation. */
+    public static final int PROXY_DIM = 1_111_111;
+
     private static final Object DIMENSION_REGISTRATION_LOCK = new Object();
     private static final Map<Integer, DimensionType> REGISTERED_DIMENSIONS = new HashMap<>();
 
@@ -82,6 +85,20 @@ public final class MultiverseDims {
     public static void registerGlobalDimensionForClient() {
         synchronized (DIMENSION_REGISTRATION_LOCK) {
             registerOneLocked(GLOBAL_DIM, MultiverseWorldProviders.MultiverseGlobal.class);
+        }
+    }
+
+    /** Registers the proxy dimension (1_111_111). Idempotent + thread-safe. Used as temporary holding during universe recreation. */
+    public static void registerProxyDimension() {
+        synchronized (DIMENSION_REGISTRATION_LOCK) {
+            registerOneLocked(PROXY_DIM, MultiverseWorldProviders.MultiverseGlobal.class);
+        }
+    }
+
+    /** Client-side registration of the proxy dimension. */
+    public static void registerProxyDimensionForClient() {
+        synchronized (DIMENSION_REGISTRATION_LOCK) {
+            registerOneLocked(PROXY_DIM, MultiverseWorldProviders.MultiverseGlobal.class);
         }
     }
 

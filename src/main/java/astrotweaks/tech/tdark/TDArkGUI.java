@@ -38,6 +38,7 @@ import astrotweaks.Multiverse.LevelDimensionType;
 import astrotweaks.Multiverse.LevelManager;
 import astrotweaks.Multiverse.MultiverseDims;
 import astrotweaks.Multiverse.MultiverseUtil;
+import astrotweaks.tech.qts.SuppressorManager;
 
 
 public class TDArkGUI {
@@ -186,6 +187,17 @@ public class TDArkGUI {
                     // Случайная вселенная: если слот занят - перемещение, если свободен - создание.
                     long effectiveSeed = seed == 0 ? new Random().nextLong() : seed;
                     System.out.println("[TDArk] uid empty, effectiveSeed=" + effectiveSeed + " (original seed=" + seed + ")");
+
+                    // Если ковчег стоит в max-вселенной, которую случайный выбор перезапишет,
+                    // выполняем синхронный перенос через прокси-измерение ДО пересоздания.
+                    LevelData arkLevel = lm.getLevelByDimensionId(world.provider.getDimension());
+                    if (arkLevel != null && lm.isRecycleVictim(arkLevel)) {
+                        if (!performRecycleTransfer(player, world, pos, teTDArk, lm, seed, targetDim, targetX, targetY, targetZ, message)) {
+                            return;
+                        }
+                        return;
+                    }
+
                     target = lm.getRandomLevelOrCreate(player.getServer(), effectiveSeed);
                 } else {
                     LevelData existing = lm.getLevelByUid(uid);
@@ -235,6 +247,105 @@ public class TDArkGUI {
                 teTDArk.startDelayedTransfer(player, pos, resolvedDim, targetX, targetY, targetZ, message.clearMode, message.captureEntities, message.captureItems);
             }
 	    }
+
+	/**
+	 * Синхронный перенос TDArk при пустом UID, когда ковчег стоит в max-вселенной,
+	 * которую случайный выбор вселенной сейчас перезапишет. Чтобы источник не был
+	 * уничтожен раньше, чем будут сняты его блоки/сущности:
+	 * <ol>
+	 *   <li>валидации + потребление алмаза;</li>
+	 *   <li>снимок 15x11x15 (блоки + игроки + сущности) через saveTeleportData;</li>
+	 *   <li>переезд игроков/сущностей в прокси-измерение (parkInProxy);</li>
+	 *   <li>пересоздание max-вселенной с effectiveSeed (recreateMaxLevel);</li>
+	 *   <li>укладка снимка + телепорт из прокси в свежую вселенную (placeRecycledTeleportData).</li>
+	 * </ol>
+	 */
+	private boolean performRecycleTransfer(EntityPlayerMP player, World world, BlockPos pos,
+	        BlockTDArk.TileEntityCustom teTDArk, LevelManager lm, long seed,
+	        int targetDim, int targetX, int targetY, int targetZ, TDArkActionMessage message) {
+	    BlockPos corePos = TDArkTransferHelper.findCore(world, pos);
+	    if (corePos == null) {
+	        player.sendMessage(new TextComponentTranslation("ark.err.structure"));
+	        return false;
+	    }
+	    if (SuppressorManager.isPositionBlocked(world, corePos)) {
+	        TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("qts.no_tp"));
+	        return false;
+	    }
+
+	    // Check the target boundaries (same rules as performTeleport)
+	    int coreTargetY = targetY + 2;
+	    int minY = coreTargetY - 5;
+	    int maxY = coreTargetY + 5;
+	    final int border = 29999990;
+	    if ((minY < 3 || maxY > 253) || (Math.abs(targetX) > border || Math.abs(targetZ) > border)) {
+	        TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("ark.err.aow"));
+	        return false;
+	    }
+
+	    if (!teTDArk.consumeDiamond()) {
+	        TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("tdark.err.item"));
+	        return false;
+	    }
+
+	    long effectiveSeed = seed == 0 ? new Random().nextLong() : seed;
+	    System.out.println("[TDArk] recycle flow: eating diamond, effectiveSeed=" + effectiveSeed
+	            + " targetDim=" + targetDim + " target=" + targetX + "," + targetY + "," + targetZ);
+
+	    // 1. Снимок блоков + игроков/сущностей ДО уничтожения источника.
+	    TDArkTransferHelper.TeleportData data = TDArkTransferHelper.saveTeleportData(world, corePos, message.captureEntities, message.captureItems);
+	    // Убедимся, что инициатор всегда попадёт в список припаркованных.
+	    boolean hasInitiator = false;
+	    for (TDArkTransferHelper.Parked p : data.parked) {
+	        if (p.isPlayer && p.uuid.equals(player.getUniqueID())) { hasInitiator = true; break; }
+	    }
+	    if (!hasInitiator) {
+	        data.parked.add(new TDArkTransferHelper.Parked(player.getUniqueID(), true,
+	                player.posX - corePos.getX(), player.posY - corePos.getY(), player.posZ - corePos.getZ()));
+	    }
+
+	    // 2. Все игроки/сущности — в прокси-измерение.
+	    TDArkTransferHelper.parkInProxy(world, data);
+
+	    // 3. Пересоздаём max-вселенную (старая, где стоял ковчег, уничтожается).
+	    LevelData newLevel = lm.recreateMaxLevel(player.getServer(), effectiveSeed);
+	    if (newLevel == null) {
+	        System.err.println("[TDArk] recycle flow: recreateMaxLevel returned null");
+	        return false;
+	    }
+
+	    int resolvedDim = MultiverseUtil.resolveRelativeDim(newLevel.baseId, targetDim);
+	    WorldServer targetWorld = null;
+	    LevelDimensionType tt = newLevel.typeOf(resolvedDim);
+	    if (tt != null) {
+	        targetWorld = lm.getOrCreateWorld(player.getServer(), newLevel, tt);
+	    } else {
+	        if (!DimensionManager.isDimensionRegistered(resolvedDim)) {
+	            return false;
+	        }
+	        targetWorld = player.getServer().getWorld(resolvedDim);
+	    }
+	    if (targetWorld == null) {
+	        return false;
+	    }
+
+	    // 4. Укладываем снимок в свежую вселенную и телепортируем припаркованных.
+	    BlockPos corePosTarget = new BlockPos(targetX, coreTargetY, targetZ);
+	    boolean placed = TDArkTransferHelper.placeRecycledTeleportData(player.getServer(), newLevel, targetWorld,
+	            resolvedDim, corePosTarget, data, message.clearMode);
+	    if (!placed) {
+	        return false;
+	    }
+
+	    // 5. Успех: уведомляем припаркованных игроков через их UUID в новом мире.
+	    net.minecraft.util.text.ITextComponent successMsg = new TextComponentTranslation("tdark.success");
+	    for (TDArkTransferHelper.Parked p : data.parked) {
+	        if (!p.isPlayer) continue;
+	        EntityPlayer playerX = targetWorld.getPlayerEntityByUUID(p.uuid);
+	        if (playerX != null && playerX instanceof EntityPlayerMP) playerX.sendMessage(successMsg);
+	    }
+	    return true;
+	}
 	}
 
 	public static class GuiContainerMod extends Container {

@@ -123,8 +123,10 @@ public class MultiverseEvents {
 
         // The global dimension (-1000000) is a sealed overworld-only world: it lives in
         // MULTIVERSE_GLOBAL and must never let a player portal out of it into the
-        // vanilla nether/end or into any multiverse level.
-        if (from == MultiverseDims.GLOBAL_DIM) {
+        // vanilla nether/end or into any multiverse level. The proxy dimension
+        // (1_111_111) is sealed likewise: players are moved in/out of it synchronously
+        // by our own code, never through a portal.
+        if (from == MultiverseDims.GLOBAL_DIM || from == MultiverseDims.PROXY_DIM) {
             event.setCanceled(true);
             return;
         }
@@ -229,7 +231,7 @@ public class MultiverseEvents {
         if (event.getWorld().provider == null) return;
         int dim = event.getWorld().provider.getDimension();
 
-        if (dim == MultiverseDims.GLOBAL_DIM) {
+        if (dim == MultiverseDims.GLOBAL_DIM || dim == MultiverseDims.PROXY_DIM) {
             event.setCanceled(true);
             return;
         }
