@@ -39,6 +39,7 @@ import astrotweaks.gui.GUIHandler;
 //import astrotweaks.procedure.MineDimEnter;
 import astrotweaks.world.BushDecorator;
 import astrotweaks.world.NaturesPower.GrassGrowth;
+import astrotweaks.event.EventBreakBlock;
 //import astrotweaks.gameplay.NoDamageShaking;
 import astrotweaks.gameplay.RealisticBreak;
 //import astrotweaks.gameplay.StepUp;
@@ -164,6 +165,9 @@ public class AstrotweaksMod {
 		astrotweaks.oredict.UOredictRegistrar.init();
 		astrotweaks.oredict.OreDictQuantsT.init();
 		astrotweaks.recipe.RecipeSmeltingAll.init();
+
+		
+		MinecraftForge.EVENT_BUS.register(new EventBreakBlock());
 
 
 

@@ -46,6 +46,8 @@ public class EventLoadWorld {
 		// desired commands
 		runCommand(world, "scoreboard objectives add deathCountX deathCount \u0421\u043C\u0435\u0440\u0442\u0438");
 		runCommand(world, "gamerule randomTickSpeed 2");
+		runCommand(world, "gamerule spawnRadius 128");
+		runCommand(world, "gamerule commandBlockOutput false");
 
 		ModVariables.MapVariables.get(world).Marked = true;
 	}

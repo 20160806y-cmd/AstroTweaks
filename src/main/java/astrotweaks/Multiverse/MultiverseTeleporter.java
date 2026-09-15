@@ -92,23 +92,17 @@ public class MultiverseTeleporter implements ITeleporter {
      */
     public static int findSafeSpawnY(World world, int x, int z, int startY) {
         int result = findSafeYInColumn(world, x, z, startY);
-        if (result >= 0) return result;
+        if (result >= 0)  return result;
 
-        HashSet<Long> checked = new HashSet<>();
-        checked.add(chunkKey(x, z));
+        //HashSet<Long> checked = new HashSet<>();
+        //checked.add(chunkKey(x, z));
 
         for (int ring = 1; ring <= 32; ring++) {
             int range = ring * CHUNK;
             for (int dx = -range; dx <= range; dx += CHUNK) {
                 for (int dz = -range; dz <= range; dz += CHUNK) {
                     if (Math.abs(dx) < range && Math.abs(dz) < range) continue;
-                    int nx = x + dx;
-                    int nz = z + dz;
-                    long key = chunkKey(nx, nz);
-                    if (checked.contains(key)) continue;
-                    checked.add(key);
-
-                    result = findSafeYInColumn(world, nx, nz, startY);
+                    result = findSafeYInColumn(world, x + dx, z + dz, startY);
                     if (result >= 0) return result;
                 }
             }
@@ -116,9 +110,9 @@ public class MultiverseTeleporter implements ITeleporter {
         return -1;
     }
 
-    private static long chunkKey(int x, int z) {
-        return ((long) (x >> 4) << 32) | ((z >> 4) & 0xFFFFFFFFL);
-    }
+    //private static long chunkKey(int x, int z) {
+    //    return ((long) (x >> 4) << 32) | ((z >> 4) & 0xFFFFFFFFL);
+    //}
 
     /**
      * Scans a single column from {@code startY} downward. A position Y is safe when:

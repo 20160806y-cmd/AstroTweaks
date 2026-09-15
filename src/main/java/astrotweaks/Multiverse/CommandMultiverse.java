@@ -28,12 +28,8 @@ import java.util.Random;
 public class CommandMultiverse extends CommandBase {
     private static final int MAX_DIMS = LevelDimensionType.values().length;
 
-    @Override
-    public String getName() {
-        return "mv";
-    }
-    @Override
-    public String getUsage(ICommandSender sender) {
+    @Override public String getName() { return "mv"; }
+    @Override public String getUsage(ICommandSender sender) {
         return "/mv <join <layer_id> [dim_id] [seed] | get>";
     }
     @Override
@@ -200,7 +196,6 @@ public class CommandMultiverse extends CommandBase {
             sender.sendMessage(new TextComponentString("Failed to recreate the last universe"));
             return;
         }
-
         // (Re)register the universe on the client before the respawn packet when it was recycled.
         if (player.connection != null && !player.isDead) {
             AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(data.baseId, data.seed), player);
@@ -284,18 +279,15 @@ public class CommandMultiverse extends CommandBase {
         if (type == LevelDimensionType.OVERWORLD) {
             BlockPos worldSpawn = world.getSpawnPoint();
 
-            // 1) Мировой спавн, если игрок реально может там стоять
-            if (isColumnFree(world, worldSpawn)) {
-                return worldSpawn;
+            // Reconcile the stored world spawn with the actual terrain every join: the
+            // spawn must never sit inside a block/liquid, and an ocean spawn is lifted
+            // to Y 64 (above the water). Reuses the safe-column search below.
+            BlockPos safe = MultiverseUtil.safeWorldSpawn(world, worldSpawn.getX(), worldSpawn.getZ(), false);
+            if (!safe.equals(worldSpawn)) {
+                world.getWorldInfo().setSpawn(safe);
+                world.setSpawnPoint(safe);
             }
-
-            // 2) Иначе — верхний solid/liquid в центральной колонне чанка спавна
-            int cx = (worldSpawn.getX() >> 4) * 16 + 8;
-            int cz = (worldSpawn.getZ() >> 4) * 16 + 8;
-            int topY = findTopSolidOrLiquidY(world, cx, cz);
-            BlockPos result = new BlockPos(cx, topY + 1, cz);
-            world.getWorldInfo().setSpawn(result);
-            return result;
+            return safe;
         }
 
         if (type == LevelDimensionType.NETHER) {
@@ -304,26 +296,13 @@ public class CommandMultiverse extends CommandBase {
             int cx = (base.getX() >> 4) * 16 + 8;
             int cz = (base.getZ() >> 4) * 16 + 8;
 
-            // В Nether верхние ~5 блоков — bedrock-потолок. Начинаем чуть ниже.
-            // getActualHeight() в 1.12 = 128, bedrock на 127. Стартуем с 107.
-            int startY = 100;
-            int surfaceY = -1;
-            for (int y = startY; y > 1; y--) {
-                net.minecraft.block.state.IBlockState s = world.getBlockState(new net.minecraft.util.math.BlockPos(cx, y, cz));
-                if (s.getMaterial().isSolid() || s.getMaterial().isLiquid()) {
-                    surfaceY = y;
-                    break;
-                }
-            }
-
-            // Fallback: если почему-то ничего не нашли (пустой чанк), берём 64.
-            if (surfaceY < 0) surfaceY = 64;
-
-            BlockPos result = new BlockPos(cx, surfaceY + 1, cz);
+            // В Nether верхние ~5 блоков - bedrock-потолок. Сканируем от 100 вниз, так
+            // что находим ПОЛ (или море лавы), а не потолок; встаём сразу над ним.
+            BlockPos result = MultiverseUtil.safeWorldSpawn(world, cx, cz, true);
             world.getWorldInfo().setSpawn(result);
+            world.setSpawnPoint(result);
             return result;
         }
-
         // Fallback
         BlockPos baseSpawn = world.getSpawnPoint();
         int bx = baseSpawn.getX();
@@ -383,9 +362,7 @@ public class CommandMultiverse extends CommandBase {
         return LevelDimensionType.values()[id];
     }
     private static long parseSeed(String s, ICommandSender sender) throws CommandException {
-        if ("random".equalsIgnoreCase(s)) 
-            return new Random().nextLong();
-
+        if ("random".equalsIgnoreCase(s))  return new Random().nextLong();
         try {
             return Long.parseLong(s);
         } catch (NumberFormatException e) {

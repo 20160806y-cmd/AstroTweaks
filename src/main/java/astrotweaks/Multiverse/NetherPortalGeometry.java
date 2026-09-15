@@ -102,9 +102,8 @@ public final class NetherPortalGeometry {
     @Nullable
     public static Geometry findInterior(World world, BlockPos pos) {
         Geometry geometry = findFrame(world, pos);
-        if (geometry == null) {
-            return null;
-        }
+        if (geometry == null)  return null;
+
         int count = 0;
         BlockPos.MutableBlockPos cell = new BlockPos.MutableBlockPos();
         int bx = geometry.interiorMin.getX();

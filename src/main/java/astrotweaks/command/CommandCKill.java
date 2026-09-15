@@ -7,6 +7,7 @@ import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.WorldServer;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -22,7 +23,7 @@ public class CommandCKill extends CommandBase {
     // Всегда разрешаем - команда не требует прав.
     @Override public boolean checkPermission(MinecraftServer server, ICommandSender sender) { return true; }
     @Override public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
-        if (!(sender instanceof EntityPlayerMP)) { throw new CommandException(I18n.format("command.only_for_players")); }
+        if (!(sender instanceof EntityPlayerMP)) { throw new CommandException("command.only_for_players"); }
         EntityPlayerMP player = (EntityPlayerMP) sender;
 
         // Сбрасываем точку спавна (аналогично тому, как её сбрасывает кровать → world spawn)
@@ -30,6 +31,12 @@ public class CommandCKill extends CommandBase {
         player.setSpawnChunk(null, false, 0);
         // Убиваем игрока (то же, что делает ванильный /kill без аргументов)
         player.onKillCommand();
+
+        // После смерти переносим игрока в Overworld.
+        if (player.dimension != 0) {
+            WorldServer overworld = server.getWorld(0);
+            server.getPlayerList().transferPlayerToDimension(player, 0, overworld.getDefaultTeleporter());
+        }
     }
     @Override public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos) { return Collections.emptyList(); }
 }

@@ -1,9 +1,7 @@
 package astrotweaks.event;
 
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.event.world.BlockEvent;
-
 import net.minecraft.world.World;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.item.ItemStack;
@@ -12,7 +10,6 @@ import net.minecraft.init.Blocks;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
-//import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.monster.EntityMagmaCube;
 import net.minecraft.entity.Entity;
 import net.minecraft.block.state.IBlockState;
@@ -26,10 +23,12 @@ import astrotweaks.item.*;
 import astrotweaks.ModVariables;
 
 
-@Mod.EventBusSubscriber(modid = "astrotweaks")
-public final class EventBreakBlock {
+
+public class EventBreakBlock {
     private static final int CAVERN_DIM_ID = astrotweaks.world.DepthsDim.DIMID;
 	public EventBreakBlock() {}
+
+
 	private static void spawnItem(World world, int x, int y, int z, ItemStack stack) {
 	  if (world == null || stack == null || stack.isEmpty() || world.isRemote) return;
 	  EntityItem ei = new EntityItem(world, x + 0.5, y + 0.5, z + 0.5, stack);
@@ -37,7 +36,7 @@ public final class EventBreakBlock {
 	  world.spawnEntity(ei);
 	}
 	public static void exect(World world, int x, int y, int z, Entity entity, BlockEvent.BreakEvent event) {
-		if (world == null || world.isRemote) return;
+		if (world == null || world.isRemote)  return;
 
 		Random rand = world.rand;
 		double rng1 = rand.nextDouble();

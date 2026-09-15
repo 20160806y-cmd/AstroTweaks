@@ -50,6 +50,12 @@ public final class MultiverseDims {
 
     /** Registers overworld (base), nether (base+1), end (base+2) and depths (base+3) of the level. Idempotent + thread-safe. */
     public static void registerLevelDimensions(int baseId) {
+        if (DimensionManager.isDimensionRegistered(baseId)
+            && DimensionManager.isDimensionRegistered(baseId + 1)
+            && DimensionManager.isDimensionRegistered(baseId + 2)
+            && DimensionManager.isDimensionRegistered(baseId + 3)) {
+            return;
+        }
         synchronized (DIMENSION_REGISTRATION_LOCK) {
             registerOneLocked(baseId, MultiverseWorldProviders.MultiverseOverworld.class);
             registerOneLocked(baseId + 1, MultiverseWorldProviders.MultiverseHell.class);
@@ -87,14 +93,12 @@ public final class MultiverseDims {
             registerOneLocked(GLOBAL_DIM, MultiverseWorldProviders.MultiverseGlobal.class);
         }
     }
-
     /** Registers the proxy dimension (1_111_111). Idempotent + thread-safe. Used as temporary holding during universe recreation. */
     public static void registerProxyDimension() {
         synchronized (DIMENSION_REGISTRATION_LOCK) {
             registerOneLocked(PROXY_DIM, MultiverseWorldProviders.MultiverseGlobal.class);
         }
     }
-
     /** Client-side registration of the proxy dimension. */
     public static void registerProxyDimensionForClient() {
         synchronized (DIMENSION_REGISTRATION_LOCK) {

@@ -171,11 +171,20 @@ public class TDArkGUI {
                         TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("tdark.err.bad_hash"));
                         return;
                     }
-                    System.out.println("[TDArk] Easter egg 'void': transfer to the Void dimension (-1000000), "
-                            + "targetX=" + targetX + " targetY=" + targetY + " targetZ=" + targetZ);
+                    System.out.println("[TDArk] Easter egg 'void': transfer to the Void dimension (-1000000), " + "targetX=" + targetX + " targetY=" + targetY + " targetZ=" + targetZ);
                     TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("tdark.delayed_start", BlockTDArk.TileEntityCustom.TRANSFER_DELAY));
-                    teTDArk.startDelayedTransfer(player, pos, MultiverseDims.GLOBAL_DIM, targetX, targetY, targetZ,
-                            message.clearMode, message.captureEntities, message.captureItems);
+                    teTDArk.startDelayedTransfer(player, pos, MultiverseDims.GLOBAL_DIM, targetX, targetY, targetZ, message.clearMode, message.captureEntities, message.captureItems);
+                    return;
+                }
+
+                // Отрицательный DimID (первый символ "-") => возврат в изначальный мир
+                // с DimID==0. UID/сид игнорируются: вселенная не создаётся и не ищется,
+                // ковчег и его область просто переносятся в основной мир.
+                //String uInput = message.uid == null ? "" : message.uid.trim();
+                if (uid.startsWith("-")) {
+                    System.out.println("[TDArk] Return to the original world (dim 0), " + "targetX=" + targetX + " targetY=" + targetY + " targetZ=" + targetZ);
+                    TDArkTransferHelper.broadcastToArea(world, corePos, player, new TextComponentTranslation("tdark.delayed_start", BlockTDArk.TileEntityCustom.TRANSFER_DELAY));
+                    teTDArk.startDelayedTransfer(player, pos, 0, targetX, targetY, targetZ, message.clearMode, message.captureEntities, message.captureItems);
                     return;
                 }
 
@@ -186,7 +195,7 @@ public class TDArkGUI {
                 if (uid.isEmpty() || uid.equals("0")) {
                     // Случайная вселенная: если слот занят - перемещение, если свободен - создание.
                     long effectiveSeed = seed == 0 ? new Random().nextLong() : seed;
-                    System.out.println("[TDArk] uid empty, effectiveSeed=" + effectiveSeed + " (original seed=" + seed + ")");
+                    //System.out.println("[TDArk] uid empty, effectiveSeed=" + effectiveSeed + " (original seed=" + seed + ")");
 
                     // Если ковчег стоит в max-вселенной, которую случайный выбор перезапишет,
                     // выполняем синхронный перенос через прокси-измерение ДО пересоздания.
@@ -212,7 +221,7 @@ public class TDArkGUI {
                         }
                     // Не созданная ранее вселенная с предсказанным UID: создаём (сид только при создании).
                     long effectiveSeed2 = seed == 0 ? new Random().nextLong() : seed;
-                    System.out.println("[TDArk] uid known, creating number=" + number + " effectiveSeed=" + effectiveSeed2);
+                    //System.out.println("[TDArk] uid known, creating number=" + number + " effectiveSeed=" + effectiveSeed2);
                     target = lm.getOrCreateLevel(player.getServer(), number, effectiveSeed2);
                     }
                 }
@@ -260,9 +269,8 @@ public class TDArkGUI {
 	 *   <li>укладка снимка + телепорт из прокси в свежую вселенную (placeRecycledTeleportData).</li>
 	 * </ol>
 	 */
-	private boolean performRecycleTransfer(EntityPlayerMP player, World world, BlockPos pos,
-	        BlockTDArk.TileEntityCustom teTDArk, LevelManager lm, long seed,
-	        int targetDim, int targetX, int targetY, int targetZ, TDArkActionMessage message) {
+	private boolean performRecycleTransfer(EntityPlayerMP player, World world, BlockPos pos, BlockTDArk.TileEntityCustom teTDArk, LevelManager lm, long seed, int targetDim,
+				int targetX, int targetY, int targetZ, TDArkActionMessage message) {
 	    BlockPos corePos = TDArkTransferHelper.findCore(world, pos);
 	    if (corePos == null) {
 	        player.sendMessage(new TextComponentTranslation("ark.err.structure"));
@@ -289,8 +297,7 @@ public class TDArkGUI {
 	    }
 
 	    long effectiveSeed = seed == 0 ? new Random().nextLong() : seed;
-	    System.out.println("[TDArk] recycle flow: eating diamond, effectiveSeed=" + effectiveSeed
-	            + " targetDim=" + targetDim + " target=" + targetX + "," + targetY + "," + targetZ);
+	    System.out.println("[TDArk] recycle flow: effectiveSeed=" + effectiveSeed + " targetDim=" + targetDim + " target=" + targetX + "," + targetY + "," + targetZ);
 
 	    // 1. Снимок блоков + игроков/сущностей ДО уничтожения источника.
 	    TDArkTransferHelper.TeleportData data = TDArkTransferHelper.saveTeleportData(world, corePos, message.captureEntities, message.captureItems);
@@ -300,8 +307,7 @@ public class TDArkGUI {
 	        if (p.isPlayer && p.uuid.equals(player.getUniqueID())) { hasInitiator = true; break; }
 	    }
 	    if (!hasInitiator) {
-	        data.parked.add(new TDArkTransferHelper.Parked(player.getUniqueID(), true,
-	                player.posX - corePos.getX(), player.posY - corePos.getY(), player.posZ - corePos.getZ()));
+	        data.parked.add(new TDArkTransferHelper.Parked(player.getUniqueID(), true, player.posX - corePos.getX(), player.posY - corePos.getY(), player.posZ - corePos.getZ()));
 	    }
 
 	    // 2. Все игроки/сущности — в прокси-измерение.
@@ -325,14 +331,12 @@ public class TDArkGUI {
 	        }
 	        targetWorld = player.getServer().getWorld(resolvedDim);
 	    }
-	    if (targetWorld == null) {
-	        return false;
-	    }
+	    if (targetWorld == null)  return false;
+	    
 
 	    // 4. Укладываем снимок в свежую вселенную и телепортируем припаркованных.
 	    BlockPos corePosTarget = new BlockPos(targetX, coreTargetY, targetZ);
-	    boolean placed = TDArkTransferHelper.placeRecycledTeleportData(player.getServer(), newLevel, targetWorld,
-	            resolvedDim, corePosTarget, data, message.clearMode);
+	    boolean placed = TDArkTransferHelper.placeRecycledTeleportData(player.getServer(), newLevel, targetWorld, resolvedDim, corePosTarget, data, message.clearMode);
 	    if (!placed) {
 	        return false;
 	    }
@@ -370,8 +374,7 @@ public class TDArkGUI {
 			for (int si = 0; si < 9; ++si)
 				this.addSlotToContainer(new Slot(player.inventory, si, 8 + si * 18 + 36, 152));
 		}
-		@Override
-		public boolean canInteractWith(EntityPlayer player) {
+		@Override public boolean canInteractWith(EntityPlayer player) {
 			return internal != null && internal.isUsableByPlayer(player);
 		}
 		@Override
@@ -492,8 +495,7 @@ public class TDArkGUI {
 
     /** Обновляет поля GUI из актуального состояния TileEntity. */
     private void syncFieldsFromTE() {
-        boolean anyFocused = fieldSeed.isFocused() || fieldUid.isFocused() || fieldDim.isFocused()
-                || TW_X.isFocused() || TW_Y.isFocused() || TW_Z.isFocused();
+        boolean anyFocused = fieldSeed.isFocused() || fieldUid.isFocused() || fieldDim.isFocused() || TW_X.isFocused() || TW_Y.isFocused() || TW_Z.isFocused();
         if (!anyFocused) {
             fieldSeed.setText(String.valueOf(teTDArk.getTargetSeed()));
             fieldUid.setText(teTDArk.getTargetUid());

@@ -71,6 +71,12 @@ public class MessageMultiverse implements IMessage {
                 } else {
                     MultiverseDims.registerLevelDimensions(message.baseDimId);
                 }
+
+                // Client-side only. Запоминаем id, чтобы PlaySoundEvent мог отличить
+                // MV-измерение от ванильного, и глушим портальный звук на ~2 секунды —
+                // ровно на окно логина/телепорта.
+                MultiverseClientSoundHandler.noteMultiverseRegistration(message.baseDimId, message.global);
+                
                 if (message.seed != 0) {
                     final long s = message.seed;
                     net.minecraft.client.Minecraft.getMinecraft().addScheduledTask(() -> {
@@ -81,8 +87,7 @@ public class MessageMultiverse implements IMessage {
                             // Try known field names first (MCP → SRG fallback)
                             for (String name : new String[]{"seed", "field_76100_a"}) {
                                 try {
-                                    java.lang.reflect.Field f =
-                                            net.minecraft.world.storage.WorldInfo.class.getDeclaredField(name);
+                                    java.lang.reflect.Field f = net.minecraft.world.storage.WorldInfo.class.getDeclaredField(name);
                                     f.setAccessible(true);
                                     f.setLong(info, s);
                                     applied = true;
@@ -92,8 +97,7 @@ public class MessageMultiverse implements IMessage {
                             // Fallback: find the long field whose current value matches getSeed()
                             if (!applied) {
                                 long currentSeed = info.getSeed();
-                                for (java.lang.reflect.Field f :
-                                        net.minecraft.world.storage.WorldInfo.class.getDeclaredFields()) {
+                                for (java.lang.reflect.Field f : net.minecraft.world.storage.WorldInfo.class.getDeclaredFields()) {
                                     if (f.getType() == long.class) {
                                         f.setAccessible(true);
                                         try {

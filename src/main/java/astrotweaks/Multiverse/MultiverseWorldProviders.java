@@ -9,9 +9,12 @@ import net.minecraft.world.WorldProvider;
 import net.minecraft.world.WorldProviderEnd;
 import net.minecraft.world.WorldProviderHell;
 import net.minecraft.world.WorldProviderSurface;
+import net.minecraft.world.WorldServer;
 import net.minecraft.world.biome.BiomeProviderSingle;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.gen.IChunkGenerator;
+import net.minecraft.world.storage.WorldInfo;
+import net.minecraftforge.common.DimensionManager;
 import net.minecraft.init.Biomes;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -46,6 +49,47 @@ public class MultiverseWorldProviders {
         @Override
         public int getRespawnDimension(EntityPlayerMP player) {
             return this.getDimension();
+        }
+        // The sky is the gate for all weather in World.updateWeatherBody (1.12.2 has no
+        // hasNoSky() - the equivalent flag is hasSkyLight()). Make it explicit so the MV
+        // overworld is always treated as a skylit surface world.
+        @Override
+        public boolean hasSkyLight() {
+            return true;
+        }
+        @Override
+        public boolean isSurfaceWorld() {
+            return true;
+        }
+        @Override
+        public void calculateInitialWeather() {
+            syncWeatherFromOverworld();
+            super.calculateInitialWeather();
+        }
+        @Override
+        public void updateWeather() {
+            syncWeatherFromOverworld();
+            super.updateWeather();
+        }
+        /**
+         * The 1.12.2 /weather command only mutates {@code server.worlds[0]} (dim 0) and
+         * every MV level keeps its own WorldInfo in its own level.dat, so without this the
+         * MV overworld would never follow the base world's weather. Mirror the main
+         * overworld's weather state every tick (the "global weather" model modern versions
+         * use): rain/thunder commanded on dim 0 then applies here too, and the natural
+         * weather cycle stays in sync.
+         */
+        private void syncWeatherFromOverworld() {
+            if (this.world == null || this.world.isRemote) return;
+            WorldServer base = (WorldServer) DimensionManager.getWorld(0);
+            if (base == null || base == this.world) return;
+            WorldInfo src = base.getWorldInfo();
+            WorldInfo dst = this.world.getWorldInfo();
+            dst.setCleanWeatherTime(src.getCleanWeatherTime());
+            dst.setRainTime(src.getRainTime());
+            dst.setThunderTime(src.getThunderTime());
+            dst.setRaining(src.isRaining());
+            dst.setThundering(src.isThundering());
         }
     }
     public static class MultiverseHell extends WorldProviderHell {

@@ -36,27 +36,17 @@ public class BlockNetherPortal extends BlockPortal {
         setSoundType(SoundType.GLASS);
         setBlockUnbreakable();
     }
-    @Override
-    public void onEntityCollidedWithBlock(World worldIn, BlockPos pos, IBlockState state, Entity entityIn) {
+    @Override public void onEntityCollidedWithBlock(World worldIn, BlockPos pos, IBlockState state, Entity entityIn) {
         if (!entityIn.isRiding() && !entityIn.isBeingRidden() && entityIn.isNonBoss()) {
             NetherPortalLink.handleCollision(worldIn, pos, entityIn);
         }
     }
-    @Override
-    public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) {
-        return MapColor.PURPLE;
-    }
-    @Override public boolean hasTileEntity(IBlockState state) {
-        return true;
-    }
+    @Override public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) { return MapColor.PURPLE; }
+    @Override public boolean hasTileEntity(IBlockState state) { return true; }
     @Nullable
-    @Override
-    public TileEntity createTileEntity(World world, IBlockState state) {
-        return new TileNetherPortal();
-    }
-    @Override
-    public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, net.minecraft.block.Block blockIn, BlockPos fromPos) {
-        if (worldIn.isRemote) return;
+    @Override public TileEntity createTileEntity(World world, IBlockState state) { return new TileNetherPortal(); }
+    @Override public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, net.minecraft.block.Block blockIn, BlockPos fromPos) {
+        if (worldIn.isRemote)  return;
         if (NetherPortalGeometry.findInterior(worldIn, pos) == null) {
             worldIn.setBlockToAir(pos);
         }

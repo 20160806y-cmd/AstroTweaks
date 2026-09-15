@@ -2,12 +2,17 @@ package astrotweaks.Multiverse;
 
 import astrotweaks.AstrotweaksMod;
 
+import net.minecraft.command.CommandGameRule;
+import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.GameRules;
+import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.util.ITeleporter;
+import net.minecraftforge.event.CommandEvent;
 import net.minecraftforge.event.entity.EntityTravelToDimensionEvent;
 import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.event.world.WorldEvent;
@@ -17,7 +22,9 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.PlayerEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -37,6 +44,9 @@ public class MultiverseEvents {
 
     private int tickCounter;
     private MinecraftServer server;
+    private static volatile MinecraftServer cachedServer;
+
+    private static final int GAMERULE_SYNC_INTERVAL = 40; // Тиков.  20t = 1s
 
 
     /**
@@ -64,6 +74,155 @@ public class MultiverseEvents {
         }
     }
 
+    /** Общий путь: либо сохраняем позицию в MV-измерении, либо чистим запись. */
+    private static void persistPlayerLocation(EntityPlayerMP player) {
+        LevelManager lm = LevelManager.getInstance();
+        if (lm.isMultiverseDimension(player.dimension)) {
+            lm.recordPlayer(player);
+        } else {
+            lm.clearPlayer(player.getUniqueID());
+        }
+    }
+
+    /** Возвращает живой сервер, попутно обновляя кэш. */
+    private static MinecraftServer serverRef() {
+        MinecraftServer s = cachedServer;
+        if (s != null && s.getWorld(0) != null) return s;
+        s = FMLCommonHandler.instance().getMinecraftServerInstance();
+        cachedServer = s;
+        return s;
+    }
+
+    /**
+     * Mirrors the ORIGINAL world's (dim 0) gamerules onto every multiverse world, so
+     * that keepInventory, doDaylightCycle, doWeatherCycle, spawnRadius etc. behave in
+     * each universe exactly like they do in the base world. Every MV level keeps its
+     * own WorldInfo/GameRules in its level.dat, so a freshly created universe starts
+     * with vanilla defaults and a /gamerule typed in dim 0 never reaches it otherwise.
+     * Runs every server tick (cheap: only set actual differences) and after world
+     * construction, so a world can never serve a stale rule. Combined with
+     * {@link #onGameRuleCommand} this makes dim 0 the single authoritative source:
+     * /gamerule typed INSIDE a multiverse world is lifted onto dim 0, then fanned out
+     * here, instead of being silently reverted.
+     */
+    public static void syncGameRulesFromOverworld() {
+        MinecraftServer srv = serverRef();
+        if (srv == null) return;
+        WorldServer base = srv.getWorld(0);
+        if (base == null) return;
+        GameRules src = base.getGameRules();
+        if (src == null) return;
+
+        LevelManager lm = LevelManager.getInstance();
+
+        // Снимок правил dim 0 — строится один раз за вызов.
+        String[] ruleKeys = src.getRules();
+        Map<String, String> snapshot = new HashMap<>(ruleKeys.length * 2);
+        for (String key : ruleKeys) {
+            snapshot.put(key, src.getString(key));
+        }
+
+        for (WorldServer world : srv.worlds) {
+            if (world == null || world == base) continue;
+            if (!lm.isMultiverseDimension(world.provider.getDimension())) continue;
+
+            GameRules dst = world.getGameRules();
+            if (dst == null || dst == src) continue;
+
+            for (Map.Entry<String, String> e : snapshot.entrySet()) {
+                if (!e.getValue().equals(dst.getString(e.getKey()))) {
+                    dst.setOrCreateGameRule(e.getKey(), e.getValue());
+                }
+            }
+
+            /*
+            for (String key : src.getRules()) {
+                String value = src.getString(key);
+                if (!value.equals(dst.getString(key))) {
+                    dst.setOrCreateGameRule(key, value);
+                }
+            }*/
+        }
+    }
+
+    /**
+     * Pending gamerule edits typed inside a multiverse world, keyed by rule name.
+     * Vanilla writes (and validates) them on that world's own GameRules; we confirm
+     * the write at the end of the same tick (see {@link #propagateGameRuleUpdates})
+     * and mirror the value onto dim 0 so it becomes the new global default instead of
+     * being silently reverted by {@link #syncGameRulesFromOverworld}.
+     */
+    private static final Map<String, String> PENDING_GAMERULE = new HashMap<>();
+
+    /**
+     * Makes {@code /gamerule} behave globally from ANY multiverse world: the original
+     * world (dim 0) stays the single source of truth, so a rule typed inside a universe
+     * is recorded here and later lifted to dim 0 once the vanilla command confirms it
+     * (validation happens in {@link CommandGameRule} before it actually writes). The
+     * vanilla command itself is NOT cancelled &mdash; it still writes to the sender's
+     * world (querying {@code /gamerule <rule>} already reports the mirrored dim 0 value).
+     */
+    @SubscribeEvent
+    public void onGameRuleCommand(CommandEvent event) {
+        if (!(event.getCommand() instanceof CommandGameRule)) return;
+        ICommandSender sender = event.getSender();
+        if (sender == null || sender.getEntityWorld() == null) return; // console: already acts on dim 0
+        World w = sender.getEntityWorld();
+        if (w.isRemote) return;
+        int dim = w.provider.getDimension();
+        if (dim == 0) return;
+        LevelManager lm = LevelManager.getInstance();
+        if (!lm.isMultiverseDimension(dim)) return;
+
+        MinecraftServer srv = w.getMinecraftServer();
+        if (srv == null || srv.getWorld(0) == null) return;
+        String[] params = event.getParameters();
+        if (params == null || params.length < 2) return; // /gamerule <rule> (query) already shows the mirrored value
+        GameRules src = srv.getWorld(0).getGameRules();
+        if (!src.hasRule(params[0])) return; // let vanilla throw the "no such rule" error, don't touch dim 0
+        synchronized (PENDING_GAMERULE) {
+            PENDING_GAMERULE.put(params[0], params[1]);
+        }
+    }
+
+    /**
+     * Copies every {@code /gamerule} change that vanilla has actually applied to a
+     * multiverse world in this tick onto dim 0, then {@link #syncGameRulesFromOverworld}
+     * fans it out to all worlds. Only applied when some MV world currently holds the
+     * exact pending value, so invalid input (rejected by {@code CommandGameRule})
+     * never reaches dim 0.
+     */
+    private static boolean propagateGameRuleUpdates() {
+        MinecraftServer srv = serverRef();
+        if (srv == null) return false;
+        WorldServer base = srv.getWorld(0);
+        if (base == null) return false;
+        GameRules src = base.getGameRules();
+        LevelManager lm = LevelManager.getInstance();
+
+        synchronized (PENDING_GAMERULE) {
+            if (PENDING_GAMERULE.isEmpty()) return false;
+            boolean changed = false;
+            for (Map.Entry<String, String> e : PENDING_GAMERULE.entrySet()) {
+                String key = e.getKey();
+                String value = e.getValue();
+                for (WorldServer world : srv.worlds) {
+                    if (world == null || world == base) continue;
+                    if (!lm.isMultiverseDimension(world.provider.getDimension())) continue;
+                    if (value.equals(world.getGameRules().getString(key))) {
+                        if (!value.equals(src.getString(key))) {
+                            src.setOrCreateGameRule(key, value);
+                            changed = true;
+                        }
+                        break;
+                    }
+                }
+            }
+            PENDING_GAMERULE.clear();
+            return changed;
+        }
+    }
+
     // ------------------------------------------------------------------ world bind
 
     @SubscribeEvent
@@ -71,9 +230,10 @@ public class MultiverseEvents {
         if (event.getWorld() == null || event.getWorld().isRemote)  return;
         if (event.getWorld().provider == null || event.getWorld().provider.getDimension() != 0)  return;
 
-        server = event.getWorld().getMinecraftServer();
-        if (server != null) {
-            LevelManager.getInstance().onWorldLoaded(server);
+        MinecraftServer srv = event.getWorld().getMinecraftServer();
+        if (srv != null) {
+            cachedServer = srv;
+            LevelManager.getInstance().onWorldLoaded(srv);
         }
     }
 
@@ -264,15 +424,7 @@ public class MultiverseEvents {
     public void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (event.player == null || event.player.world.isRemote) return;
         if (!(event.player instanceof EntityPlayerMP)) return;
-
-        EntityPlayerMP player = (EntityPlayerMP) event.player;
-        LevelManager lm = LevelManager.getInstance();
-        int dim = player.dimension;
-        if (lm.isMultiverseDimension(dim)) {
-            lm.recordPlayer(player);
-        } else {
-            lm.clearPlayer(player.getUniqueID());
-        }
+        persistPlayerLocation((EntityPlayerMP) event.player);
     }
 
     @SubscribeEvent
@@ -281,17 +433,15 @@ public class MultiverseEvents {
         if (!(event.player instanceof EntityPlayerMP)) return;
 
         EntityPlayerMP player = (EntityPlayerMP) event.player;
-        LevelManager lm = LevelManager.getInstance();
-        int dim = player.dimension;
-        if (lm.isMultiverseDimension(dim)) {
-            lm.recordPlayer(player);
-        } else {
-            lm.clearPlayer(player.getUniqueID());
-        }
-        server = player.world.getMinecraftServer();
-        if (server != null) {
-            lm.unloadEmptyDimensions(server, player.getUniqueID());
-            lm.flushRegistryIfDirty(server);
+        persistPlayerLocation((EntityPlayerMP) event.player);
+
+        MultiverseClientSoundHandler.reset();
+
+        MinecraftServer srv = player.world.getMinecraftServer();
+        if (srv != null) {
+            LevelManager lm = LevelManager.getInstance();
+            lm.unloadEmptyDimensions(srv, player.getUniqueID());
+            lm.flushRegistryIfDirty(srv);
         }
     }
 
@@ -322,15 +472,27 @@ public class MultiverseEvents {
     public void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END)  return;
 
+        ++tickCounter;
+
         NetherPortalLink.onEndTick();
 
-        if (++tickCounter % 100 != 0) 
+        // propagate теперь возвращает true, если dim 0 реально изменился —
+        // тогда синхронизируем немедленно, чтобы /gamerule применился мгновенно.
+        boolean rulesChanged = propagateGameRuleUpdates();
+        if (rulesChanged || tickCounter % GAMERULE_SYNC_INTERVAL == 0) {
+            syncGameRulesFromOverworld();
+        }
+
+        if (tickCounter % 160 != 0) 
             return;
         
-        server = FMLCommonHandler.instance().getMinecraftServerInstance();
-        if (server == null || server.getWorld(0) == null)   return;
-        
-        LevelManager.getInstance().unloadEmptyDimensions(server);
-        LevelManager.getInstance().flushRegistryIfDirty(server);
+        MinecraftServer srv = serverRef();
+        if (srv == null || srv.getWorld(0) == null) return;
+
+        LevelManager lm = LevelManager.getInstance();
+        lm.unloadEmptyDimensions(srv);
+        lm.flushRegistryIfDirty(srv);
+
+        tickCounter = 0;
     }
 }

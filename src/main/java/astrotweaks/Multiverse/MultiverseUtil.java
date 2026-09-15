@@ -2,6 +2,10 @@ package astrotweaks.Multiverse;
 
 import astrotweaks.world.DepthsDim;
 
+import net.minecraft.block.state.IBlockState;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
+
 public final class MultiverseUtil {
 
 	// Относительные ID измерения (введённые игроком в GUI ARK/TDARK)
@@ -9,6 +13,9 @@ public final class MultiverseUtil {
 	public static final int REL_NETHER = -1;
 	public static final int REL_END = 1;
 	public static final int REL_DEPTHS = DepthsDim.DIMID;
+
+	/** Sea-level stand height used for ocean spawns (above the water). */
+	private static final int OCEAN_SPAWN_Y = 64;
 
 	private MultiverseUtil() {}
 
@@ -64,5 +71,102 @@ public final class MultiverseUtil {
 			return da != null && da == db;
 		}
 		return true;
+	}
+
+	// ------------------------------------------------------------------ safe world spawn
+
+	/**
+	 * True when a player can actually stand at {@code pos}: the cell below is a liquid
+	 * or has a collision surface (standable ground), while the feet and head cells are
+	 * neither liquid nor collidable — i.e. the position is never inside a block/liquid.
+	 */
+	public static boolean isColumnFree(World world, BlockPos pos) {
+		IBlockState below = world.getBlockState(pos.down());
+		if (!isStandableGround(below, world, pos.down())) return false;
+		for (int dy = 0; dy <= 1; dy++) {
+			IBlockState s = world.getBlockState(pos.up(dy));
+			if (!isPassable(s, world, pos.up(dy))) return false;
+		}
+		return true;
+	}
+
+	/** True when an entity can occupy the cell (not liquid and no collision box). */
+	private static boolean isPassable(IBlockState state, World world, BlockPos pos) {
+		return !state.getMaterial().isLiquid() && state.getCollisionBoundingBox(world, pos) == null;
+	}
+
+	/** True when an entity can stand on the cell (liquid surface or a solid surface). */
+	private static boolean isStandableGround(IBlockState state, World world, BlockPos pos) {
+		return state.getMaterial().isLiquid() || state.getCollisionBoundingBox(world, pos) != null;
+	}
+
+	/**
+	 * Computes the feet-Y of a safe world spawn at {@code (x, z)} of a surface world:
+	 * <ul>
+	 *   <li>the column's topmost solid-or-liquid block is a solid  &rarr; stand right above it;</li>
+	 *   <li>it is a liquid (ocean) &rarr; stand at {@link #OCEAN_SPAWN_Y} (64), above the water;</li>
+	 *   <li>the column is empty (void) &rarr; float at 64.</li>
+	 * </ul>
+	 * The result is then nudged upward while the feet/head cells are still inside a block
+	 * so the spawn is guaranteed to be open air.
+	 */
+	public static int findSafeSpawnFeetY(World world, int x, int z) {
+		int ground = findGroundBelow(world, x, z, world.getHeight() - 1);
+		if (ground < 0) {
+			return OCEAN_SPAWN_Y;
+		}
+		IBlockState surface = world.getBlockState(new BlockPos(x, ground, z));
+		int feet = surface.getMaterial().isLiquid() ? Math.max(ground + 1, OCEAN_SPAWN_Y) : ground + 1;
+		return clampToOpenColumn(world, x, z, feet);
+	}
+
+	/**
+	 * Same as {@link #findSafeSpawnFeetY} but for nether-like surfaces: scans only
+	 * {@code startY} and below (below the bedrock ceiling) and stands right above the
+	 * first solid-or-liquid block found, so a lava floor never swallows the spawn.
+	 */
+	public static int findStandableFeetY(World world, int x, int z, int startY) {
+		int ground = findGroundBelow(world, x, z, startY);
+		if (ground < 0) {
+			return OCEAN_SPAWN_Y;
+		}
+		return clampToOpenColumn(world, x, z, ground + 1);
+	}
+
+	/**
+	 * Highest solid-or-liquid block at or below {@code startY} in the column, or -1
+	 * when the whole column is open (void). Mirrors CommandMultiverse's column search.
+	 */
+	public static int findGroundBelow(World world, int x, int z, int startY) {
+		BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
+		for (int y = Math.min(startY, world.getHeight() - 1); y >= 0; y--) {
+			IBlockState s = world.getBlockState(mpos.setPos(x, y, z));
+			if (s.getMaterial().isSolid() || s.getMaterial().isLiquid()) return y;
+		}
+		return -1;
+	}
+
+	/** Walks {@code feet} upward until the feet/head cells are open air (guaranteed not in a block). */
+	private static int clampToOpenColumn(World world, int x, int z, int feet) {
+		int max = Math.max(1, world.getHeight() - 2);
+		BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
+		int y = Math.min(Math.max(feet, 1), max);
+		while (y < max) {
+			if (isColumnFree(world, mpos.setPos(x, y, z))) return y;
+			y++;
+		}
+		return max;
+	}
+
+	/**
+	 * Performs the {@link #findSafeSpawnFeetY}/{@link #findStandableFeetY} search and
+	 * returns the full feet position. When {@code netherSurfaceScan} is true the scan is
+	 * limited to below the nether ceiling (starts at Y=100).
+	 */
+	public static BlockPos safeWorldSpawn(World world, int x, int z, boolean netherSurfaceScan) {
+		int feetY = netherSurfaceScan
+				? findStandableFeetY(world, x, z, 100)
+				: findSafeSpawnFeetY(world, x, z);
+		return new BlockPos(x, feetY, z);
 	}
 }

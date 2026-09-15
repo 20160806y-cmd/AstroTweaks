@@ -1,5 +1,6 @@
 package astrotweaks.Multiverse;
 
+import net.minecraft.util.datafix.DataFixer;
 import net.minecraft.util.datafix.DataFixesManager;
 import net.minecraft.world.MinecraftException;
 import net.minecraft.world.chunk.storage.AnvilSaveHandler;
@@ -28,12 +29,16 @@ import java.io.File;
  * the comparison (the per-level folders already keep worlds separate).</p>
  */
 public class LevelSaveHandler extends AnvilSaveHandler {
+
+    // DataFixer immutable после построения; lazy-таблица в DataFixerUpper
+    // инициализируется потокобезопасно (volatile). Один инстанс на JVM достаточно.
+    private static final DataFixer SHARED_FIXER = DataFixesManager.createFixer();
+
     public LevelSaveHandler(File levelFolder) {
-        super(levelFolder.getParentFile(), levelFolder.getName(), true, DataFixesManager.createFixer());
+        super(levelFolder.getParentFile(), levelFolder.getName(), true, SHARED_FIXER);
     }
 
-    @Override
-    public void checkSessionLock() throws MinecraftException {
+    @Override public void checkSessionLock() throws MinecraftException {
         // No-op: see class javadoc. Sibling dimensions of the same level rewrite
         // the shared session.lock timestamp; the timestamp check is meaningless
         // for roots shared across the level's three dimensions.
