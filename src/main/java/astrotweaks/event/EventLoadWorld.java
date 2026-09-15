@@ -39,8 +39,6 @@ public class EventLoadWorld {
 	}
 
 	public static void exect(World world, WorldEvent.Load event) {
-		//if (!ModVariables.AstroTech_Environment && !ModVariables.Marked) return;
-
 
 
 		// desired commands

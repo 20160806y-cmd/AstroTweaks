@@ -94,6 +94,7 @@ public class LevelManager {
     private long worldSeed;
 
     private int cachedMaxUniverses;
+    private long cachedUnloadDelayMs;
 
     private LevelManager() {}
 
@@ -118,9 +119,15 @@ public class LevelManager {
     public int getMaxUniverses() {
         return cachedMaxUniverses;
     }
+    /** Задержка отложенной выгрузки пустых измерений (мс). Кешируется единожды при загрузке мира. */
+    public long getUnloadDelayMs() {
+        return cachedUnloadDelayMs;
+    }
     private void loadConfig() {
         int m = astrotweaks.ModVariables.MULTIVERSE_MAX_UNIVERSES;
         cachedMaxUniverses = (m < 1) ? 1 : m;
+        long d = astrotweaks.ModVariables.MV_DeferredUnloadingMS;
+        cachedUnloadDelayMs = d < 0 ? 0 : d;
     }
 
     // ------------------------------------------------------------------ lifecycle
@@ -264,6 +271,7 @@ public class LevelManager {
         if (MultiverseDims.isGlobalDimensionEnabled()) {
             ownedIds.add(MultiverseDims.GLOBAL_DIM);
         }
+        ownedIds.add(MultiverseDims.PROXY_DIM);
         for (int dimId : ownedIds) {
             File dimFolder = new File(saveRoot, "DIM" + dimId);
             if (dimFolder.isDirectory()) {
@@ -714,6 +722,7 @@ public class LevelManager {
         System.out.println("[MULTIVERSE] Cleared world contents of " + folder);
     }
     /** Lowest free slot 1..max-1; when all are busy returns the recycle slot (max). */
+    /*
     private int allocateNumber() {
         int max = maxUniverses();
         for (int n = 1; n < max; n++) {
@@ -723,6 +732,7 @@ public class LevelManager {
         }
         return max;
     }
+    */
 
     private int parseNumber(String name) {
         if (name != null && name.startsWith(LEVEL_PREFIX)) {
@@ -802,6 +812,12 @@ public class LevelManager {
         for (File child : children) {
             if (!child.isDirectory())  continue;
             String name = child.getName();
+
+            if (name.equals("MV_PROXY")) {
+                // Reserved internal proxy world: not a universe, so it is never
+                // validated, moved to ERRORED or registered as a universe.
+                continue;
+            }
 
             if (!name.startsWith(LEVEL_PREFIX)) {
                 if (isValidMinecraftWorld(child)) {
@@ -1116,13 +1132,20 @@ public class LevelManager {
             world.getWorldInfo().setSpawn(spawn);
             world.getWorldInfo().setServerInitialized(true);
             world.setSpawnPoint(spawn);
-            if (buildEndPortal) {
-                buildEndExitPortal(world);
-            }
-        } else {
+        } else if (!buildEndPortal) {
             // Pre-existing level: make sure its saved world spawn is not buried in a
             // block/liquid (and, if it sat in an ocean, that it is lifted to Y 64).
             ensureSafeSpawn(world);
+        }
+
+        // The End's obsidian arrival platform. level.dat is shared by every dimension
+        // of a level, so a non-fresh MV end can still be a brand-new dimension (its
+        // DIM<id> chunks never generated): build the platform whenever an end world is
+        // created, not only when the folder has no level.dat yet. For pre-existing end
+        // worlds ensureSafeSpawn is skipped above - it would re-evaluate the OVERWORLD's
+        // shared spawn against end terrain and could move it.
+        if (buildEndPortal) {
+            buildEndExitPortal(world);
         }
 
         // New/loaded multiverse worlds must follow the original world's (dim 0) gamerules
@@ -1370,6 +1393,16 @@ public class LevelManager {
      * {@code DimensionManager.unloadWorld} (which only queues and may silently abort),
      * this guarantees a stale WorldServer can never keep ticking next to a rebuilt one
      * that shares its folder and session.lock.
+     *
+     * <p>After dropping the world the dimension is also unregistered. Forge's patched
+     * {@code WorldServer} constructor auto-registers every created world via
+     * {@code DimensionManager.setWorld}, and {@code MinecraftServer.getWorld(id)}
+     * hotloads missing dimensions through {@code DimensionManager.initDimension} - a
+     * {@code WorldServerMulti} rooted at the OVERWORLD's save handler. As long as the
+     * id stays registered, any vanilla/Forge code asking for it while our world is
+     * unloaded would silently recreate that phantom (wrong save folder, wrong session
+     * lock), which then gets dumped on the next empty-scan. Unregistering here closes
+     * that hole; {@code getOrCreate*} re-register the id before constructing a new world.</p>
      */
     private static void unloadWorldNow(MinecraftServer server, int dim, boolean saveIfOwned) {
         WorldServer world = DimensionManager.getWorld(dim);
@@ -1383,6 +1416,9 @@ public class LevelManager {
         }
         MinecraftForge.EVENT_BUS.post(new WorldEvent.Unload(world));
         DimensionManager.setWorld(dim, null, server);
+        if (DimensionManager.isDimensionRegistered(dim)) {
+            DimensionManager.unregisterDimension(dim);
+        }
         //System.out.println("[MULTIVERSE] Unloaded dimension " + dim + " (world@" + System.identityHashCode(world) + " dropped from tick list)");
     }
 
@@ -1447,32 +1483,61 @@ public class LevelManager {
         System.out.println("[MULTIVERSE] All dimensions unloaded and unregistered.");
     }
 
-    /** Unloads level and global worlds that no longer contain any (non-exempt) player. */
-    public void unloadEmptyDimensions(MinecraftServer server, UUID... ignore) {
+    /**
+     * Deferred unloading of multiverse worlds once their last player leaves.
+     *
+     * <p>A world first found empty is recorded in {@code pendingUnload} with the
+     * current timestamp; only after it has stayed player-free for at least
+     * {@code delayMs} does it actually get unloaded. A player entering the world
+     * before the window expires keeps it loaded — this makes frequent
+     * back-and-forth transitions between universes cheap.</p>
+     *
+     * <p>Immediate unloading is limited to explicit paths that need it — universe
+     * recreation, save switches and server stop — which bypass this method and call
+     * {@link #unloadWorldNow} directly. Forge-created phantom worlds (worlds whose
+     * save handler is not {@link LevelSaveHandler}) go through the very same deferred
+     * window: their save is downgraded to a no-op inside {@link #unloadWorldNow}, so
+     * nothing is ever written to the overworld's region files, and no world is ever
+     * dumped the instant the last player leaves.</p>
+     *
+     * @param pendingUnload caller-owned map of dimId &rarr; empty-since timestamp
+     * @param delayMs       minimum empty duration before unloading
+     */
+    public void processDeferredUnloading(MinecraftServer server, Map<Integer, Long> pendingUnload, long delayMs, UUID... ignore) {
         if (multiverseFolder == null) return;
+        long now = System.currentTimeMillis();
         for (LevelData data : levels.values()) {
-            forEachDim(data, dim -> unloadIfEmpty(server, dim, ignore));
+            forEachDim(data, dim -> scheduleOrUnload(server, dim, pendingUnload, delayMs, now, ignore));
         }
         if (MultiverseDims.isGlobalDimensionEnabled()) {
-            unloadIfEmpty(server, MultiverseDims.GLOBAL_DIM, ignore);
+            scheduleOrUnload(server, MultiverseDims.GLOBAL_DIM, pendingUnload, delayMs, now, ignore);
         }
         if (DimensionManager.isDimensionRegistered(MultiverseDims.PROXY_DIM)) {
-            unloadIfEmpty(server, MultiverseDims.PROXY_DIM, ignore);
+            scheduleOrUnload(server, MultiverseDims.PROXY_DIM, pendingUnload, delayMs, now, ignore);
         }
     }
 
-    private void unloadIfEmpty(MinecraftServer server, int dim, UUID... ignore) {
+    private void scheduleOrUnload(MinecraftServer server, int dim, Map<Integer, Long> pendingUnload, long delayMs, long now, UUID... ignore) {
         WorldServer world = DimensionManager.getWorld(dim);
-        if (world == null) return;
-        if (world.playerEntities.isEmpty() || onlyIgnoredPlayers(world.playerEntities, ignore)) {
-            if (!isOwnedWorld(world)) {
-                // Phantom world created by Forge reusing the overworld's save handler:
-                // dump it without saving (saving would touch the overworld's region files
-                // or throw MinecraftException from the mismatched session lock).
-                unloadWorldNow(server, dim, false);
-                return;
-            }
+        if (world == null) {
+            pendingUnload.remove(dim);
+            return;
+        }
+        boolean empty = world.playerEntities.isEmpty() || onlyIgnoredPlayers(world.playerEntities, ignore);
+        if (!empty) {
+            pendingUnload.remove(dim);
+            return;
+        }
+        // Phantom worlds (Forge hotloads rooted at the overworld's save handler) are
+        // never written to disk: unloadWorldNow's saveIfOwned=true is downgraded to a
+        // no-op for non-LevelSaveHandler worlds. They share the same deferred window as
+        // owned worlds so nothing unloads the moment the last player leaves.
+        Long firstEmpty = pendingUnload.get(dim);
+        if (firstEmpty == null) {
+            pendingUnload.put(dim, now);
+        } else if (now - firstEmpty >= delayMs) {
             unloadWorldNow(server, dim, true);
+            pendingUnload.remove(dim);
         }
     }
 

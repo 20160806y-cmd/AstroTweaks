@@ -1,6 +1,5 @@
 package astrotweaks.procedure;
 
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraft.world.World;
@@ -19,15 +18,14 @@ import astrotweaks.Multiverse.LevelDimensionType;
 import astrotweaks.Multiverse.LevelManager;
 import astrotweaks.Multiverse.MessageMultiverse;
 import astrotweaks.Multiverse.MultiverseDims;
-import java.util.HashMap;
 
 
 
 public final class MineDimEnter {
     //private static final int OVERWORLD_ID = 0;
     private static final int CAVERN_DIM_ID = DepthsDim.DIMID;
-    private static final int MIN_HEIGHT_OVERWORLD = 5;
-    private static final int MAX_HEIGHT_CAVERN = 252;
+    private static final int MAX_HEIGHT_OVERWORLD = 5;
+    private static final int MIN_HEIGHT_CAVERN = 251;
     private static final int TELEPORT_HEIGHT_OVERWORLD = 5;
     private static final int TELEPORT_HEIGHT_CAVERN = 252;
 
@@ -39,11 +37,15 @@ public final class MineDimEnter {
         World world = event.getWorld();
         if (world.isRemote) return;
         int dim = world.provider.getDimension();
+
+        // одна выборка на весь метод
+        LevelData mvData = LevelManager.getInstance().getLevelByDimensionId(dim);
+        LevelDimensionType mvType = (mvData != null) ? mvData.typeOf(dim) : null;
+
+        // для «чужих» измерений — тот же фильтр, что был раньше
         if (dim != -6000 && dim != 0) {
-            LevelData mvData0 = LevelManager.getInstance().getLevelByDimensionId(dim);
-            if (mvData0 == null) return;
-            LevelDimensionType mvType0 = mvData0.typeOf(dim);
-            if (mvType0 != LevelDimensionType.OVERWORLD && mvType0 != LevelDimensionType.DEPTHS) return;
+            if (mvData == null) return;
+            if (mvType != LevelDimensionType.OVERWORLD && mvType != LevelDimensionType.DEPTHS) return;
         }
 
         BlockPos pos = event.getPos();
@@ -52,25 +54,20 @@ public final class MineDimEnter {
         EntityPlayer player = event.getEntityPlayer();
         if (!isHoldingPickaxe(player)) return;
 
-
-        //boolean shouldTeleport = false;
         int targetDim;
         int targetY;
 
-        LevelData mvData = LevelManager.getInstance().getLevelByDimensionId(dim);
-        LevelDimensionType mvType = mvData != null ? mvData.typeOf(dim) : null;
-
         //teleport conditions
-	    if (dim == 0 && player.posY < MIN_HEIGHT_OVERWORLD) {
+	    if (dim == 0 && player.posY < MAX_HEIGHT_OVERWORLD) {
 	        targetDim = CAVERN_DIM_ID;
 	        targetY = TELEPORT_HEIGHT_CAVERN;
-	    } else if (dim == CAVERN_DIM_ID && player.posY > MAX_HEIGHT_CAVERN) {
+	    } else if (dim == CAVERN_DIM_ID && player.posY > MIN_HEIGHT_CAVERN) {
 	        targetDim = 0;
 	        targetY = TELEPORT_HEIGHT_OVERWORLD;
-	    } else if (mvType == LevelDimensionType.OVERWORLD && player.posY < MIN_HEIGHT_OVERWORLD) {
+	    } else if (mvType == LevelDimensionType.OVERWORLD && player.posY < MAX_HEIGHT_OVERWORLD) {
 	        targetDim = mvData.dimensionId(LevelDimensionType.DEPTHS);
 	        targetY = TELEPORT_HEIGHT_CAVERN;
-	    } else if (mvType == LevelDimensionType.DEPTHS && player.posY > MAX_HEIGHT_CAVERN) {
+	    } else if (mvType == LevelDimensionType.DEPTHS && player.posY > MIN_HEIGHT_CAVERN) {
 	        targetDim = mvData.dimensionId(LevelDimensionType.OVERWORLD);
 	        targetY = TELEPORT_HEIGHT_OVERWORLD;
 	    } else {
@@ -91,15 +88,8 @@ public final class MineDimEnter {
                 AstrotweaksMod.PACKET_HANDLER.sendTo(new MessageMultiverse(mvData.baseId, mvData.seed), (EntityPlayerMP) player);
             }
         }
-		
-		HashMap<String, String> cmdparams = new HashMap<>();
-		cmdparams.put("0", Integer.toString(targetDim));
-		cmdparams.put("1", player.getName());
-		cmdparams.put("2", Integer.toString(pos.getX()));
-		cmdparams.put("3", Integer.toString(targetY));
-		cmdparams.put("4", Integer.toString(pos.getZ()));
 
-		P_SwitchDim.exect(player, cmdparams, true);
+        P_SwitchDim.exect( player, true, Integer.toString(targetDim), player.getName(), Integer.toString(pos.getX()), Integer.toString(targetY), Integer.toString(pos.getZ()) );
 
 
         // clear target area
@@ -111,16 +101,16 @@ public final class MineDimEnter {
 	        //targetWorld.setBlockState(targetPos, Blocks.AIR.getDefaultState(), 2);
 	        //targetWorld.setBlockState(targetPos.up(), Blocks.AIR.getDefaultState(), 2);
         }
-
         // debug
         //System.out.println("Switch dimension: Depths <-> Overworld");
         
     }
     private static boolean isHoldingPickaxe(EntityPlayer player) {
-	    if (player == null) return false;
-	    ItemStack held = player.getHeldItemMainhand(); // main hand
-	    if (held == null || held.isEmpty()) return false;
-	    Item item = held.getItem();
-	    return item.getToolClasses(held).contains("pickaxe");
+	    if (player == null)  return false;
+        ItemStack held = player.getHeldItemMainhand(); // main hand
+        if (held.isEmpty())  return false;
+        Item item = held.getItem();
+        if (item instanceof net.minecraft.item.ItemPickaxe) return true; // fast path
+        return item.getToolClasses(held).contains("pickaxe");         // modded fallback
 	}
 }

@@ -35,12 +35,14 @@ import java.util.UUID;
  *   <li>re-login: return players to their last multiverse dimension</li>
  *   <li>portals: nether / end portals inside a level stay inside that level</li>
  *   <li>persistence: remember the position of players inside a level</li>
- *   <li>unloading: drop worlds once their last player leaves</li>
+ *   <li>unloading: drop worlds only after they stay player-free long enough</li>
  * </ul>
  */
 public class MultiverseEvents {
 
     private static final Set<UUID> SKIP_PORTAL_REMAP = new HashSet<>();
+    /** dimId &rarr; System.currentTimeMillis() when the world was first found empty. Server-thread only. */
+    private static final Map<Integer, Long> PENDING_UNLOAD = new HashMap<>();
 
     private int tickCounter;
     private MinecraftServer server;
@@ -234,6 +236,8 @@ public class MultiverseEvents {
         if (srv != null) {
             cachedServer = srv;
             LevelManager.getInstance().onWorldLoaded(srv);
+            // Pending-unload timestamps belong to the previous server/save session.
+            PENDING_UNLOAD.clear();
         }
     }
 
@@ -440,7 +444,7 @@ public class MultiverseEvents {
         MinecraftServer srv = player.world.getMinecraftServer();
         if (srv != null) {
             LevelManager lm = LevelManager.getInstance();
-            lm.unloadEmptyDimensions(srv, player.getUniqueID());
+            lm.processDeferredUnloading(srv, PENDING_UNLOAD, lm.getUnloadDelayMs(), player.getUniqueID());
             lm.flushRegistryIfDirty(srv);
         }
     }
@@ -490,7 +494,7 @@ public class MultiverseEvents {
         if (srv == null || srv.getWorld(0) == null) return;
 
         LevelManager lm = LevelManager.getInstance();
-        lm.unloadEmptyDimensions(srv);
+        lm.processDeferredUnloading(srv, PENDING_UNLOAD, lm.getUnloadDelayMs());
         lm.flushRegistryIfDirty(srv);
 
         tickCounter = 0;

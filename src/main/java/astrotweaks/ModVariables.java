@@ -32,6 +32,7 @@ public class ModVariables {
 	public static boolean Enable_TDARK = false; // ничего не делает в игре если MULTIVERSE == False
 	public static int MULTIVERSE_MAX_UNIVERSES = 40; // лимит числа вселенных ( LAST слот перезаписывается )
 	public static boolean Enable_uVOID = false; // вселенная пустоты
+	public static long MV_DeferredUnloadingMS = 8_000L;
 
 
 	//								   МИНУТ * сек * тик

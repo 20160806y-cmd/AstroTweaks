@@ -5,6 +5,7 @@ import net.minecraftforge.event.world.BlockEvent;
 import net.minecraft.world.World;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.init.Items;
 import net.minecraft.init.Blocks;
 import net.minecraft.entity.item.EntityItem;
@@ -95,13 +96,19 @@ public class EventBreakBlock {
 		if (world.provider.getDimension() == CAVERN_DIM_ID && block == Blocks.MAGMA) {
 			double chance = 0;
 			chance = rand.nextDouble();
-			if (((chance) < 0.2)) {
-				world.setBlockState(pos, Blocks.LAVA.getDefaultState(), 3);
-				if (((chance) < 0.1)) {
-					Entity entityToSpawn = new EntityMagmaCube(world);
+			if (((chance) < 0.21)) {
+				world.setBlockState(pos, Blocks.LAVA.getDefaultState());
+				if (((chance) < 0.12)) {
+					EntityMagmaCube  cube = new EntityMagmaCube(world);
 
-					entityToSpawn.setLocationAndAngles((x + 0.5), (y + 0.5), (z + 0.5), world.rand.nextFloat() * 360F, 0.0F);
-					world.spawnEntity(entityToSpawn);
+					cube.setLocationAndAngles((x + 0.5), (y + 0.5), (z + 0.5), world.rand.nextFloat() * 360F, 0.0F);
+
+					NBTTagCompound nbt = new NBTTagCompound();
+					nbt.setInteger("Size", 1);
+					cube.readFromNBT(nbt);
+					cube.onInitialSpawn(world.getDifficultyForLocation(pos),null);
+					world.spawnEntity(cube);
+					
 				}
 			}
 		}

@@ -17,10 +17,11 @@ import astrotweaks.world.DepthsDim;
 public final class P_SwitchDim {
 	public P_SwitchDim() {}
 
-	private static boolean Slient = false;
-	private static void sendMsg(EntityPlayerMP executor, String msg) {
-	    if (executor != null && !Slient) executor.sendMessage(new TextComponentString(msg));
-	    else System.out.println(msg);
+	private static final java.util.Random RNG = new java.util.Random();
+	
+	private static void sendMsg(EntityPlayerMP ex, boolean silent, String msg) {
+		if (ex != null && !silent) ex.sendMessage(new TextComponentString(msg));
+		else System.out.println(msg);
 	}
 
 	// ---------- Резолвер целевого игрока ----------
@@ -43,8 +44,8 @@ public final class P_SwitchDim {
 		}
 		if ("@r".equals(param)) {
 			java.util.List<EntityPlayerMP> list = server.getPlayerList().getPlayers();
-			if (list.isEmpty()) return null;
-			return list.get(new java.util.Random().nextInt(list.size()));
+			if (list.isEmpty())  return null;
+			return list.get(RNG.nextInt(list.size()));
 		}
 		return server.getPlayerList().getPlayerByUsername(param);
 	}
@@ -70,24 +71,22 @@ public final class P_SwitchDim {
 		} catch (NumberFormatException e) { return null; }
 	}
 
-	public static void exect(Entity entity, Map<String, String> cmdparams, boolean Slient) {
+	public static void exect(Entity entity, boolean slient, String dimParam, String playerNameParam, String xParam, String yParam, String zParam) {
 		EntityPlayerMP executor = null;
-		if (entity instanceof EntityPlayerMP) {
-			executor = (EntityPlayerMP) entity;
-		}
-		if (entity != null && entity.world.isRemote) return; // server side only
+		if (entity instanceof EntityPlayerMP)  executor = (EntityPlayerMP) entity;
+		if (entity != null && entity.world.isRemote)  return; // server side only
 
 		MinecraftServer mcServer = (executor != null) ? executor.getServer() : FMLCommonHandler.instance().getMinecraftServerInstance();
 		if (mcServer == null) {
-			sendMsg(executor, "Server not found.");
+			sendMsg(executor, slient, "Server not found.");
 			return;
 		}
 
-		String dimParam        = getParam(cmdparams, 0);
-		String playerNameParam = getParam(cmdparams, 1);
-		String xParam          = getParam(cmdparams, 2);
-		String yParam          = getParam(cmdparams, 3);
-		String zParam          = getParam(cmdparams, 4);
+		//String dimParam        = getParam(cmdparams, 0);
+		//String playerNameParam = getParam(cmdparams, 1);
+		//String xParam          = getParam(cmdparams, 2);
+		//String yParam          = getParam(cmdparams, 3);
+		//String zParam          = getParam(cmdparams, 4);
 
 		// ---- 1. Целевой игрок (поддержка @s / @p / @r / ник) ----
 		EntityPlayerMP targetPlayer = resolveTargetPlayer(mcServer, executor, playerNameParam);
@@ -95,7 +94,7 @@ public final class P_SwitchDim {
 			String msg = (playerNameParam == null || playerNameParam.isEmpty())
 					? "You must specify a player name when running from console."
 					: "Player not found: " + playerNameParam;
-			sendMsg(executor, msg);
+			sendMsg(executor, slient, msg);
 			return;
 		}
 
@@ -108,7 +107,7 @@ public final class P_SwitchDim {
 			teleportToPlayerMode = true;
 		} else if (xParam != null && !xParam.isEmpty() && !isCoordinateToken(xParam)) {
 			// xParam не координата, но yParam/zParam не пусты - синтаксическая ошибка.
-			sendMsg(executor, "Invalid syntax: expected coordinates or player name.");
+			sendMsg(executor, slient, "Invalid syntax: expected coordinates or player name.");
 			return;
 		}
 
@@ -121,7 +120,7 @@ public final class P_SwitchDim {
 			// tp к игроку: @s / @p / @r тоже поддержаны
 			EntityPlayerMP sourcePlayer = resolveTargetPlayer(mcServer, executor, sourcePlayerName);
 			if (sourcePlayer == null) {
-				sendMsg(executor, "Source player not found: " + sourcePlayerName);
+				sendMsg(executor, slient, "Source player not found: " + sourcePlayerName);
 				return;
 			}
 			targetDim = sourcePlayer.dimension;
@@ -129,12 +128,12 @@ public final class P_SwitchDim {
 			ty = sourcePlayer.posY;
 			tz = sourcePlayer.posZ;
 			hasCoords = true;
-			sendMsg(executor, "Teleporting to " + sourcePlayerName + " at dim " + targetDim);
+			sendMsg(executor, slient, "Teleporting to " + sourcePlayerName + " at dim " + targetDim);
 		} else {
 			// Обычный режим: DIM [+ coords]
 			targetDim = resolveDimensionId(dimParam, mcServer, executor);
 			if (targetDim == null) {
-				sendMsg(executor, "Unknown dimension id: " + dimParam);
+				sendMsg(executor, slient, "Unknown dimension id: " + dimParam);
 				return;
 			}
 			try {
@@ -145,7 +144,7 @@ public final class P_SwitchDim {
 					hasCoords = true;
 				}
 			} catch (NumberFormatException e) {
-				sendMsg(executor, "Invalid coordinates.");
+				sendMsg(executor, slient, "Invalid coordinates.");
 				return;
 			}
 		}
@@ -161,16 +160,12 @@ public final class P_SwitchDim {
 		if (targetDim == targetPlayer.dimension) {
 			if (hasCoords) {
 				targetPlayer.setPositionAndUpdate(tx, ty, tz);
-				sendMsg(executor, "Teleported player " + targetPlayer.getName()
-						+ " to dimension " + targetDim + " at " + tx + ", " + ty + ", " + tz);
+				sendMsg(executor, slient, "Teleported player " + targetPlayer.getName() + " to dimension " + targetDim + " at " + tx + ", " + ty + ", " + tz);
 			} else {
-				sendMsg(executor, "Player " + targetPlayer.getName()
-						+ " is already in dimension " + targetDim
-						+ ". No coordinates provided, nothing changed.");
+				sendMsg(executor, slient, "Player " + targetPlayer.getName() + " is already in dimension " + targetDim + ". No coordinates provided, nothing changed.");
 			}
 			return;
 		}
-
 		// ---- 6. Переход в другое измерение ----
 		WorldServer targetWorld = mcServer.getWorld(targetDim);
 		if (targetWorld == null) {
@@ -178,20 +173,16 @@ public final class P_SwitchDim {
 			targetWorld = net.minecraftforge.common.DimensionManager.getWorld(targetDim, true);
 		}
 		if (targetWorld == null) {
-			sendMsg(executor, "Failed to load target world: " + targetDim);
+			sendMsg(executor, slient, "Failed to load target world: " + targetDim);
 			return;
 		}
-
 		WorldServer playerWorld = (WorldServer) targetPlayer.world;
 		mcServer.getPlayerList().transferPlayerToDimension(targetPlayer, targetDim, new TeleporterDirectWrapper(playerWorld, targetDim));
 
 		if (hasCoords) {
 			targetPlayer.setPositionAndUpdate(tx, ty, tz);
 		}
-
-		sendMsg(executor, "Teleported player " + targetPlayer.getName()
-				+ " to dimension " + targetDim
-				+ (hasCoords ? (" at " + tx + ", " + ty + ", " + tz) : "."));
+		sendMsg(executor, slient, "Teleported player " + targetPlayer.getName() + " to dimension " + targetDim + (hasCoords ? (" at " + tx + ", " + ty + ", " + tz) : "."));
 	}
     private static boolean isCoordinateToken(String token) {
 	    if (token == null || token.isEmpty()) return false;
@@ -200,10 +191,10 @@ public final class P_SwitchDim {
 	    return c == '~' || c == '-' || c == '.' || (c >= '0' && c <= '9');
 	}
 	// get param for index
-	private static String getParam(Map<String, String> cmdparams, int index) {
-	    if (cmdparams == null) return "";
-	    return cmdparams.getOrDefault(Integer.toString(index), "");
-	}
+	//private static String getParam(Map<String, String> cmdparams, int index) {
+	//    if (cmdparams == null) return "";
+	//    return cmdparams.getOrDefault(Integer.toString(index), "");
+	//}
 	private static double parseCoord(String token, double base, boolean isY) throws NumberFormatException {
 	    token = token.trim();
 	    if (token.startsWith("~")) {

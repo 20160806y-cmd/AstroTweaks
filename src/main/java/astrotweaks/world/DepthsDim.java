@@ -54,7 +54,6 @@ import astrotweaks.block.*;
 
 
 public class DepthsDim {
-	//private static int RAWDIMID = -6000;
 	public static final int DIMID = -6000;
 	public static DimensionType dtype;
 	public DepthsDim() {}
@@ -275,45 +274,45 @@ public class DepthsDim {
 		private void generateOres(World world, Random random, int x, int z) {
 			//Block stoneBlock = STONE.getBlock();
 			//Block deepslateB = DEEPSLATE.getBlock();
-			BlockMatcher stoneMatcher = BlockMatcher.forBlock(STONE.getBlock());
-			BlockMatcher deepslateMatcher = BlockMatcher.forBlock(DEEPSLATE.getBlock());
-			BlockMatcher obsidianMatcher = BlockMatcher.forBlock(OBSIDIAN.getBlock());
+			BlockMatcher stoneM = BlockMatcher.forBlock(STONE.getBlock());
+			BlockMatcher deepslateM = BlockMatcher.forBlock(DEEPSLATE.getBlock());
+			BlockMatcher obsidianM = BlockMatcher.forBlock(OBSIDIAN.getBlock());
 
 			//			Block							Matcher			worldID	Random	X	Z	VeinSize	GenChance	MinY	MaxY
-			generateOre(Blocks.COAL_ORE.getDefaultState(), stoneMatcher, world, random, x, z, 	30, 20, 128, 252);
-			generateOre(Blocks.IRON_ORE.getDefaultState(), stoneMatcher, world, random, x, z,		10, 30,  99, 252);
-			generateOre(Blocks.GOLD_ORE.getDefaultState(), stoneMatcher, world, random, x, z,		 8, 20,  99, 252);
-			generateOre(Blocks.DIAMOND_ORE.getDefaultState(),stoneMatcher,world,random, x, z,		 8, 15,  93, 252);
-			generateOre(Blocks.REDSTONE_ORE.getDefaultState(),stoneMatcher,world,random,x, z, 	 8, 20,  99, 252);
-			generateOre(Blocks.LAPIS_ORE.getDefaultState(), stoneMatcher, world, random,x, z,  	 8, 13,  99, 252);
-			generateOre(Blocks.EMERALD_ORE.getDefaultState(),stoneMatcher, world,random,x, z, 	 4, 13,  99, 252);
-			generateOre(Blocks.COAL_BLOCK.getDefaultState(), stoneMatcher, world,random,x, z, 	 5,  4,  99, 252);
-			generateOre(Blocks.GRAVEL.getDefaultState(), stoneMatcher, world, random, x, z,		24, 16, 140, 252);
-			generateOre(Blocks.COBBLESTONE.getDefaultState(),stoneMatcher,world,random, x, z,  	20,  9,  99, 252);
-			generateOre(Blocks.STONE.getStateFromMeta(5), stoneMatcher,world,random, x, z,	 	30,  9, 150, 252);
-			generateOre(Blocks.STONE.getStateFromMeta(3), stoneMatcher,world,random, x, z,		30, 10,  99, 220);
-			generateOre(Blocks.STONE.getStateFromMeta(1), stoneMatcher,world,random, x, z,		30,  9,  99, 190);
-			generateOre(BlockRubyOre.block.getDefaultState(), stoneMatcher,world,random, x, z,  	 4,  7,  99, 252);
-			generateOre(BlockQuartzOreStone.block.getDefaultState(),stoneMatcher,world,random,x,z,13,  6, 150, 252);
-			generateOre(BlockMineralsOre.block.getDefaultState(),stoneMatcher,world,random,x,z,	10, 25,  99, 252);
-			generateOre(DEEPSLATE, 								stoneMatcher,world,random,x,z,	7, 7,  99, 252);
+			generateOre(Blocks.COAL_ORE.getDefaultState(), stoneM, world, random, x, z, 	30, 20, 128, 252);
+			generateOre(Blocks.IRON_ORE.getDefaultState(), stoneM, world, random, x, z,	    10, 30,  99, 252);
+			generateOre(Blocks.GOLD_ORE.getDefaultState(), stoneM, world, random, x, z,	     8, 20,  99, 252);
+			generateOre(Blocks.DIAMOND_ORE.getDefaultState(),stoneM,world,random, x, z,	     8, 15,  93, 252);
+			generateOre(Blocks.REDSTONE_ORE.getDefaultState(),stoneM,world,random,x, z, 	 8, 20,  99, 252);
+			generateOre(Blocks.LAPIS_ORE.getDefaultState(), stoneM, world, random,x, z,  	 8, 13,  99, 252);
+			generateOre(Blocks.EMERALD_ORE.getDefaultState(),stoneM, world,random,x, z, 	 4, 13,  99, 252);
+			generateOre(Blocks.COAL_BLOCK.getDefaultState(), stoneM, world,random,x, z, 	 5,  4,  99, 252);
+			generateOre(Blocks.GRAVEL.getDefaultState(), stoneM, world, random, x, z,		24, 16, 140, 252);
+			generateOre(Blocks.COBBLESTONE.getDefaultState(),stoneM,world,random, x, z,  	20,  9,  99, 252);
+			generateOre(Blocks.STONE.getStateFromMeta(5), stoneM,world,random, x, z,   30,  9, 150, 252);
+			generateOre(Blocks.STONE.getStateFromMeta(3), stoneM,world,random, x, z,	30, 10,  99, 220);
+			generateOre(Blocks.STONE.getStateFromMeta(1), stoneM,world,random, x, z,	30,  9,  99, 190);
+			generateOre(BlockRubyOre.block.getDefaultState(), stoneM,world,random, x, z,     4,  7,  99, 252);
+			generateOre(BlockQuartzOreStone.block.getDefaultState(),stoneM,world,random,x,z,13,  6, 150, 252);
+			generateOre(BlockMineralsOre.block.getDefaultState(),stoneM,world,random,x,z,	10, 25,  99, 252);
+			generateOre(DEEPSLATE, 								stoneM,world,random,x,z,	 7, 7,  99, 252);
 
 			// deepslate
-			generateOre(Blocks.MAGMA.getDefaultState(), deepslateMatcher, world, random, x, z, 				20,  9, 26, 50);
-			generateOre(OBSIDIAN, 						deepslateMatcher, world, random, x, z,	 			 7,  4, 29, 40);
-			generateOre(Blocks.STONE.getStateFromMeta(1), deepslateMatcher,world,random, x, z,				18,  3, 80, 95);
+			generateOre(Blocks.MAGMA.getDefaultState(), deepslateM, world, random, x, z, 			20,  11, 26, 50);
+			generateOre(OBSIDIAN, 						deepslateM, world, random, x, z,	 	      7,  6, 29, 40);
+			generateOre(Blocks.STONE.getStateFromMeta(1), deepslateM,world,random, x, z,		18,  4, 80, 95);
 
-			generateOre(ATBlocks.DEEP_DIAMOND_ORE.getDefaultState(), deepslateMatcher, world, random, x, z, 	 7,  5, 40, 96);
-			generateOre(ATBlocks.DEEP_EMERALD_ORE.getDefaultState(), deepslateMatcher, world, random, x, z, 	 5,  6, 30, 96);
-			generateOre(ATBlocks.DEEP_REDSTONE_ORE.getDefaultState(),deepslateMatcher, world, random, x, z, 	 7,  5, 60, 96);
-			generateOre(ATBlocks.DEEP_LAPIS_ORE.getDefaultState(),	deepslateMatcher, world, random, x, z, 	 7,  5, 50, 96);
-			generateOre(ATBlocks.DEEP_IRON_ORE.getDefaultState(),	deepslateMatcher, world, random, x, z, 	 11, 6, 60, 96);
-			generateOre(ATBlocks.DEEP_GOLD_ORE.getDefaultState(),	deepslateMatcher, world, random, x, z, 	 9,  6, 30, 96);
+			generateOre(ATBlocks.DEEP_DIAMOND_ORE.getDefaultState(), deepslateM, world, random, x, z, 7,  8, 30, 96);
+			generateOre(ATBlocks.DEEP_EMERALD_ORE.getDefaultState(), deepslateM, world, random, x, z, 5,  9, 30, 96);
+			generateOre(ATBlocks.DEEP_REDSTONE_ORE.getDefaultState(),deepslateM, world, random, x, z, 7,  8, 45, 96);
+			generateOre(ATBlocks.DEEP_LAPIS_ORE.getDefaultState(),	deepslateM, world, random, x, z,  7,  8, 40, 96);
+			generateOre(ATBlocks.DEEP_IRON_ORE.getDefaultState(),	deepslateM, world, random, x, z, 11,  9, 30, 96);
+			generateOre(ATBlocks.DEEP_GOLD_ORE.getDefaultState(),	deepslateM, world, random, x, z,  9,  9, 30, 96);
 
-			generateOre(BlockDeepMinerals.block.getDefaultState(),	deepslateMatcher, world, random, x, z, 	 7,  8, 26, 64);
+			generateOre(BlockDeepMinerals.block.getDefaultState(),	deepslateM, world, random, x, z,  7,  12, 26, 64);
 
 			// obsidian
-			generateOre(BlockDeepRichMinerals.block.getDefaultState(),obsidianMatcher,world,random,x,z,	6, 30, 1, 28);
+			generateOre(BlockDeepRichMinerals.block.getDefaultState(),obsidianM,world,random,x,z,	6, 32, 2, 28);
 		}
 		private void generateOre(IBlockState ore, BlockMatcher matcher, World world, Random random, int x, int z, int veinSize, int chances, int minHeight, int maxHeight) {
 			if (maxHeight < minHeight) {
