@@ -33,17 +33,11 @@ import net.minecraft.item.Item;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 
-//import astrotweaks.world.CavernMobModifier;
 import astrotweaks.gui.GUIHandler;
-//import astrotweaks.procedure.FoodEffectHandler;
-//import astrotweaks.procedure.MineDimEnter;
 import astrotweaks.world.BushDecorator;
 import astrotweaks.world.NaturesPower.GrassGrowth;
 import astrotweaks.event.EventBreakBlock;
-//import astrotweaks.gameplay.NoDamageShaking;
 import astrotweaks.gameplay.RealisticBreak;
-//import astrotweaks.gameplay.StepUp;
-//import astrotweaks.recipe.CombinedFuelHandler;
 import astrotweaks.recipe.RecipeHandler;
 //import astrotweaks.creativetab.ATCreativeTabs;
 
@@ -119,6 +113,10 @@ public class AstrotweaksMod {
 		astrotweaks.tech.qts.BlockQTPSupressor.updVars();
 
 
+		GameRegistry.registerTileEntity(
+				astrotweaks.block.mirage.MirageTileEntity.class,
+				MODID + ":mirage_tile"
+		);
 
 
 
@@ -146,7 +144,9 @@ public class AstrotweaksMod {
 		if (ModVariables.GG_ENABLED) MinecraftForge.EVENT_BUS.register(new GrassGrowth());
     	if (ModVariables.Enable_Depths_Dim_Bedrock_TP) MinecraftForge.EVENT_BUS.register(new astrotweaks.procedure.MineDimEnter());
 		if (ModVariables.No_Potion_Icons) MinecraftForge.EVENT_BUS.register(new astrotweaks.gameplay.NoEffectIcons());
-		//if (ModVariables.No_Damage_Shaking) MinecraftForge.EVENT_BUS.register(new astrotweaks.gameplay.NoDamageShaking());
+		
+		MinecraftForge.EVENT_BUS.register(astrotweaks.block.mirage.MirageRemovalQueue.class);
+
 		//MinecraftForge.EVENT_BUS.register(new LetMeDisconnect());
 
 

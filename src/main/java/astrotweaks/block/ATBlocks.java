@@ -181,6 +181,7 @@ NULL_BLOCK,
 BlockRubyOre.block,
 BlockMineralsOre.block,
 BlockMine.block,
+astrotweaks.block.mirage.MirageBlock.block,
 BlockCobbledDeepslateSlab.block,
 BlockCobbledDeepslateSlab.block_slab_double,
 BlockCobbledDeepslateStairs.block,
@@ -229,6 +230,11 @@ BlockUnknownBlock.block,
                 ResourceLocation rl = blk.getRegistryName();
                 Block doubleSlab = Block.REGISTRY.getObject(new ResourceLocation(rl.getResourceDomain(), rl.getResourcePath() + "_double"));
                 event.getRegistry().register(new ItemSlab(blk, slab, (BlockSlab) doubleSlab).setRegistryName(rl));
+                continue;
+            }
+            // Блок-мираж: кастомный ItemBlock, сохраняющий NBT цели при размещении
+            if (blk instanceof astrotweaks.block.mirage.MirageBlock) {
+                event.getRegistry().register( new astrotweaks.block.mirage.MirageItemBlock(blk).setRegistryName(blk.getRegistryName()) );
                 continue;
             }
             event.getRegistry().register( new ItemBlock(blk).setRegistryName(blk.getRegistryName()) );

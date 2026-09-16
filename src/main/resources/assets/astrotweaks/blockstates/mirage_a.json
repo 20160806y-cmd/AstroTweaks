@@ -1,0 +1,6 @@
+{
+    "variants": {
+        "normal": { "model": "astrotweaks:mirage_a" },
+        "inventory": { "model": "astrotweaks:mirage_a" }
+    }
+}
