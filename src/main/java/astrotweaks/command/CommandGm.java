@@ -22,37 +22,30 @@ public class CommandGm {
 		public int compareTo(ICommand c) {
 			return getName().compareTo(c.getName());
 		}
-
 		@Override
 		public boolean checkPermission(MinecraftServer server, ICommandSender var1) {
 			return true;
 		}
-
 		@Override
 		public List getAliases() {
 			return new ArrayList();
 		}
-
 		@Override
 		public List getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, BlockPos pos) {
 			return new ArrayList();
 		}
-
 		@Override
 		public boolean isUsernameIndex(String[] string, int index) {
 			return true;
 		}
-
 		@Override
 		public String getName() {
 			return "gm";
 		}
-
 		@Override
 		public String getUsage(ICommandSender var1) {
 			return "/gm [<arguments>]";
 		}
-
 		@Override
 		public void execute(MinecraftServer server, ICommandSender sender, String[] cmd) {
 			if (!(sender.getCommandSenderEntity() instanceof EntityPlayer)) {

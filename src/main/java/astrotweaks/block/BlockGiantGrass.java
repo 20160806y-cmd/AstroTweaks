@@ -11,7 +11,6 @@ import net.minecraft.block.material.Material;
 import net.minecraft.block.properties.PropertyEnum;
 import net.minecraft.block.state.BlockFaceShape;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.IStringSerializable;
@@ -61,9 +60,9 @@ public class BlockGiantGrass {
 		    int rolls = 2;
 		    DE_DROP_TABLE.generateDrops(drops, w, rolls);
 		}
-
         @Override public boolean isOpaqueCube(IBlockState state) { return false; }
         @Override public boolean isFullCube(IBlockState state) { return false; }
+        @Override public boolean isNormalCube(IBlockState state, IBlockAccess world, BlockPos pos) { return false; }
         @Override public float getAmbientOcclusionLightValue(IBlockState state) { return 1.0F; }
         @Override public boolean isPassable(IBlockAccess world, BlockPos pos) { return true; }
         @Override public AxisAlignedBB getCollisionBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) { return NULL_AABB; }

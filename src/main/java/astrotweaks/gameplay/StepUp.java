@@ -17,14 +17,11 @@ public class StepUp {
         if (event.phase != TickEvent.Phase.END) {
             return;
         }
-
         //Minecraft minecraft = Minecraft.getMinecraft();
         EntityPlayer player = event.player;
 
-        //if (player == null) return;
         if (player.isSneaking()) enabled = false;
         else enabled = true;
-        //enabled = player.isSneaking() ? true : false;
 
         player.stepHeight = enabled ? STEP_HEIGHT : DEFAULT_STEP_HEIGHT;
     }

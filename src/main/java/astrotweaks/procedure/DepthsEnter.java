@@ -21,7 +21,7 @@ import astrotweaks.Multiverse.MultiverseDims;
 
 
 
-public final class MineDimEnter {
+public final class DepthsEnter {
     //private static final int OVERWORLD_ID = 0;
     private static final int CAVERN_DIM_ID = DepthsDim.DIMID;
     private static final int MAX_HEIGHT_OVERWORLD = 5;
@@ -29,7 +29,7 @@ public final class MineDimEnter {
     private static final int TELEPORT_HEIGHT_OVERWORLD = 5;
     private static final int TELEPORT_HEIGHT_CAVERN = 252;
 
-    public MineDimEnter() {}
+    public DepthsEnter() {}
 
     @SubscribeEvent
     public void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {

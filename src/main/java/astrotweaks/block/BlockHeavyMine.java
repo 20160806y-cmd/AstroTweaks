@@ -116,6 +116,7 @@ public class BlockHeavyMine {
 			return new AxisAlignedBB(0.1875, 0.0, 0.1875, 0.8125, 0.1875, 0.8125);
 		}
 		@Override public boolean isFullCube(IBlockState state) { return false; }
+		@Override public boolean isNormalCube(IBlockState state, IBlockAccess world, BlockPos pos) { return false; }
 		@Override public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) { return MapColor.AIR; }
         @Override
         public void onEntityCollidedWithBlock(World world, BlockPos pos, IBlockState state, Entity entity) {

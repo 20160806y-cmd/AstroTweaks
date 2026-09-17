@@ -56,45 +56,22 @@ public class BlockGroundRock2 {
 			setLightOpacity(0);
 		}
 		@SideOnly(Side.CLIENT)
-		@Override
-		public BlockRenderLayer getBlockLayer() {
-			return BlockRenderLayer.CUTOUT_MIPPED;
-		}
-		@Override
+		@Override public BlockRenderLayer getBlockLayer() { return BlockRenderLayer.CUTOUT_MIPPED; }
 		@javax.annotation.Nullable
-		public AxisAlignedBB getCollisionBoundingBox(IBlockState blockState, IBlockAccess worldIn, BlockPos pos) {
-			return NULL_AABB;
-		}
-		@Override
-		public boolean isPassable(IBlockAccess worldIn, BlockPos pos) {
-			return true;
-		}
-		@Override
-		public boolean isFullCube(IBlockState state) {
-			return false;
-		}
-		@Override
-		public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) {
+		@Override public AxisAlignedBB getCollisionBoundingBox(IBlockState blockState, IBlockAccess worldIn, BlockPos pos) { return NULL_AABB; }
+		@Override public boolean isPassable(IBlockAccess worldIn, BlockPos pos) { return true; }
+		@Override public boolean isFullCube(IBlockState state) { return false; }
+		@Override public boolean isNormalCube(IBlockState state, IBlockAccess world, BlockPos pos) { return false; }
+		@Override public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) {
 			return new AxisAlignedBB(0.250, 0.0, 0.250, 0.750, 0.125, 0.750);
 		}
-		@Override
-		public boolean isOpaqueCube(IBlockState state) {
-			return false;
-		}
-		@Override
-		public BlockFaceShape getBlockFaceShape(IBlockAccess world, IBlockState state, BlockPos pos, EnumFacing face) {
-		    return BlockFaceShape.UNDEFINED;
-		}
-		@Override
-		public boolean isReplaceable(IBlockAccess blockAccess, BlockPos pos) {
-			return true;
-		}
-		@Override
-		public void getDrops(NonNullList<ItemStack> drops, IBlockAccess world, BlockPos pos, IBlockState state, int fortune) {
+		@Override public boolean isOpaqueCube(IBlockState state) { return false; }
+		@Override public BlockFaceShape getBlockFaceShape(IBlockAccess world, IBlockState state, BlockPos pos, EnumFacing face) { return BlockFaceShape.UNDEFINED; }
+		@Override public boolean isReplaceable(IBlockAccess blockAccess, BlockPos pos) { return true; }
+		@Override public void getDrops(NonNullList<ItemStack> drops, IBlockAccess world, BlockPos pos, IBlockState state, int fortune) {
 		    drops.add(new ItemStack(ATItems.ROCK_FLAT, 1)); // <astrotweaks:rock_flat>
 		}
-		@Override
-		public boolean canPlaceBlockAt(World worldIn, BlockPos pos) {
+		@Override public boolean canPlaceBlockAt(World worldIn, BlockPos pos) {
 		    BlockPos below = pos.down();
 		    IBlockState stateBelow = worldIn.getBlockState(below);
 		    return stateBelow.isSideSolid(worldIn, below, EnumFacing.UP);

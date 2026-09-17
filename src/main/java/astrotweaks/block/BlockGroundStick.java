@@ -68,16 +68,14 @@ public class BlockGroundStick {
 		@Override public AxisAlignedBB getCollisionBoundingBox(IBlockState blockState, IBlockAccess worldIn, BlockPos pos) { return NULL_AABB; }
 		@Override public boolean isPassable(IBlockAccess worldIn, BlockPos pos) { return true; }
 		@Override public boolean isFullCube(IBlockState state) { return false; }
-		@Override
-		public int getFlammability(IBlockAccess world, BlockPos pos, EnumFacing face) {
+		@Override public boolean isNormalCube(IBlockState state, IBlockAccess world, BlockPos pos) { return false; }
+		@Override public int getFlammability(IBlockAccess world, BlockPos pos, EnumFacing face) {
 			return 100;
 		}
-		@Override
-		public int getFireSpreadSpeed(IBlockAccess world, BlockPos pos, EnumFacing face) {
+		@Override public int getFireSpreadSpeed(IBlockAccess world, BlockPos pos, EnumFacing face) {
 			return 60;
 		}
-		@Override
-		public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) {
+		@Override public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) {
 		/*
 			switch ((EnumFacing) state.getValue(BlockHorizontal.FACING)) {
 				case SOUTH :

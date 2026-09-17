@@ -50,6 +50,17 @@ public class MultiverseEvents {
 
     private static final int GAMERULE_SYNC_INTERVAL = 40; // Тиков.  20t = 1s
 
+    /**
+     * Pending gamerule edits typed inside a multiverse world, keyed by rule name.
+     * Vanilla writes (and validates) them on that world's own GameRules; we confirm
+     * the write at the end of the same tick (see {@link #propagateGameRuleUpdates})
+     * and mirror the value onto dim 0 so it becomes the new global default instead of
+     * being silently reverted by {@link #syncGameRulesFromOverworld}.
+     */
+
+    private static final Map<String, String> PENDING_GAMERULE = new HashMap<>();
+    private static volatile boolean hasPendingRules = false;
+    private static volatile boolean hasActiveMultiverseWorlds = false;
 
     /**
      * Runs an entity dimension change without the portal re-mapping (used by
@@ -86,6 +97,15 @@ public class MultiverseEvents {
         }
     }
 
+    private static boolean scanForActiveMultiverseWorlds(MinecraftServer srv) {
+        if (srv == null) return false;
+        LevelManager lm = LevelManager.getInstance();
+        for (WorldServer w : srv.worlds) {
+            if (w != null && lm.isMultiverseDimension(w.provider.getDimension())) return true;
+        }
+        return false;
+    }
+
     /** Возвращает живой сервер, попутно обновляя кэш. */
     private static MinecraftServer serverRef() {
         MinecraftServer s = cachedServer;
@@ -107,8 +127,7 @@ public class MultiverseEvents {
      * /gamerule typed INSIDE a multiverse world is lifted onto dim 0, then fanned out
      * here, instead of being silently reverted.
      */
-    public static void syncGameRulesFromOverworld() {
-        MinecraftServer srv = serverRef();
+    public static void syncGameRulesFromOverworld(MinecraftServer srv) {
         if (srv == null) return;
         WorldServer base = srv.getWorld(0);
         if (base == null) return;
@@ -117,44 +136,31 @@ public class MultiverseEvents {
 
         LevelManager lm = LevelManager.getInstance();
 
-        // Снимок правил dim 0 — строится один раз за вызов.
+        // Сначала убеждаемся, что есть хотя бы один MV-мир — иначе снапшот зря.
+        boolean any = false;
+        for (WorldServer w : srv.worlds) {
+            if (w != null && w != base && lm.isMultiverseDimension(w.provider.getDimension())) {
+                any = true; break;
+            }
+        }
+        if (!any) return;
+
         String[] ruleKeys = src.getRules();
         Map<String, String> snapshot = new HashMap<>(ruleKeys.length * 2);
-        for (String key : ruleKeys) {
-            snapshot.put(key, src.getString(key));
-        }
+        for (String k : ruleKeys) snapshot.put(k, src.getString(k));
 
         for (WorldServer world : srv.worlds) {
             if (world == null || world == base) continue;
             if (!lm.isMultiverseDimension(world.provider.getDimension())) continue;
-
             GameRules dst = world.getGameRules();
             if (dst == null || dst == src) continue;
-
             for (Map.Entry<String, String> e : snapshot.entrySet()) {
                 if (!e.getValue().equals(dst.getString(e.getKey()))) {
                     dst.setOrCreateGameRule(e.getKey(), e.getValue());
                 }
             }
-
-            /*
-            for (String key : src.getRules()) {
-                String value = src.getString(key);
-                if (!value.equals(dst.getString(key))) {
-                    dst.setOrCreateGameRule(key, value);
-                }
-            }*/
         }
     }
-
-    /**
-     * Pending gamerule edits typed inside a multiverse world, keyed by rule name.
-     * Vanilla writes (and validates) them on that world's own GameRules; we confirm
-     * the write at the end of the same tick (see {@link #propagateGameRuleUpdates})
-     * and mirror the value onto dim 0 so it becomes the new global default instead of
-     * being silently reverted by {@link #syncGameRulesFromOverworld}.
-     */
-    private static final Map<String, String> PENDING_GAMERULE = new HashMap<>();
 
     /**
      * Makes {@code /gamerule} behave globally from ANY multiverse world: the original
@@ -184,6 +190,7 @@ public class MultiverseEvents {
         if (!src.hasRule(params[0])) return; // let vanilla throw the "no such rule" error, don't touch dim 0
         synchronized (PENDING_GAMERULE) {
             PENDING_GAMERULE.put(params[0], params[1]);
+            hasPendingRules = true;
         }
     }
 
@@ -195,6 +202,8 @@ public class MultiverseEvents {
      * never reaches dim 0.
      */
     private static boolean propagateGameRuleUpdates() {
+        if (!hasPendingRules)  return false;
+
         MinecraftServer srv = serverRef();
         if (srv == null) return false;
         WorldServer base = srv.getWorld(0);
@@ -202,27 +211,24 @@ public class MultiverseEvents {
         GameRules src = base.getGameRules();
         LevelManager lm = LevelManager.getInstance();
 
-        synchronized (PENDING_GAMERULE) {
-            if (PENDING_GAMERULE.isEmpty()) return false;
-            boolean changed = false;
-            for (Map.Entry<String, String> e : PENDING_GAMERULE.entrySet()) {
-                String key = e.getKey();
-                String value = e.getValue();
-                for (WorldServer world : srv.worlds) {
-                    if (world == null || world == base) continue;
-                    if (!lm.isMultiverseDimension(world.provider.getDimension())) continue;
-                    if (value.equals(world.getGameRules().getString(key))) {
-                        if (!value.equals(src.getString(key))) {
-                            src.setOrCreateGameRule(key, value);
-                            changed = true;
-                        }
-                        break;
+        boolean changed = false;
+        for (Map.Entry<String, String> e : PENDING_GAMERULE.entrySet()) {
+            String key = e.getKey(), value = e.getValue();
+            for (WorldServer world : srv.worlds) {
+                if (world == null || world == base) continue;
+                if (!lm.isMultiverseDimension(world.provider.getDimension())) continue;
+                if (value.equals(world.getGameRules().getString(key))) {
+                    if (!value.equals(src.getString(key))) {
+                        src.setOrCreateGameRule(key, value);
+                        changed = true;
                     }
+                    break;
                 }
             }
-            PENDING_GAMERULE.clear();
-            return changed;
         }
+        PENDING_GAMERULE.clear();
+        hasPendingRules = false;
+        return changed;
     }
 
     // ------------------------------------------------------------------ world bind
@@ -324,10 +330,7 @@ public class MultiverseEvents {
             // player does not end up buried. x/z are divided by 8 going to the nether
             // and multiplied by 8 coming back to the overworld.
             double scale = targetType == LevelDimensionType.NETHER ? 1.0 / 8.0D : 8.0D;
-            targetPos = new BlockPos(
-                    (int) (entity.posX * scale),
-                    (int) entity.posY,
-                    (int) (entity.posZ * scale));
+            targetPos = new BlockPos((int) (entity.posX * scale), (int) entity.posY, (int) (entity.posZ * scale));
         }
 
         boolean portalPair = targetType == LevelDimensionType.NETHER || (targetType == LevelDimensionType.OVERWORLD && data.typeOf(from) == LevelDimensionType.NETHER);
@@ -399,7 +402,6 @@ public class MultiverseEvents {
             event.setCanceled(true);
             return;
         }
-
         LevelData data = LevelManager.getInstance().getLevelByDimensionId(dim);
         if (data == null) {
             // Real-lane (-1/0/1) nether/end portals keep vanilla behavior.
@@ -407,8 +409,7 @@ public class MultiverseEvents {
         }
         event.setCanceled(true);
         LevelDimensionType type = data.typeOf(dim);
-        if (type != LevelDimensionType.OVERWORLD && type != LevelDimensionType.NETHER) 
-            return;
+        if (type != LevelDimensionType.OVERWORLD && type != LevelDimensionType.NETHER)  return;
         
         NetherPortalGeometry.Geometry geometry = NetherPortalGeometry.findFrame(event.getWorld(), event.getPos());
         if (geometry != null) {
@@ -476,27 +477,33 @@ public class MultiverseEvents {
     public void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END)  return;
 
-        ++tickCounter;
-
-        NetherPortalLink.onEndTick();
-
-        // propagate теперь возвращает true, если dim 0 реально изменился —
-        // тогда синхронизируем немедленно, чтобы /gamerule применился мгновенно.
-        boolean rulesChanged = propagateGameRuleUpdates();
-        if (rulesChanged || tickCounter % GAMERULE_SYNC_INTERVAL == 0) {
-            syncGameRulesFromOverworld();
-        }
-
-        if (tickCounter % 160 != 0) 
-            return;
-        
         MinecraftServer srv = serverRef();
         if (srv == null || srv.getWorld(0) == null) return;
 
-        LevelManager lm = LevelManager.getInstance();
-        lm.processDeferredUnloading(srv, PENDING_UNLOAD, lm.getUnloadDelayMs());
-        lm.flushRegistryIfDirty(srv);
+        // Пересчёт флага раз в секунду — O(worlds), но редко.
+        if (tickCounter % 20 == 0) {
+            hasActiveMultiverseWorlds = scanForActiveMultiverseWorlds(srv);
+        }
+        if (!hasActiveMultiverseWorlds) {
+            // Ни MV-миров, ни MV-порталов, ни геймрул для синхронизации.
+            // PENDING/PORTAL_COUNTERS гарантированно пусты: попасть в них можно
+            // только из MV-мира, а его нет.
+            return;
+        }
 
-        tickCounter = 0;
+        ++tickCounter;
+        NetherPortalLink.onEndTick();
+
+        boolean rulesChanged = propagateGameRuleUpdates();
+        if (rulesChanged || tickCounter % GAMERULE_SYNC_INTERVAL == 0) {
+            syncGameRulesFromOverworld(srv); // overload с srv, см. п.3
+        }
+
+        if (tickCounter % 160 == 0) {
+            LevelManager lm = LevelManager.getInstance();
+            lm.processDeferredUnloading(srv, PENDING_UNLOAD, lm.getUnloadDelayMs());
+            lm.flushRegistryIfDirty(srv);
+            tickCounter = 0;
+        }
     }
 }

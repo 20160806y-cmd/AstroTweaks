@@ -19,6 +19,8 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
 import astrotweaks.creativetab.ATCreativeTabs;
+import astrotweaks.item.TotemOfGod.*;;
+
 
 public final class ATItems {
 
@@ -211,6 +213,7 @@ public final class ATItems {
 
 
 
+
     private ATItems() {}
 
     public static final void ClearRegList() {
@@ -371,6 +374,7 @@ ItemSilkeBadge.SILKE_BADGE,
 ItemUnstableVoidCore.UNSTABLE_VOID_CORE,
 ItemUDestroyerItem.DESTROYER_ITEM,
 ItemVoidAntimatter.VOID_ANTIMATTER,
+TotemOfGod.TOTEM_OF_GOD,
 
 
     };

@@ -1021,9 +1021,20 @@ public class LevelManager {
     public LevelData getLevelByDimensionId(int id) {
         return dimensionToLevel.get(id);
     }
+    //public boolean isMultiverseDimension(int id) {
+    //    return id == MultiverseDims.GLOBAL_DIM || id == MultiverseDims.PROXY_DIM || dimensionToLevel.containsKey(id);
+    //}
     public boolean isMultiverseDimension(int id) {
-        return id == MultiverseDims.GLOBAL_DIM || id == MultiverseDims.PROXY_DIM || dimensionToLevel.containsKey(id);
+        if (id == MultiverseDims.GLOBAL_DIM || id == MultiverseDims.PROXY_DIM) return true;
+        if (id < BASE_START) return false;                    // ванильные -1/0/1 и всё отрицательное
+        int offset = id - BASE_START;
+        int k = offset % STEP;
+        if (k >= DIMS_PER_LEVEL) return false;                // попадает в «зазор» между слотами
+        int n = offset / STEP + 1;
+        if (n < 1 || n > cachedMaxUniverses) return false;    // за пределами maxUniverses
+        return dimensionToLevel.containsKey(id);              // бокс только для «кандидатов»
     }
+
 
     /**
      * Returns the overworld dimension id that owns the given dimension.
@@ -1150,7 +1161,7 @@ public class LevelManager {
 
         // New/loaded multiverse worlds must follow the original world's (dim 0) gamerules
         // (keepInventory, doDaylightCycle, ...) instead of the vanilla per-world defaults.
-        MultiverseEvents.syncGameRulesFromOverworld();
+        MultiverseEvents.syncGameRulesFromOverworld(server);
 
         MinecraftForge.EVENT_BUS.post(new WorldEvent.Load(world));
         return world;

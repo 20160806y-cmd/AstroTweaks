@@ -142,8 +142,7 @@ public final class NetherPortalLink {
         WorldServer server = world instanceof WorldServer ? (WorldServer) world : null;
         if (server == null) return;
         
-        PENDING.put(entity.getUniqueID(), new Intent(entity.getUniqueID(), server, fromDim, targetDim, toType,
-                data, tx, ty, tz, geo.axis, linkX, linkY, linkZ, linkValid, geo));
+        PENDING.put(entity.getUniqueID(), new Intent(entity.getUniqueID(), server, fromDim, targetDim, toType, data, tx, ty, tz, geo.axis, linkX, linkY, linkZ, linkValid, geo));
         server.addScheduledTask(() -> execute(entity));
     }
 
@@ -168,9 +167,8 @@ public final class NetherPortalLink {
             Iterator<Map.Entry<UUID, Integer>> it = PORTAL_COUNTERS.entrySet().iterator();
             while (it.hasNext()) {
                 Map.Entry<UUID, Integer> entry = it.next();
-                if (PORTAL_SEEN.contains(entry.getKey())) {
-                    continue;
-                }
+                if (PORTAL_SEEN.contains(entry.getKey()))  continue;
+
                 int value = entry.getValue() - 1;
                 if (value <= 0) {
                     it.remove();
@@ -183,18 +181,15 @@ public final class NetherPortalLink {
     }
 
     private static void execute(Entity entity) {
-        if (entity == null || entity.isDead) return;
-        
+        if (entity == null || entity.isDead)  return;
+
         Intent intent = PENDING.remove(entity.getUniqueID());
-        if (intent == null) return;
-        
-        if (entity.getEntityWorld() != intent.origin) return;
-
+        if (intent == null)  return;
+        if (entity.getEntityWorld() != intent.origin)  return;
         MinecraftServer server = intent.origin.getMinecraftServer();
-        if (server == null) return;
-
+        if (server == null)  return;
         WorldServer target = ensureTargetWorld(server, intent.data, intent.targetType);
-        if (target == null) return;
+        if (target == null)  return;
 
         BlockPos stand;
         if (intent.linkValid && target.getBlockState(new BlockPos(intent.linkX, intent.linkY, intent.linkZ)).getBlock() == BlockNetherPortal.BLOCK) {
@@ -206,9 +201,7 @@ public final class NetherPortalLink {
             if (exitGeo == null) {
                 exitGeo = NetherPortalGeometry.placeExitPortal(target, intent.tx, intent.ty, intent.tz, intent.axis);
             }
-            if (exitGeo == null) {
-                return;
-            }
+            if (exitGeo == null)  return;
             writeLinks(intent.origin, intent.sourceGeo, intent.fromDim, target, exitGeo, intent.targetDim);
             stand = exitGeo.interiorMin;
         }

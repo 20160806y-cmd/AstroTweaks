@@ -26,6 +26,7 @@ import net.minecraft.world.World;
  * Это позволяет делать:
  * <pre>
  *   /give @p astrotweaks:mirage_a 1 0 {target:"minecraft:stone"}
+ *   /give @p astrotweaks:mirage_a 1 0 {target:"minecraft:stone:3"}   (метаданные цели)
  * </pre>
  * и при размещении блок сразу мимикрирует указанный блок.
  *
@@ -44,13 +45,8 @@ public class MirageItemBlock extends ItemBlock {
      * @return {@code true} если блок успешно размещён
      */
     @Override
-    public boolean placeBlockAt(ItemStack stack, EntityPlayer player, World world,
-                                BlockPos pos, EnumFacing facing,
-                                float hitX, float hitY, float hitZ,
-                                IBlockState newState) {
-        if (!super.placeBlockAt(stack, player, world, pos, facing, hitX, hitY, hitZ, newState)) {
-            return false;
-        }
+    public boolean placeBlockAt(ItemStack stack, EntityPlayer player, World world, BlockPos pos, EnumFacing facing, float hitX, float hitY, float hitZ, IBlockState newState) {
+        if (!super.placeBlockAt(stack, player, world, pos, facing, hitX, hitY, hitZ, newState))  return false;
 
         // Блок размещён — TE создан через createTileEntity.
         // Копируем пользовательские данные из предмета.
@@ -72,12 +68,9 @@ public class MirageItemBlock extends ItemBlock {
             // поэтому шлём его явно всем игрокам поблизости.
             if (!world.isRemote && world.getMinecraftServer() != null) {
                 SPacketUpdateTileEntity packet = mirage.getUpdatePacket();
-                world.getMinecraftServer().getPlayerList().sendToAllNearExcept(
-                        null, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D,
-                        64.0D, world.provider.getDimension(), packet);
+                world.getMinecraftServer().getPlayerList().sendToAllNearExcept(null, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, 128.0D, world.provider.getDimension(), packet);
             }
         }
-
         return true;
     }
 }

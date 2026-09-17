@@ -34,7 +34,6 @@ public class BlockBush4 {
 	public static class BlockCustomFlower extends BlockBush {
 		public BlockCustomFlower() {
 			setSoundType(SoundType.PLANT);
-			//setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
 			setHardness(0F);
 			setResistance(0F);
 			setUnlocalizedName("bush_4");

@@ -59,6 +59,7 @@ public class BlockGroundRock1 {
 		@Override public AxisAlignedBB getCollisionBoundingBox(IBlockState blockState, IBlockAccess worldIn, BlockPos pos) { return NULL_AABB; }
 		@Override public boolean isPassable(IBlockAccess worldIn, BlockPos pos) { return true; }
 		@Override public boolean isFullCube(IBlockState state) { return false; }
+		@Override public boolean isNormalCube(IBlockState state, IBlockAccess world, BlockPos pos) { return false; }
 		@Override public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) {
 			return new AxisAlignedBB(0.3125, 0.0, 0.3125, 0.6875, 0.250, 0.6875);
 		}

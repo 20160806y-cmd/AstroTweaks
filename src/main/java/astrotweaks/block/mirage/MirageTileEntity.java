@@ -7,18 +7,24 @@ import javax.annotation.Nullable;
 import net.minecraft.block.Block;
 import net.minecraft.block.properties.IProperty;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.block.model.IBakedModel;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 
 /**
  * Тайл-энтити блока-миража.
  * <p>
- * Хранит registry name целевого блока ({@code "target"}) и сериализованные
+ * Хранит registry name целевого блока с опциональными метаданными
+ * ({@code "target"}, например {@code "minecraft:stone"} или
+ * {@code "minecraft:stone:3"}) и сериализованные
  * свойства его IBlockState ({@code "state"}).  Клиент получает эти данные
  * через {@link #getUpdateTag()}/{@link #onDataPacket}, после чего
  * {@link MirageTESR} рендерит модель целевого блока в позиции миража.
@@ -35,8 +41,12 @@ import net.minecraftforge.fml.common.registry.ForgeRegistries;
  */
 public class MirageTileEntity extends TileEntity {
 
-    // ───────── NBT-ключи ─────────
-    /** Registry name целевого блока, например {@code "minecraft:stone"}. */
+    /**
+     * Registry name целевого блока с опциональным суффиксом метаданных,
+     * например {@code "minecraft:stone"} или {@code "minecraft:stone:3"}.
+     * Метаданные могут быть любым целым (блоки JEID-style семейств,
+     * не ограниченные диапазоном 0..15).
+     */
     public static final String TARGET = "target";
     /** Сериализованные свойства IBlockState целевого блока. */
     public static final String STATE  = "state";
@@ -44,11 +54,30 @@ public class MirageTileEntity extends TileEntity {
     // ───────── внутреннее состояние ─────────
     /** Registry name блока, под который мимикрируем. */
     private ResourceLocation targetName;
+    /** Метаданные цели из суффикса {@code ":meta"} (например {@code "minecraft:stone:3"} → 3). -1 = не заданы. */
+    private int targetMeta = -1;
     /** Кэш десериализованного IBlockState (сбрасывается при смене цели). */
     private IBlockState targetState;
     /** «Сырая» NBT со свойствами state, сохранённая до разрешения targetName → Block. */
     private NBTTagCompound serializedState = new NBTTagCompound();
 
+    /** Кэш клиентской item/block-модели цели. Сбрасывается при смене target. */
+    @SideOnly(Side.CLIENT) 
+    @Nullable private transient IBakedModel cachedModel;
+
+
+
+    /**
+     * Безопасно для вызова с любой стороны: чистит кэш только на клиенте.
+     * {@code world} может быть {@code null}, если TE ещё не установлен в мир
+     * (например, фейковый TE в {@link MirageTEISR}) — тогда чистить нечего.
+     */
+    private void invalidateModelCache() {
+        if (world != null && world.isRemote) {
+            clearModelCache();
+        }
+    }
+    @SideOnly(Side.CLIENT) private void clearModelCache() { this.cachedModel = null; }
 
     // ═══════════════════════════════════════════════════════════════
     //  Публичные геттеры / сеттеры
@@ -57,6 +86,21 @@ public class MirageTileEntity extends TileEntity {
     @Nullable
     public ResourceLocation getTargetName() {
         return targetName;
+    }
+
+    /**
+     * Клиентская модель для рендера. Кэшируется; сбрасывается при смене target
+     * в {@link #readCustomNBT(NBTTagCompound)} и {@link #setTarget}.
+     */
+    @SideOnly(Side.CLIENT)
+    @Nullable
+    public IBakedModel getCachedModel() {
+        IBlockState state = getTargetState();
+        if (state == null)  return null;
+        if (cachedModel == null) {
+            cachedModel = Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes().getModelForState(state);
+        }
+        return cachedModel;
     }
 
     /**
@@ -73,7 +117,7 @@ public class MirageTileEntity extends TileEntity {
         Block block = ForgeRegistries.BLOCKS.getValue(targetName);
         if (block == null)  return null;
 
-        targetState = readState(block, serializedState);
+        targetState = readState(block, targetMeta, serializedState);
         return targetState;
     }
 
@@ -83,7 +127,9 @@ public class MirageTileEntity extends TileEntity {
      */
     public void setTarget(@Nullable ResourceLocation name) {
         this.targetName = name;
+        this.targetMeta = -1;             // без метаданных
         this.targetState = null;          // сброс кэша — нужно перечитать state
+        this.cachedModel = null;              // <-- NEW (внутри, не через хелпер,
         this.markDirty();
         if (world != null && !world.isRemote && pos != null) {
             world.markBlockRangeForRenderUpdate(pos, pos);
@@ -127,19 +173,57 @@ public class MirageTileEntity extends TileEntity {
     public void readCustomNBT(NBTTagCompound compound) {
         targetName      = null;
         targetState     = null;
+        targetMeta      = -1;
         serializedState = new NBTTagCompound();
 
         if (compound.hasKey(TARGET, 8)) {
+            String raw = compound.getString(TARGET);
+            int metaFromSuffix = parseMetaSuffix(raw);
+
+            if (metaFromSuffix >= 0) {
+                targetMeta = metaFromSuffix;
+            }
             try {
-                targetName = new ResourceLocation(compound.getString(TARGET));
+                targetName = new ResourceLocation(stripMetaSuffix(raw));
             } catch (Exception ignored) {
                 targetName = null;
+                targetMeta = -1;
             }
         }
-
         if (compound.hasKey(STATE, 10)) {
             serializedState = compound.getCompoundTag(STATE);
         }
+
+        invalidateModelCache();
+    }
+
+    /**
+     * Достаёт метаданные из суффикса {@code ":meta"} строки цели
+     * ({@code "minecraft:stone:3"} → {@code 3}).  Возвращает {@code -1},
+     * если суффикса нет.  Принимает любые целые значения — блоки
+     * JEID-style семейств могут иметь meta вне диапазона 0..15.
+     */
+    private static int parseMetaSuffix(String raw) {
+        int colon = raw.lastIndexOf(':');
+        if (colon < 0 || colon == raw.length() - 1)  return -1;
+
+        String suffix = raw.substring(colon + 1);
+        if (!suffix.matches("-?[0-9]+"))  return -1;
+
+        try {
+            return Integer.parseInt(suffix);
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
+    }
+
+    /** Возвращает registry name без суффикса {@code ":meta"}. */
+    private static String stripMetaSuffix(String raw) {
+        int colon = raw.lastIndexOf(':');
+        if (colon < 0)  return raw;
+
+        String suffix = raw.substring(colon + 1);
+        return suffix.matches("-?[0-9]+") ? raw.substring(0, colon) : raw;
     }
 
     /**
@@ -156,7 +240,9 @@ public class MirageTileEntity extends TileEntity {
     /** Внутренний метод — записывает target + state в переданный compound. */
     private void writeCustomFields(NBTTagCompound compound) {
         if (targetName != null) {
-            compound.setString(TARGET, targetName.toString());
+            // Пишем цель вместе с метаданными — pick-block/копирование миража
+            // не должны терять JEID-style meta.
+            compound.setString(TARGET, targetMeta >= 0 ? targetName + ":" + targetMeta : targetName.toString());
         }
         IBlockState state = getTargetState();
 
@@ -169,11 +255,9 @@ public class MirageTileEntity extends TileEntity {
         }
     }
 
-
     // ═══════════════════════════════════════════════════════════════
     //  Сериализация / десериализация IBlockState ↔ NBTTagCompound
     // ═══════════════════════════════════════════════════════════════
-
     /** Каждое свойство блока → строковый ключ/значение в NBTTagCompound. */
     private NBTTagCompound writeState(IBlockState state) {
         NBTTagCompound result = new NBTTagCompound();
@@ -189,9 +273,18 @@ public class MirageTileEntity extends TileEntity {
         return property.getName((T) value);
     }
 
-    /** Восстанавливает IBlockState из строки → значение в NBTTagCompound. */
-    private static IBlockState readState(Block block, NBTTagCompound properties) {
-        IBlockState result = block.getDefaultState();
+    /**
+     * Восстанавливает IBlockState: база — {@link Block#getStateFromMeta(int)}
+     * если заданы метаданные ({@code meta >= 0}), иначе default state;
+     * поверх применяются свойства из NBTTagCompound.
+     */
+    private static IBlockState readState(Block block, int meta, NBTTagCompound properties) {
+        IBlockState result;
+        try {
+            result = meta >= 0 ? block.getStateFromMeta(meta) : block.getDefaultState();
+        } catch (Exception ignored) {
+            result = block.getDefaultState();
+        }
 
         for (String key : properties.getKeySet()) {
             IProperty<?> property = findProperty(block, key);

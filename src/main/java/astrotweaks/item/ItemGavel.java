@@ -54,8 +54,7 @@ public final class ItemGavel {
 		@Override
 		public void addInformation(ItemStack itemstack, World world, List<String> tooltip, ITooltipFlag flag) {
   			super.addInformation(itemstack, world, tooltip, flag);
-    		tooltip.add(TextFormatting.AQUA + new TextComponentTranslation("item.gavel.tooltip").getFormattedText());
-    		//tooltip.add(TextFormatting.AQUA + new TextComponentTranslation("item.plant_fiber.tooltip").getFormattedText());
+    		tooltip.add(new TextComponentTranslation("item.gavel.tooltip").getFormattedText());
 		}
 
 		@Override

@@ -4,7 +4,6 @@ import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 //import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-
 import net.minecraft.world.World;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.item.ItemStack;
@@ -130,7 +129,7 @@ public class EventRClickBlock {
         return rules;
     }
     public static void exect(Entity entity, World world, int x, int y, int z) {    
-        if (world.isRemote) return;
+        if (world.isRemote)  return;
         if (!(entity instanceof EntityPlayer)) return;
 
         Context ctx = new Context(entity, world, x, y, z);
@@ -146,15 +145,11 @@ public class EventRClickBlock {
     @SubscribeEvent
     public void onRightClickBlock(net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock event) {
         EntityPlayer entity = event.getEntityPlayer();
-        int i = event.getPos().getX();
-        int j = event.getPos().getY();
-        int k = event.getPos().getZ();
+        int x = event.getPos().getX();
+        int y = event.getPos().getY();
+        int z = event.getPos().getZ();
         World world = event.getWorld();
 
-        this.exect(entity, world, i, j, k);
+        exect(entity, world, x, y, z);
     }
-    //@Override
-    //public void preInit(FMLPreInitializationEvent event) {
-    //    MinecraftForge.EVENT_BUS.register(this);
-    //}
 }

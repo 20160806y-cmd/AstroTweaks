@@ -60,7 +60,7 @@ public class MirageBlock extends Block {
         super(Material.STRUCTURE_VOID);
 
         setHardness(-1.0F);               // неразрушим
-        setResistance(1000000.0F);         // взрывоустойчив
+        setResistance(0.0F);         // взрывоустойчив
         setLightOpacity(0);                // полностью пропускает свет
         setLightLevel(0.0F);               // не излучает свет
         setBlockUnbreakable();             // hardness = -1 (повтор вызова — ок)
@@ -74,108 +74,66 @@ public class MirageBlock extends Block {
     //  Визуальные свойства блока
     // ═══════════════════════════════════════════════════════════════
 
-    @Override
-    public MapColor getMapColor(IBlockState state, IBlockAccess world, BlockPos pos) {
-        return MapColor.AIR;
-    }
-
+    @Override public MapColor getMapColor(IBlockState state, IBlockAccess world, BlockPos pos) { return MapColor.AIR; }
     /** Прозрачный — не кэширует освещение. */
-    @Override
-    public boolean isOpaqueCube(IBlockState state) {
-        return false;
-    }
-
+    @Override public boolean isOpaqueCube(IBlockState state) { return false; }
     /** Полностью прозрачный — солнечный свет проходит сквозь. */
-    @Override
-    public boolean isFullCube(IBlockState state) {
-        return false;
-    }
-
+    @Override public boolean isFullCube(IBlockState state) { return false; }
     /** Не считается «нормальным» — не проводит redstone, не привязывает забор/стекло. */
-    @Override
-    public boolean isNormalCube(IBlockState state, IBlockAccess world, BlockPos pos) {
-        return false;
-    }
-
+    @Override public boolean isNormalCube(IBlockState state, IBlockAccess world, BlockPos pos) { return false; }
     /** Нельзя заменить другим блоком (как воздух). */
-    @Override
-    public boolean isReplaceable(IBlockAccess world, BlockPos pos) {
-        return false;
-    }
-
+    @Override public boolean isReplaceable(IBlockAccess world, BlockPos pos) { return false; }
     /**
      * ENTIREBLOCK_ANIMATED — чанк-рендер НЕ создаёт вершинный буфер для этого блока.
      * Визуал целиком обеспечивается {@link MirageTESR}.
      */
-    @Override
-    public EnumBlockRenderType getRenderType(IBlockState state) {
+    @Override public EnumBlockRenderType getRenderType(IBlockState state) {
         return EnumBlockRenderType.ENTITYBLOCK_ANIMATED;
     }
-
     /**
      * TRANSLUCENT-слой: корректное отображение в клиентском рендере
      * (альфа-тест, смешивание).
      */
     @net.minecraftforge.fml.relauncher.SideOnly(net.minecraftforge.fml.relauncher.Side.CLIENT)
-    @Override
-    public BlockRenderLayer getBlockLayer() {
+    @Override public BlockRenderLayer getBlockLayer() {
         return BlockRenderLayer.TRANSLUCENT;
     }
-
 
     // ═══════════════════════════════════════════════════════════════
     //  Коллизии / физика
     // ═══════════════════════════════════════════════════════════════
 
-    /** Нет хитбокса — сущности проходят сквозь. */
     @Nullable
-    @Override
-    public AxisAlignedBB getCollisionBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) {
+    @Override public AxisAlignedBB getCollisionBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) {
         return NULL_AABB;
     }
-
     /** Сущности не могут «сломать» мираж (взрыв, End Crystal, и т.д.). */
-    @Override
-    public boolean canEntityDestroy(IBlockState state, IBlockAccess world, BlockPos pos, Entity entity) {
+    @Override public boolean canEntityDestroy(IBlockState state, IBlockAccess world, BlockPos pos, Entity entity) {
         return false;
     }
-
 
     // ═══════════════════════════════════════════════════════════════
     //  TileEntity
     // ═══════════════════════════════════════════════════════════════
 
-    @Override
-    public boolean hasTileEntity(IBlockState state) {
-        return true;
-    }
-
-    @Override
-    public TileEntity createTileEntity(World world, IBlockState state) {
-        return new MirageTileEntity();
-    }
-
+    @Override public boolean hasTileEntity(IBlockState state) { return true; }
+    @Override public TileEntity createTileEntity(World world, IBlockState state) { return new MirageTileEntity(); }
 
     // ═══════════════════════════════════════════════════════════════
     //  Дроп / Pick-block
     // ═══════════════════════════════════════════════════════════════
 
     /** Мираж не дропает предметы при удалении. */
-    @Override
-    public void getDrops(NonNullList<ItemStack> drops, IBlockAccess world, BlockPos pos, IBlockState state, int fortune) {
-        // пусто — блок исчезает без следа
-    }
+    @Override public void getDrops(NonNullList<ItemStack> drops, IBlockAccess world, BlockPos pos, IBlockState state, int fortune) {}
 
     /**
      * Middle-click в креативе: возвращаем ItemStack с NBT цели
      * ({@code {target:"minecraft:...", state:{...}}}).
      * Позволяет использовать {@code /give} с этим NBT для копирования миража.
      */
-    @Override
-    public ItemStack getPickBlock(IBlockState state, RayTraceResult target, World world, BlockPos pos, EntityPlayer player) {
+    @Override public ItemStack getPickBlock(IBlockState state, RayTraceResult target, World world, BlockPos pos, EntityPlayer player) {
         ItemStack stack = new ItemStack(this);
         TileEntity te = world.getTileEntity(pos);
-
         if (te instanceof MirageTileEntity) {
             NBTTagCompound tag = ((MirageTileEntity) te).writeCustomNBT();
             if (!tag.hasNoTags()) {
@@ -184,7 +142,6 @@ public class MirageBlock extends Block {
         }
         return stack;
     }
-
 
     // ═══════════════════════════════════════════════════════════════
     //  Взаимодействие / разрушение
@@ -202,7 +159,6 @@ public class MirageBlock extends Block {
             world.setBlockToAir(pos);
             return;
         }
-
         MirageRemovalQueue.enqueue(world, pos);
     }
 
@@ -218,12 +174,10 @@ public class MirageBlock extends Block {
         }
         return false;
     }
-
-    /** Взрыв тоже запускает удаление (вместо стандартного drop). */
+    /** Взрыв тоже запускает удаление */
     @Override
     public void onBlockExploded(World world, BlockPos pos, Explosion explosion) {
         if (world.isRemote)  return;
-
         MirageRemovalQueue.enqueue(world, pos);
     }
 }

@@ -47,19 +47,3 @@ public class BlockWorldGen {
         }
     }
 }
-
-
-
-/*
-        GameRegistry.registerWorldGenerator(new IWorldGenerator() {
-            @Override
-            public void generate(Random random, int chunkX, int chunkZ, World world, IChunkGenerator cg, IChunkProvider cp) {
-                int dimID = world.provider.getDimension();
-                BlockRubyOre.generateWorld(random, chunkX * 16, chunkZ * 16, world, dimID, cg, cp);
-                BlockMineralsOre.generateWorld(random, chunkX * 16, chunkZ * 16, world, dimID, cg, cp);
-                BlockQuartzOreStone.generateWorld(random, chunkX * 16, chunkZ * 16, world, dimID, cg, cp);
-                BlockQuartzOreGranite.generateWorld(random, chunkX * 16, chunkZ * 16, world, dimID, cg, cp);
-            }
-        }, 5);
-
-*/

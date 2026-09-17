@@ -64,16 +64,14 @@ public class MirageTEISR extends TileEntityItemStackRenderer {
         if (targetState == null) return;
 
         RenderItem renderItem = Minecraft.getMinecraft().getRenderItem();
-        ItemStack targetStack = new ItemStack(targetState.getBlock(), 1,
-                                              targetState.getBlock().getMetaFromState(targetState));
+        ItemStack targetStack = new ItemStack(targetState.getBlock(), 1, targetState.getBlock().getMetaFromState(targetState));
 
         IBakedModel targetModel = renderItem.getItemModelWithOverrides(targetStack, null, null);
 
         // builtin/entity цели (сундуки/знамёна) рисуют сами себя через TEISR —
         // не запускаем вложенный TEISR, рисуем простой куб её стейта.
         if (targetModel.isBuiltInRenderer()) {
-            targetModel = Minecraft.getMinecraft().getBlockRendererDispatcher()
-                    .getBlockModelShapes().getModelForState(targetState);
+            targetModel = Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes().getModelForState(targetState);
         }
 
         Tessellator tessellator = Tessellator.getInstance();

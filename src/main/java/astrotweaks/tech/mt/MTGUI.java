@@ -199,7 +199,6 @@ public class MTGUI {
 			this.y = y;
 			this.z = z;
 		}
-
 		@Override
 		public void toBytes(io.netty.buffer.ByteBuf buf) {
 			buf.writeInt(buttonID);
@@ -220,7 +219,7 @@ public class MTGUI {
 		World world = entity.world;
 
 		if (buttonID == 0) {
-			ProcedureMTConvert.exect(x, y, z, world);
+			MTConvert.exect(new BlockPos(x, y, z), world);
 		}
 	}
 }

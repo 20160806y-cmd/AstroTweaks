@@ -16,17 +16,16 @@ import java.util.Map;
 import astrotweaks.ModVariables;
 
 
+
 public class P_AstroTechCP {
 	public P_AstroTechCP() {}
 
 	public static void exect(Entity sender, Map<String, Object> cmdparams) {
-		//Map<String, Object> cmdparams = (Map<String, Object>) cmdparamsObj;
 
 		if (!ModVariables.AstroTech_Environment) {
 			sendLocalized(sender, "No modules");
 			return;
 		}
-
 		String arg0 = getParam(cmdparams, 0);
 		if (!"info".equalsIgnoreCase(arg0)) {
 			sendLocalized(sender, "invalid.argument");
@@ -41,7 +40,6 @@ public class P_AstroTechCP {
 				targetPlayer = server.getPlayerList().getPlayerByUsername(targetName);
 			}
 		}
-
 		Entity recipientEntity = (targetPlayer != null) ? targetPlayer : sender;
 
 		sendLocalized(recipientEntity, "info.line0");
@@ -67,7 +65,7 @@ public class P_AstroTechCP {
 		}
 
 		World world = target.world;
-		if (world == null || world.isRemote) return;
+		if (world == null || world.isRemote)  return;
 		MinecraftServer server = world.getMinecraftServer();
 		if (server == null) return;
 		ICommandSender sender = new ICommandSender() {
@@ -80,11 +78,9 @@ public class P_AstroTechCP {
 			@Override public Vec3d getPositionVector() { return new Vec3d(target.posX, target.posY, target.posZ); }
 			@Override public Entity getCommandSenderEntity() { return target; }
 		};
-
 		String json = "[{\"translate\":\"" + escape(key) + "\"}]";
 		server.getCommandManager().executeCommand(sender, "tellraw @s " + json);
 	}
-
 	private static String escape(String s) {
 		return s.replace("\\", "\\\\").replace("\"", "\\\"");
 	}

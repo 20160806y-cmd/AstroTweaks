@@ -52,7 +52,7 @@ public final class ItemSilkeBadge {
 			ItemStack stack = player.getHeldItem(hand);
 			if (!world.isRemote) {
 				// Длительность 20 тиков = 1 секунда, amplifier 0 = уровень I
-				player.addPotionEffect(new PotionEffect(MobEffects.REGENERATION, 20, 0, false, false));
+				player.addPotionEffect(new PotionEffect(MobEffects.REGENERATION, 40, 0, false, false));
 			}
 			return new ActionResult<>(EnumActionResult.SUCCESS, stack);
 		}

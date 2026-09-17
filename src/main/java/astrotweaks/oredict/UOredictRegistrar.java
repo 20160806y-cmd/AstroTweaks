@@ -40,12 +40,12 @@ public class UOredictRegistrar {
 	private static void reg(String name, @Nonnull ItemStack ore) {
 		OreDictionary.registerOre(name, ore);
 	}
-	private static void reg(String name, @Nonnull Block ore) {
-		OreDictionary.registerOre(name, ore);
-	}
-	private static void reg(String name, @Nonnull Item ore) {
-		OreDictionary.registerOre(name, ore);
-	}
+	//private static void reg(String name, @Nonnull Block ore) {
+	//	OreDictionary.registerOre(name, ore);
+	//}
+	//private static void reg(String name, @Nonnull Item ore) {
+	//	OreDictionary.registerOre(name, ore);
+	//}
 
 
 

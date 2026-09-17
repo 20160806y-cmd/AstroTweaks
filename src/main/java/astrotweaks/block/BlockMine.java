@@ -35,27 +35,14 @@ public class BlockMine {
 		}
 
 		@SideOnly(Side.CLIENT)
-		@Override
-		public BlockRenderLayer getBlockLayer() {
-			return BlockRenderLayer.CUTOUT_MIPPED;
-		}
-		@Override
-		public boolean isFullCube(IBlockState state) {
-			return false;
-		}
-		@Override
-		public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) {
+		@Override public BlockRenderLayer getBlockLayer() { return BlockRenderLayer.CUTOUT_MIPPED; }
+		@Override public boolean isFullCube(IBlockState state) { return false; }
+		@Override public boolean isNormalCube(IBlockState state, IBlockAccess world, BlockPos pos) { return false; }
+		@Override public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) {
 			return new AxisAlignedBB(0.3125, 0.0, 0.3125, 0.6875, 0.125, 0.6875);
 		}
-		@Override
-		public boolean isOpaqueCube(IBlockState state) {
-			return false;
-		}
-		@Override
-		public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) {
-			return MapColor.AIR;
-		}
-
+		@Override public boolean isOpaqueCube(IBlockState state) { return false; }
+		@Override public MapColor getMapColor(IBlockState state, IBlockAccess blockAccess, BlockPos pos) { return MapColor.AIR; }
 
 		@Override
 		public void onEntityCollidedWithBlock(World world, BlockPos pos, IBlockState state, Entity entity) {

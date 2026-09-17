@@ -16,18 +16,15 @@ import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 
 public final class MirageRemovalQueue {
-    private static final int MAX_REMOVALS_PER_TICK = 32;
+    private static final int MAX_REMOVALS_PER_TICK = 128;
     private static final Map<World, Queue<RemovalJob>> JOBS = new IdentityHashMap<World, Queue<RemovalJob>>();
 
     private MirageRemovalQueue() {}
 
     public static void enqueue(World world, BlockPos start) {
-        if (world == null || world.isRemote) {
-            return;
-        }
+        if (world == null || world.isRemote)  return;
 
         Queue<RemovalJob> jobs = JOBS.get(world);
-
         if (jobs == null) {
             jobs = new ArrayDeque<RemovalJob>();
             JOBS.put(world, jobs);
@@ -72,7 +69,6 @@ public final class MirageRemovalQueue {
             world.setBlockToAir(pos);
             removed++;
         }
-
         if (jobs.isEmpty()) {
             JOBS.remove(world);
         }
@@ -81,7 +77,6 @@ public final class MirageRemovalQueue {
     private static final class RemovalJob {
         private final Queue<BlockPos> queue = new ArrayDeque<BlockPos>();
         private final Set<BlockPos> visited = new HashSet<BlockPos>();
-
         private RemovalJob(BlockPos start) {
             queue.add(start);
         }

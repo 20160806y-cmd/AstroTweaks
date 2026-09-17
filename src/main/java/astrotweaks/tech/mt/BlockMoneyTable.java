@@ -105,11 +105,8 @@ public class BlockMoneyTable {
 		@Override
 		public void neighborChanged(IBlockState state, World world, BlockPos pos, Block neighborBlock, BlockPos fromPos) {
 			super.neighborChanged(state, world, pos, neighborBlock, fromPos);
-			int x = pos.getX();
-			int y = pos.getY();
-			int z = pos.getZ();
-			if (world.isBlockIndirectlyGettingPowered(new BlockPos(x, y, z)) > 0) {
-				ProcedureMTConvert.exect(x, y, z, world);
+			if (world.isBlockIndirectlyGettingPowered(pos) > 0) {
+				MTConvert.exect(pos, world);
 			}
 		}
 		@Override

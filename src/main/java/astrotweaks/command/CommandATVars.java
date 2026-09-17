@@ -14,48 +14,20 @@ import java.lang.reflect.Field;
 
 public class CommandATVars {
 	public static class CommandHandler implements ICommand {
-		@Override
-		public int compareTo(ICommand c) {
-			return getName().compareTo(c.getName());
-		}
-
-		@Override
-		public boolean checkPermission(MinecraftServer server, ICommandSender sender) {
-			return true;
-		}
-
-		@Override
-		public List<String> getAliases() {
-			return new ArrayList<>();
-		}
-
-		@Override
-		public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, BlockPos pos) {
-			return new ArrayList<>();
-		}
-
-		@Override
-		public boolean isUsernameIndex(String[] args, int index) {
-			return false;
-		}
-
-		@Override
-		public String getName() {
-			return "atv";
-		}
-
-		@Override
-		public String getUsage(ICommandSender sender) {
+		@Override public int compareTo(ICommand c) { return getName().compareTo(c.getName()); }
+		@Override public boolean checkPermission(MinecraftServer server, ICommandSender sender) { return true; }
+		@Override public List<String> getAliases() { return new ArrayList<>(); }
+		@Override public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, BlockPos pos) { return new ArrayList<>(); }
+		@Override public boolean isUsernameIndex(String[] args, int index) { return false; }
+		@Override public String getName() { return "atv"; }
+		@Override public String getUsage(ICommandSender sender) {
 			return "/atv get <VarName> \n/atv set <VarName> <value>[TypeSuffix]";
 		}
-
-		@Override
-		public void execute(MinecraftServer server, ICommandSender sender, String[] cmd) {
+		@Override public void execute(MinecraftServer server, ICommandSender sender, String[] cmd) {
 			if (cmd == null || cmd.length < 2) {
 				sender.sendMessage(new TextComponentString("Usage: " + getUsage(sender)));
 				return;
 			}
-
 			String action = cmd[0].toLowerCase();
 			String varName = cmd[1];
 
@@ -69,12 +41,10 @@ public class CommandATVars {
 					sender.sendMessage(new TextComponentString(varName + " = " + String.valueOf(val)));
 					return;
 				}
-
 				if (!"set".equals(action)) {
 					sender.sendMessage(new TextComponentString("Unknown action: " + action));
 					return;
 				}
-
 				if (cmd.length < 3) {
 					sender.sendMessage(new TextComponentString("Usage: " + getUsage(sender)));
 					return;
@@ -95,7 +65,6 @@ public class CommandATVars {
 						raw = raw.substring(1, raw.length() - 1);
 					}
 				}
-
 				String suffix = "";
 				String valueToken = raw;
 				if (!quoted && raw.length() > 0) {

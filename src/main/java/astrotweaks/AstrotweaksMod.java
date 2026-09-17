@@ -113,10 +113,7 @@ public class AstrotweaksMod {
 		astrotweaks.tech.qts.BlockQTPSupressor.updVars();
 
 
-		GameRegistry.registerTileEntity(
-				astrotweaks.block.mirage.MirageTileEntity.class,
-				MODID + ":mirage_tile"
-		);
+		GameRegistry.registerTileEntity(astrotweaks.block.mirage.MirageTileEntity.class, MODID + ":te_m");
 
 
 
@@ -142,12 +139,16 @@ public class AstrotweaksMod {
 		if (ModVariables.Enable_StepUp) MinecraftForge.EVENT_BUS.register(new astrotweaks.gameplay.StepUp());
 		if (ModVariables.Food_Negative_Effects) MinecraftForge.EVENT_BUS.register(new astrotweaks.procedure.FoodEffectHandler());
 		if (ModVariables.GG_ENABLED) MinecraftForge.EVENT_BUS.register(new GrassGrowth());
-    	if (ModVariables.Enable_Depths_Dim_Bedrock_TP) MinecraftForge.EVENT_BUS.register(new astrotweaks.procedure.MineDimEnter());
+    	if (ModVariables.Enable_Depths_Dim_Bedrock_TP) MinecraftForge.EVENT_BUS.register(new astrotweaks.procedure.DepthsEnter());
 		if (ModVariables.No_Potion_Icons) MinecraftForge.EVENT_BUS.register(new astrotweaks.gameplay.NoEffectIcons());
 		
 		MinecraftForge.EVENT_BUS.register(astrotweaks.block.mirage.MirageRemovalQueue.class);
 
-		//MinecraftForge.EVENT_BUS.register(new LetMeDisconnect());
+		MinecraftForge.EVENT_BUS.register(new astrotweaks.item.TotemOfGod.TotemOfGodEvents());
+
+
+
+
 
 
 	}
