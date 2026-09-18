@@ -241,11 +241,13 @@ public class GrassGrowth {
 		Set<Long> loaded = getLoadedSet(dim);
 
 		while (processed < MAX_OPER_PER_TICK) {
-			ScheduledChunk first = queue.first();               // атомарно
-			if (first == null || first.scheduledTime > currentTick) break;
-
-			// remove(first) вернёт false, если кто-то другой уже это сделал
-			if (!queue.remove(first)) continue;
+			ScheduledChunk first = queue.pollFirst();   // null, если пусто — никаких исключений
+			if (first == null) break;
+			if (first.scheduledTime > currentTick) {
+				// ещё не время — возвращаем назад и выходим
+				queue.add(first);
+				break;
+			}
 
 			Long actualTime = times.get(first.chunkKey);
 			if (actualTime == null || actualTime.longValue() != first.scheduledTime) continue;
@@ -254,14 +256,13 @@ public class GrassGrowth {
 			int cx = (int)(first.chunkKey & 0xFFFFFFFFL);
 			int cz = (int)((first.chunkKey >>> 32) & 0xFFFFFFFFL);
 
-			Chunk chunk = world.getChunkProvider().getLoadedChunk(cx, cz); // НЕ загружаем насильно
+			Chunk chunk = world.getChunkProvider().getLoadedChunk(cx, cz);
 			if (chunk == null || !chunk.isLoaded()) continue;
 
-			performGrowth(world, chunk);   // строго серверный поток
+			performGrowth(world, chunk);
 
 			long delay = MIN_DELAY_TICKS + ThreadLocalRandom.current().nextInt(MAX_DELAY_TICKS - MIN_DELAY_TICKS + 1);
 			long newScheduled = currentTick + delay;
-			// Чанк мог выгрузиться, пока выполнялся performGrowth()
 			if (!loaded.contains(first.chunkKey)) {
 				times.remove(first.chunkKey);
 				continue;
