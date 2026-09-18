@@ -48,18 +48,18 @@ import net.minecraftforge.fml.relauncher.SideOnly;
  *
  * @see MirageTEISR — аналогичная логика, но для предмета в руке
  */
-public class MirageTESR extends TileEntitySpecialRenderer<MirageTileEntity> {
+public final class MirageTESR extends TileEntitySpecialRenderer<MirageTileEntity> {
 
     @Override
     public void render(MirageTileEntity te, double x, double y, double z, float partialTicks, int destroyStage, float alpha) {
         World world = te.getWorld();
         IBlockState targetState = te.getTargetState();
-        if (world == null || targetState == null) return;
+        if (world == null || targetState == null)  return;
 
         BlockPos pos = te.getPos();
         BlockRendererDispatcher dispatcher = Minecraft.getMinecraft().getBlockRendererDispatcher();
         IBakedModel model = te.getCachedModel();
-        if (model == null) return;              // цель не разрешена — нечего рисовать
+        if (model == null)  return;              // цель не разрешена — нечего рисовать
         IBlockState extendedState = targetState.getBlock().getExtendedState(targetState, world, pos);
 
         this.bindTexture(TextureMap.LOCATION_BLOCKS_TEXTURE);
@@ -77,10 +77,9 @@ public class MirageTESR extends TileEntitySpecialRenderer<MirageTileEntity> {
         buffer.begin(7, DefaultVertexFormats.BLOCK);
         buffer.setTranslation(x - pos.getX(), y - pos.getY(), z - pos.getZ());
 
-        // ▼ Ключевое: мира·ж-осведомлённый IBlockAccess + checkSides=true
+        // ▼ Ключевое: мираж-осведомлённый IBlockAccess + checkSides=true
         IBlockAccess access = new MirageAwareBlockAccess(world);
-        dispatcher.getBlockModelRenderer().renderModel(
-                access, model, extendedState, pos, buffer, /* checkSides = */ true);
+        dispatcher.getBlockModelRenderer().renderModel(access, model, extendedState, pos, buffer, /* checkSides = */ true);
 
         buffer.setTranslation(0, 0, 0);
         tessellator.draw();
@@ -132,4 +131,4 @@ public class MirageTESR extends TileEntitySpecialRenderer<MirageTileEntity> {
         @Override public WorldType  getWorldType()                                         { return delegate.getWorldType(); }
         @Override public boolean    isSideSolid(BlockPos pos, EnumFacing side, boolean dv) { return delegate.isSideSolid(pos, side, dv); }
     }
-    }
+}

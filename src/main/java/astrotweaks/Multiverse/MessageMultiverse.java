@@ -73,8 +73,7 @@ public class MessageMultiverse implements IMessage {
                 }
 
                 // Client-side only. Запоминаем id, чтобы PlaySoundEvent мог отличить
-                // MV-измерение от ванильного, и глушим портальный звук на ~2 секунды —
-                // ровно на окно логина/телепорта.
+                // MV-измерение от ванильного, и глушим портальный звук на окно логина/телепорта.
                 MultiverseClientSoundHandler.noteMultiverseRegistration(message.baseDimId, message.global);
                 
                 if (message.seed != 0) {

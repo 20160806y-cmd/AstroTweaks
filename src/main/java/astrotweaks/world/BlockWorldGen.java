@@ -17,7 +17,7 @@ import astrotweaks.ModVariables;
 
 
 
-public class BlockWorldGen {
+public final class BlockWorldGen {
 
     public static void register(){
         if (ModVariables.OW_Minerals_Gen) {

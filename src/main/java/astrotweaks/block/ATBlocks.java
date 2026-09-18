@@ -104,10 +104,20 @@ public class ATBlocks {
     public static final Block TECHNICAL_WORKS_TAPE = new BlockTechnicalWorks();
     public static final Block TRIPLE_COMPRESSED_QUARTZ = new BlockTripleCompressedQuartz();
     public static final Block DEEPSLATE = new BlockDeepslate();
+    public static final Block MOSSY_STONE = new B_MossyStone();
+    public static final Block MOSSY_CARVED_STONEBRICK = new B_MossyCarvedStonebrick();
+    public static final Block MOSSY_CRACKED_STONEBRICK = new B_MossyCraackedStonebrick();
 
-    public static final Block FEXPLOSIVE = new BlockFexplosive();
 
-    public static final Block FALSE_BEDROCK = new BlockFBedrock();
+    public static final Block FEXPLOSIVE = new B_Fexplosive();
+
+    public static final Block FALSE_BEDROCK = new B_FBedrock();
+
+
+
+
+
+
 
 
 
@@ -126,6 +136,10 @@ public class ATBlocks {
 APPLE_BLOCK,BEETROOT_BLOCK,CARROT_BLOCK,POTATO_BLOCK,BREAD_BLOCK,SUGAR_BLOCK,
 
 DIRT_BRICKS,
+
+MOSSY_STONE,MOSSY_CARVED_STONEBRICK,MOSSY_CRACKED_STONEBRICK,
+B_MossyCobblestoneStairs.block,B_MossyCobblestoneSlab.block,B_MossyCobblestoneSlab.block_slab_double,
+B_MossyStonebrickStairs.block,B_MossyStonebrickSlab.block,B_MossyStonebrickSlab.block_slab_double,
 
 
 
@@ -181,7 +195,6 @@ NULL_BLOCK,
 BlockRubyOre.block,
 BlockMineralsOre.block,
 BlockMine.block,
-astrotweaks.block.mirage.MirageBlock.block,
 BlockCobbledDeepslateSlab.block,
 BlockCobbledDeepslateSlab.block_slab_double,
 BlockCobbledDeepslateStairs.block,
@@ -204,15 +217,20 @@ BlockGroundRock1.block,
 BlockGroundRock2.block,
 BlockGroundStick.block,
 BlockHeavyMine.block,
-BlockQmBlock.block,
+B_QmBlock.block,
 BlockQuartzOreGranite.block,
 BlockQuartzOreStone.block,
 BlockRailMine.block,
-BlockRedMushrooms.block,
-BlockBrownMushrooms.block,
-BlockUDestroyerBlock.block,
-BlockUKillerBlock.block,
-BlockUnknownBlock.block,
+B_RedMushrooms.block,
+B_BrownMushrooms.block,
+B_UDestroyerBlock.block,
+B_UKillerBlock.block,
+B_UnknownBlock.block,
+astrotweaks.block.mirage.MirageBlock.block,
+
+
+
+
 
 
 
@@ -963,9 +981,8 @@ BlockUnknownBlock.block,
         }
         @Override public MapColor getMapColor(IBlockState state,IBlockAccess blockAccess,BlockPos pos) { return MapColor.QUARTZ; }
     }
-
-    public static class BlockFBedrock extends Block {
-        public BlockFBedrock() {
+    public static class B_FBedrock extends Block {
+        public B_FBedrock() {
             super(Material.ROCK);
             setRegistryName(MOD_ID, "bedrock");
             setUnlocalizedName("bedrock");
@@ -977,6 +994,46 @@ BlockUnknownBlock.block,
         }
         @Override public MapColor getMapColor(IBlockState state,IBlockAccess blockAccess,BlockPos pos) { return MapColor.GRAY; }
     }
+    public static class B_MossyStone extends Block {
+        public B_MossyStone() {
+            super(Material.ROCK);
+            setRegistryName(MOD_ID, "mossy_stone");
+            setUnlocalizedName("mossy_stone");
+            setSoundType(SoundType.STONE);
+            setHarvestLevel("pickaxe", 0);
+            setHardness(2F);
+            setResistance(6F);
+            setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+        }
+        @Override public MapColor getMapColor(IBlockState state,IBlockAccess blockAccess,BlockPos pos) { return MapColor.FOLIAGE; }
+    }
+    public static class B_MossyCarvedStonebrick extends Block {
+        public B_MossyCarvedStonebrick() {
+            super(Material.ROCK);
+            setRegistryName(MOD_ID, "mossy_stonebrick_carved");
+            setUnlocalizedName("mossy_stonebrick_carved");
+            setSoundType(SoundType.STONE);
+            setHarvestLevel("pickaxe", 0);
+            setHardness(2F);
+            setResistance(6F);
+            setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+        }
+        @Override public MapColor getMapColor(IBlockState state,IBlockAccess blockAccess,BlockPos pos) { return MapColor.FOLIAGE; }
+    }
+    public static class B_MossyCraackedStonebrick extends Block {
+        public B_MossyCraackedStonebrick() {
+            super(Material.ROCK);
+            setRegistryName(MOD_ID, "mossy_stonebrick_cracked");
+            setUnlocalizedName("mossy_stonebrick_cracked");
+            setSoundType(SoundType.STONE);
+            setHarvestLevel("pickaxe", 0);
+            setHardness(2F);
+            setResistance(6F);
+            setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+        }
+        @Override public MapColor getMapColor(IBlockState state,IBlockAccess blockAccess,BlockPos pos) { return MapColor.FOLIAGE; }
+    }
+
 
 
 
@@ -1000,9 +1057,9 @@ BlockUnknownBlock.block,
 			drops.add(new ItemStack(ATBlocks.COBBLED_DEEPSLATE, 1));
 		}
 	}
-	public static class BlockFexplosive extends Block {
+	public static class B_Fexplosive extends Block {
 	    public static final PropertyDirection FACING = BlockHorizontal.FACING;
-	    public BlockFexplosive() {
+	    public B_Fexplosive() {
 	        super(Material.CLOTH);
             setRegistryName(MOD_ID, "fexplosive");
 	        setUnlocalizedName("fexplosive");

@@ -12,7 +12,7 @@ import astrotweaks.item.ItemXpBoxU;
 
 
 
-public class P_ATCP {
+public final class P_ATCP {
 	public P_ATCP() {}
 
 	public static void exect(Entity entity, HashMap<String, String> params) {

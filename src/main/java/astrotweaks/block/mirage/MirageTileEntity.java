@@ -66,7 +66,6 @@ public class MirageTileEntity extends TileEntity {
     @Nullable private transient IBakedModel cachedModel;
 
 
-
     /**
      * Безопасно для вызова с любой стороны: чистит кэш только на клиенте.
      * {@code world} может быть {@code null}, если TE ещё не установлен в мир
@@ -285,10 +284,8 @@ public class MirageTileEntity extends TileEntity {
         } catch (Exception ignored) {
             result = block.getDefaultState();
         }
-
         for (String key : properties.getKeySet()) {
             IProperty<?> property = findProperty(block, key);
-
             if (property == null || !properties.hasKey(key, 8))  continue;
 
             result = applyProperty(result, property, properties.getString(key));
@@ -304,12 +301,10 @@ public class MirageTileEntity extends TileEntity {
         }
         return null;
     }
-
     private static <T extends Comparable<T>> IBlockState applyProperty(IBlockState state, IProperty<T> property, String value) {
         com.google.common.base.Optional<T> parsed = property.parseValue(value);
         return parsed.isPresent() ? state.withProperty(property, parsed.get()) : state;
     }
-
 
     // ═══════════════════════════════════════════════════════════════
     //  Сетевая синхронизация (сервер → клиент)
@@ -323,13 +318,11 @@ public class MirageTileEntity extends TileEntity {
     public NBTTagCompound getUpdateTag() {
         return writeToNBT(new NBTTagCompound());
     }
-
     /** Пакет для chunk-level sync (вызывается при notifyBlockUpdate с флагом 2). */
     @Override
     public SPacketUpdateTileEntity getUpdatePacket() {
         return new SPacketUpdateTileEntity(pos, 0, getUpdateTag());
     }
-
     /** Обработка входящего пакета на клиенте — читаем данные и перерисовываем. */
     @Override
     public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity packet) {

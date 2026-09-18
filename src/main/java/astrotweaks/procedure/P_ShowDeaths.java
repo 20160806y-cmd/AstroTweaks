@@ -12,7 +12,7 @@ import java.util.HashMap;
 import astrotweaks.ModVariables;
 
 
-public class P_ShowDeaths {
+public final class P_ShowDeaths {
 	public P_ShowDeaths() {}
 
 	private static String getParam0(HashMap<String, String> cmdparams) {

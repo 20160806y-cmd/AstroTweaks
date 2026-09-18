@@ -16,7 +16,7 @@ import net.minecraft.init.Blocks;
 
 
 
-public class BlockUDestroyerBlock {
+public class B_UDestroyerBlock {
 	public static final Block block = new BlockCustom().setRegistryName("astrotweaks", "u_destroyer_block");
 
 	public static class BlockCustom extends Block {

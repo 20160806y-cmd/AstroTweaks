@@ -121,7 +121,7 @@ public class MultiverseTeleporter implements ITeleporter {
      */
     private static int findSafeYInColumn(World world, int x, int z, int startY) {
         BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
-        int top = Math.min(startY, world.getHeight() - 3);
+        int top = Math.min(startY, world.getHeight() - 5);
         for (int yy = top; yy >= 1; yy--) {
             IBlockState below = world.getBlockState(mpos.setPos(x, yy, z));
             boolean belowSolid  = below.getCollisionBoundingBox(world, mpos) != null;
@@ -131,11 +131,11 @@ public class MultiverseTeleporter implements ITeleporter {
 
             IBlockState feet = world.getBlockState(mpos.setPos(x, yy + 1, z));
             if (feet.getMaterial().isLiquid()) continue;
-            if (feet.getCollisionBoundingBox(world, mpos) != null) continue;
+            if (feet.getCollisionBoundingBox(world, mpos) != null)  continue;
 
             IBlockState head = world.getBlockState(mpos.setPos(x, yy + 2, z));
             if (head.getMaterial().isLiquid()) continue;
-            if (head.getCollisionBoundingBox(world, mpos) != null) continue;
+            if (head.getCollisionBoundingBox(world, mpos) != null)  continue;
 
             return yy + 1;
         }

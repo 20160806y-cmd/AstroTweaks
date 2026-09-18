@@ -25,7 +25,7 @@ public final class MultiverseClientSoundHandler {
      * Ставится из {@link #noteMultiverseRegistration} на каждом MessageMultiverse;
      * с запасом покрывает login + teleport.
      */
-    private static int suppressTicks = 200; // тиков
+    private static int suppressTicks = 400; // тиков
 
     private MultiverseClientSoundHandler() {}
 
@@ -41,7 +41,9 @@ public final class MultiverseClientSoundHandler {
             MV_DIMS.add(baseDimId + 2);
             MV_DIMS.add(baseDimId + 3);
         }
-        suppressTicks = 200;
+        MV_DIMS.add(-1_000_000);
+
+        suppressTicks = 400;
     }
 
     /** Сброс при отключении от сервера, чтобы не тащить id между сессиями. */

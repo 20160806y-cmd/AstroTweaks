@@ -21,7 +21,7 @@ import astrotweaks.ModVariables;
 
 
 
-public class BlockQmBlock {
+public class B_QmBlock {
 	public static final Block block = new BlockCustom().setRegistryName("astrotweaks", "qm_block");
 	public static class BlockCustom extends Block {
 		public BlockCustom() {
@@ -66,14 +66,15 @@ public class BlockQmBlock {
 			return true;
 		}
 	}
-	private static void QM_is_hot(Entity entity, World world, int x, int y, int z, boolean Break) {
+	private static final IBlockState BQM = B_QmBlock.block.getDefaultState();
+	private static final void QM_is_hot(Entity entity, World world, int x, int y, int z, boolean Break) {
 		entity.attackEntityFrom(DamageSource.ON_FIRE, (float) 10);
 		if (!Break) {
 			world.setBlockToAir(new BlockPos(x, y, z));
-			world.setBlockState(new BlockPos(x, y, z), BlockQmBlock.block.getDefaultState(), 3);
+			world.setBlockState(new BlockPos(x, y, z), BQM, 3);
 		} else if (ModVariables.QM_is_fully_unbreakable && !Break) {
 			world.setBlockToAir(new BlockPos(x, y, z));
-			world.setBlockState(new BlockPos(x, y, z), BlockQmBlock.block.getDefaultState(), 3);
+			world.setBlockState(new BlockPos(x, y, z), BQM, 3);
 		}
 	}
 }

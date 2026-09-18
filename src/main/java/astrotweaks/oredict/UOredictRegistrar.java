@@ -331,22 +331,42 @@ public class UOredictRegistrar {
 		reg("toolHoe", new ItemStack(Items.DIAMOND_HOE, 1));
 		reg("toolHoe", new ItemStack(Items.IRON_HOE, 1));
 		reg("toolHoe", new ItemStack(Items.GOLDEN_HOE, 1));
-		reg("toolHoe", new ItemStack(Items.STONE_HOE, 1));
 		reg("toolHoe", new ItemStack(ItemRubyHoe.HOE, 1));
 		reg("toolHoe", new ItemStack(ItemEmeraldHoe.HOE, 1));
 		reg("toolHoe", new ItemStack(ItemCrystalHoe.HOE, 1));
 		reg("toolHoe", new ItemStack(ItemNeutroniumHoe.HOE, 1));
 
+		reg("toolAxe", new ItemStack(Items.IRON_AXE, 1));
+		reg("toolAxe", new ItemStack(Items.DIAMOND_AXE, 1));
+		reg("toolAxe", new ItemStack(Items.GOLDEN_AXE, 1));
 		reg("toolAxe", new ItemStack(ItemRubyAxe.AXE, 1));
 		reg("toolAxe", new ItemStack(ItemEmeraldAxe.AXE, 1));
 		reg("toolAxe", new ItemStack(ItemCrystalAxe.AXE, 1));
 		reg("toolAxe", new ItemStack(ItemNeutroniumAxe.AXE, 1));
 		
+		reg("toolPickaxe", new ItemStack(Items.IRON_PICKAXE, 1));
+		reg("toolPickaxe", new ItemStack(Items.DIAMOND_PICKAXE, 1));
+		reg("toolPickaxe", new ItemStack(Items.GOLDEN_PICKAXE, 1));
 		reg("toolPickaxe", new ItemStack(ItemRubyPickaxe.PICKAXE, 1));
 		reg("toolPickaxe", new ItemStack(ItemEmeraldPickaxe.PICKAXE, 1));
 		reg("toolPickaxe", new ItemStack(ItemCrystalPickaxe.PICKAXE, 1));
 		reg("toolPickaxe", new ItemStack(ItemNeutroniumPickaxe.PICKAXE, 1));
 
+		reg("toolSpade", new ItemStack(Items.IRON_SHOVEL, 1));
+		reg("toolSpade", new ItemStack(Items.DIAMOND_SHOVEL, 1));
+		reg("toolSpade", new ItemStack(Items.GOLDEN_SHOVEL, 1));
+		reg("toolSpade", new ItemStack(ItemRubyShovel.SHOVEL, 1));
+		reg("toolSpade", new ItemStack(ItemEmeraldShovel.SHOVEL, 1));
+		reg("toolSpade", new ItemStack(ItemCrystalShovel.SHOVEL, 1));
+		reg("toolSpade", new ItemStack(ItemNeutroniumShovel.SHOVEL, 1));
+
+		reg("toolSword", new ItemStack(Items.IRON_SWORD, 1));
+		reg("toolSword", new ItemStack(Items.DIAMOND_SWORD, 1));
+		reg("toolSword", new ItemStack(Items.GOLDEN_SWORD, 1));
+		reg("toolSword", new ItemStack(ItemRubySword.SWORD, 1));
+		reg("toolSword", new ItemStack(ItemEmeraldSword.SWORD, 1));
+		reg("toolSword", new ItemStack(ItemCrystalSword.SWORD, 1));
+		reg("toolSword", new ItemStack(ItemNeutroniumSword.SWORD, 1));
 
 	}
 }

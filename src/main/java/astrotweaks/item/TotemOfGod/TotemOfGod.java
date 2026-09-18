@@ -49,7 +49,7 @@ public final class TotemOfGod {
 	public static final int FE_MAX = Integer.MAX_VALUE;
 
 	/** Стоимость одного ПКМ-лечения (в FE). */
-	public static final long HEAL_COST = 100_000L;
+	public static final long HEAL_COST = 350_000L;
 
 	/** Ключ заряда в NBT предмета. */
 	private static final String ENERGY_KEY = "TotemEnergy";
@@ -114,7 +114,7 @@ public final class TotemOfGod {
 		 * благодаря чему тултип и полоска "прочности" обновляются сразу.
 		 */
 
-		/* Креатив: разряженный и полностью заряженный варианты. */
+		/* CT: разряженный и полностью заряженный варианты. */
 		@Override
 		public void getSubItems(CreativeTabs tab, NonNullList<ItemStack> items) {
 			if (!isInCreativeTab(tab)) {
@@ -156,9 +156,9 @@ public final class TotemOfGod {
 
 			long stored = getEnergyStored(stack);
 			list.add(text1);
-			list.add(text2 + formatPercent(getCharge(stack)) + "%");
-			list.add(text3 + formatNumber(stored) + " / " + formatNumber(MAX_ENERGY) + " FE");
-			list.add(text4 + formatNumber(Math.min(stored, FE_MAX)) + " / " + formatNumber(FE_MAX));
+			list.add(text2 + TextFormatting.RED + formatPercent(getCharge(stack)) + "%");
+			list.add(text3 + TextFormatting.GREEN + formatNumber(stored) + " / " + formatNumber(MAX_ENERGY) + " FE");
+			list.add(text4 + TextFormatting.DARK_GRAY + formatNumber(Math.min(stored, FE_MAX)) + " / " + formatNumber(FE_MAX));
 		}
 
 		@Override
@@ -198,17 +198,14 @@ public final class TotemOfGod {
 		private static String formatPercent(float charge) {
 			return String.format(Locale.ROOT, "%.1f", charge * 100.0F);
 		}
-
 		private static String formatNumber(long value) {
 			String digits = Long.toString(value);
 			StringBuilder builder = new StringBuilder();
 			int counter = 0;
-
 			for (int i = digits.length() - 1; i >= 0; i--) {
 				builder.append(digits.charAt(i));
-
 				if (++counter % 3 == 0 && i > 0) {
-					builder.append(' ');
+					builder.append(',');
 				}
 			}
 			return builder.reverse().toString();

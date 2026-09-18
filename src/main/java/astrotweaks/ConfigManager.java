@@ -135,10 +135,20 @@ public class ConfigManager {
 			ModVariables.GG_ENABLED = safeGetBoolean(config, "GG_ENABLED", "Natures Power", ModVariables.GG_ENABLED, "Enable Grass growth? (y/n)");
 			ModVariables.GG_MIN_DELAY_TICK = safeGetInt(config, "Grass_Growth_MIN_Delay", "Natures Power", ModVariables.GG_MIN_DELAY_TICK, 1, 1728000, "Minimum delay (ticks) for grass regrowth (10-1728000)");
 			ModVariables.GG_MAX_DELAY_TICK = safeGetInt(config, "Grass_Growth_MAX_Delay", "Natures Power", ModVariables.GG_MAX_DELAY_TICK, 2, 1728000, "Maximum delay (ticks) for grass regrowth (10-1728000)");
-			ModVariables.GG_MAX_OPER_PER_TICK = safeGetInt(config, "GG_MAX_PER_TICK", "Natures Power", ModVariables.GG_MAX_OPER_PER_TICK, 1, 999, "Maximum operations per tick (1-999)");
+			ModVariables.GG_MAX_OPER_PER_TICK = safeGetInt(config, "GG_MAX_PER_TICK", "Natures Power", ModVariables.GG_MAX_OPER_PER_TICK, 1, 2048, "Maximum operations per tick (1-2048)");
 			ModVariables.GG_Density = safeGetInt(config, "Grass_Density", "Natures Power", ModVariables.GG_Density, 1, 25, "Maximum grass density (1-25)");
 			ModVariables.GG_Tall_Density = safeGetInt(config, "Tall_Grass_Density", "Natures Power", ModVariables.GG_Tall_Density, 1, 25, "Maximum tall grass (double_plant:2) density (1-25)");
 			ModVariables.GG_Giant_Density = safeGetInt(config, "Giant_Graass_Density", "Natures Power", ModVariables.GG_Giant_Density, 1, 25, "Maximum giant grass density (1-25)");
+
+			ModVariables.BM_ENABLED = safeGetBoolean(config, "BM_ENABLED", "Natures Power", ModVariables.BM_ENABLED, "Enable Blocks mossing? (y/n)");
+			ModVariables.BM_MIN_DELAY_TICK = safeGetInt(config, "Block_Mossing_MIN_Delay", "Natures Power", ModVariables.BM_MIN_DELAY_TICK, 1, 1728000, "Minimum delay (ticks) for blocks mossing (10-1728000)");
+			ModVariables.BM_MAX_DELAY_TICK = safeGetInt(config, "Block_Mossing_MAX_Delay", "Natures Power", ModVariables.BM_MAX_DELAY_TICK, 2, 1728000, "Maximum delay (ticks) for blocks mossing (10-1728000)");
+			ModVariables.BM_MAX_OPER_PER_TICK = safeGetInt(config, "BM_MAX_PER_TICK", "Natures Power", ModVariables.BM_MAX_OPER_PER_TICK, 1, 2048, "Maximum operations per tick (1-2048)");
+
+
+
+
+
 
 
 

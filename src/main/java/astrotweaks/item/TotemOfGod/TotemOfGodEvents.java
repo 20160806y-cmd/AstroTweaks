@@ -18,13 +18,11 @@ public class TotemOfGodEvents {
 	 * Итоговый расход: урон * COST_PER_DAMAGE = энергия.
 	 */
 	private static final long COST_PER_DAMAGE = 10_000L;
-
 	/*
 	 * Стоимость отмены смерти. Аддитивно добавляется к стоимости за HP:
 	 * итог смерти = HP_снятые_при_смерти * COST_PER_DAMAGE + DEATH_COST.
 	 */
 	private static final long DEATH_COST = 10_000_000L;
-
 	/*
 	 * Для каждого смертельного удара в onLivingHurt запоминаем HP игрока на
 	 * момент удара и сколько из них тотем уже поглотил. Это нужно, чтобы в

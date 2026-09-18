@@ -72,9 +72,18 @@ public class RecipeHandler {
 "S 0  ,00 ,000;0=astrotweaks:cobbled_deepslate;RES=astrotweaks:cobbled_deepslate_stairs.4",
 "S 0  ,00 ,000;0=astrotweaks:deepslate_bricks;RES=astrotweaks:deepslate_bricks_stairs.4",
 "S 0  ,00 ,000;0=astrotweaks:deepslate_tiles;RES=astrotweaks:deepslate_tiles_stairs.4",
+"S 0  ,00 ,000;0=minecraft:mossy_cobblestone;RES=astrotweaks:mossy_cobblestone_stairs.4",
+"S 0  ,00 ,000;0=minecraft:stonebrick:1;RES=astrotweaks:mossy_stonebrick_stairs.4",
 "S 000,,;0=astrotweaks:cobbled_deepslate;RES=astrotweaks:cobbled_deepslate_slab.6",
 "S 000,,;0=astrotweaks:deepslate_bricks;RES=astrotweaks:deepslate_bricks_slab.6",
 "S 000,,;0=astrotweaks:deepslate_tiles;RES=astrotweaks:deepslate_tiles_slab.6",
+"S 000,,;0=minecraft:mossy_cobblestone;RES=astrotweaks:mossy_cobblestone_slab.6",
+"S 000,,;0=minecraft:stonebrick:1;RES=astrotweaks:mossy_stonebrick_slab.6",
+
+"# minecraft:stone;minecraft:vine;RES=astrotweaks:mossy_stone",
+"# minecraft:stonebrick:3;minecraft:vine;RES=astrotweaks:mossy_stonebrick_carved",
+"# minecraft:stonebrick:2;minecraft:vine;RES=astrotweaks:mossy_stonebrick_cracked",
+
 
 "S 00,00,;0=astrotweaks:deepslate;RES=astrotweaks:deepslate_bricks.4",
 "S 00,00,;0=minecraft:dirt;RES=astrotweaks:dirt_bricks.4",

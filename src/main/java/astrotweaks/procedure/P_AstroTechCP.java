@@ -17,7 +17,7 @@ import astrotweaks.ModVariables;
 
 
 
-public class P_AstroTechCP {
+public final class P_AstroTechCP {
 	public P_AstroTechCP() {}
 
 	public static void exect(Entity sender, Map<String, Object> cmdparams) {

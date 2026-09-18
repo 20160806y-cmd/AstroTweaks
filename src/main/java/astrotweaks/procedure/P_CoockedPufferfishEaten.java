@@ -7,7 +7,7 @@ import net.minecraft.entity.Entity;
 
 
 
-public class P_CoockedPufferfishEaten {
+public final class P_CoockedPufferfishEaten {
 	public P_CoockedPufferfishEaten() {}
 
 	public static void exect(Entity entity) {

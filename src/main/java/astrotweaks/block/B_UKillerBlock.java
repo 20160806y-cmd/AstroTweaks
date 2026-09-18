@@ -20,7 +20,7 @@ import java.util.List;
 
 
 
-public class BlockUKillerBlock {
+public class B_UKillerBlock {
 	public static final Block block = new BlockCustom().setRegistryName("astrotweaks", "u_killer_block");
 	public static class BlockCustom extends Block {
 		public BlockCustom() {

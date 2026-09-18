@@ -63,7 +63,7 @@ public class ClientEventHandler {
         event.getItemColors().registerItemColorHandler(
             (stack, tintIndex) -> {
                 // Для инвентаря используем цвет по умолчанию (например, зелёный)
-                return 0x94C774;
+                return 0x74C754;
             },
             BlockGiantGrass.block
         );
@@ -89,6 +89,4 @@ public class ClientEventHandler {
         Integer saved = SAVED_HURT_TIME.remove(event.getEntity());
         if (saved != null) (event.getEntity()).hurtTime = saved.intValue(); 
     }
-
-
 }

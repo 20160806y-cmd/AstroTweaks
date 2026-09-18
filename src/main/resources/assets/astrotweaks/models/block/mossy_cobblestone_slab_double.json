@@ -1,0 +1,7 @@
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "minecraft:blocks/cobblestone_mossy",
+    "particle": "minecraft:blocks/cobblestone_mossy"
+  }
+}

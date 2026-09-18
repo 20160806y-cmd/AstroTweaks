@@ -7,6 +7,8 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.SoundEvent;
 import net.minecraftforge.common.util.EnumHelper;
 
+
+
 public final class EmeraldArmorItems {
     private static final String MOD_ID = "astrotweaks";
 

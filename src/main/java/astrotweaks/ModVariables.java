@@ -38,12 +38,17 @@ public class ModVariables {
 	//								   МИНУТ * сек * тик
 	public static int GG_MIN_DELAY_TICK = 5 * 60 * 20; // 5 minutes
 	public static int GG_MAX_DELAY_TICK = 15 * 60 * 20; // 15 minutes
-	public static int GG_MAX_OPER_PER_TICK = 32;
+	public static int GG_MAX_OPER_PER_TICK = 64;
 	public static int GG_Density = 18; // blocks in area
 	public static int GG_Tall_Density = 10;
 	public static int GG_Giant_Density = 3;
 	public static boolean GG_ENABLED = true;
-	//public static BitSet GGBlacklist;
+	// Трансформация блоков в замшелые варианты
+	public static int BM_MIN_DELAY_TICK = 2 * 60 * 20; // _ minutes
+	public static int BM_MAX_DELAY_TICK = 10 * 60 * 20; // _ minutes
+	public static int BM_MAX_OPER_PER_TICK = 64;
+	public static boolean BM_ENABLED = true;
+
 
 	public static boolean Remove_METS_engineer = false;
 	public static boolean Rem_Gravestone_Note = true;

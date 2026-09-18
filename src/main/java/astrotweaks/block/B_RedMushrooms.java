@@ -1,4 +1,3 @@
-
 package astrotweaks.block;
 
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -20,28 +19,16 @@ import net.minecraft.block.Block;
 
 
 
-public class BlockBrownMushrooms {
+public class B_RedMushrooms {
 	public static final Block block = new BlockCustomFlower();
 	public static class BlockCustomFlower extends BlockFlower {
 		public BlockCustomFlower() {
 			setSoundType(SoundType.PLANT);
-			//setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
 			setHardness(0F);
 			setResistance(0F);
-			//setLightLevel(0F);
-			setUnlocalizedName("brown_mushrooms");
-			setRegistryName("astrotweaks", "brown_mushrooms");
+			setUnlocalizedName("red_mushrooms");
+			setRegistryName("astrotweaks", "red_mushrooms");
 		}
-		/*
-		@Override
-		public int getFlammability(IBlockAccess world, BlockPos pos, EnumFacing face) {
-			return 100;
-		}
-		@Override
-		public int getFireSpreadSpeed(IBlockAccess world, BlockPos pos, EnumFacing face) {
-			return 60;
-		}
-*/
 		@Override public Block.EnumOffsetType getOffsetType() { return Block.EnumOffsetType.NONE; }
 		@Override public void getDrops(NonNullList<ItemStack> drops, IBlockAccess world, BlockPos pos, IBlockState state, int fortune) {
 			drops.add(new ItemStack(this));

@@ -24,6 +24,8 @@ import net.minecraftforge.common.EnumPlantType;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
+
+
 public class BlockGiantGrass {
 
     public static final Block block = new BlockCustom().setRegistryName("astrotweaks", "giant_grass");
@@ -42,7 +44,6 @@ public class BlockGiantGrass {
             setTickRandomly(true);
 
             setDefaultState(blockState.getBaseState().withProperty(PART, Part.LOWER));
-
             // Свойства горения примерно как у ванильной травы/растительности
             BlockFire fire = (BlockFire) net.minecraft.init.Blocks.FIRE;
             fire.setFireInfo(this, 60, 100);
@@ -64,12 +65,15 @@ public class BlockGiantGrass {
         @Override public boolean isFullCube(IBlockState state) { return false; }
         @Override public boolean isNormalCube(IBlockState state, IBlockAccess world, BlockPos pos) { return false; }
         @Override public float getAmbientOcclusionLightValue(IBlockState state) { return 1.0F; }
+        @Override public boolean getUseNeighborBrightness(IBlockState state) { return true; }
         @Override public boolean isPassable(IBlockAccess world, BlockPos pos) { return true; }
         @Override public AxisAlignedBB getCollisionBoundingBox(IBlockState state, IBlockAccess world, BlockPos pos) { return NULL_AABB; }
-		@Override public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) { return FULL_BLOCK_AABB; }
+		@Override public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) { 
+            return new AxisAlignedBB(0.0675, 0.0, 0.0675, 0.9375, 1.0, 0.9375);
+         }
         @SideOnly(Side.CLIENT)
 		@Override public net.minecraft.util.BlockRenderLayer getBlockLayer() {
-            return net.minecraft.util.BlockRenderLayer.TRANSLUCENT;
+            return net.minecraft.util.BlockRenderLayer.CUTOUT;
         }
         @Override public MapColor getMapColor(IBlockState state, IBlockAccess world, BlockPos pos) { return MapColor.GRASS; }
         @Override
@@ -81,7 +85,6 @@ public class BlockGiantGrass {
         @Override
         public IBlockState getStateFromMeta(int meta) {
             Part part;
-
             switch (meta) {
                 case 1:
                     part = Part.MIDDLE;
@@ -117,7 +120,7 @@ public class BlockGiantGrass {
          */
         @Override
         public void onBlockPlacedBy(World world, BlockPos pos, IBlockState state, net.minecraft.entity.EntityLivingBase placer, net.minecraft.item.ItemStack stack) {
-			if (world.isRemote) return;
+			if (world.isRemote)  return;
 
 			IBlockState middleState = getDefaultState().withProperty(PART, Part.MIDDLE);
 			IBlockState upperState = getDefaultState().withProperty(PART, Part.UPPER);
@@ -125,7 +128,7 @@ public class BlockGiantGrass {
 			world.setBlockState(pos.up(2), upperState, 2);
         }
         public boolean placeGiantGrass(World world, BlockPos lowerPos) {
-            if (world.isRemote) return false;
+            if (world.isRemote)  return false;
 
             BlockPos middlePos = lowerPos.up();
             BlockPos upperPos = lowerPos.up(2);
@@ -149,7 +152,6 @@ public class BlockGiantGrass {
         public void breakBlock(World world, BlockPos pos, IBlockState state) {
             Part part = state.getValue(PART);
             BlockPos base;
-
             switch (part) {
                 case MIDDLE:
                     base = pos.down();
@@ -191,13 +193,10 @@ public class BlockGiantGrass {
 		}
 		@Override
 		public void neighborChanged(IBlockState state, World world, BlockPos pos, Block blockIn, BlockPos fromPos) {
-			// Вызываем нашу проверку валидности
 			if (!canBlockStay(world, pos, state)) {
 				// Если блок невалиден, удаляем его
 				world.setBlockToAir(pos);
-				// Важно: super.neighborChanged не вызываем, чтобы избежать лишней логики
 			}
-			// Можно также уведомить соседей, но не обязательно
 		}
 
         @Override public BlockFaceShape getBlockFaceShape(IBlockAccess world, IBlockState state, BlockPos pos, EnumFacing face) {
@@ -205,20 +204,14 @@ public class BlockGiantGrass {
         }
 		@Override public EnumPlantType getPlantType(IBlockAccess world, BlockPos pos) { return EnumPlantType.Plains; }
         @Override public IBlockState getPlant(IBlockAccess world, BlockPos pos) { return world.getBlockState(pos); }
-        //@Override
-        //public Item getItemDropped(IBlockState state, java.util.Random random, int fortune) {
-        //    // Предмет выпадает только при разрушении нижней части
-        //    return state.getValue(PART) == Part.LOWER ? Item.getItemFromBlock(this) : null;
-        //}
         public enum Part implements IStringSerializable {
             LOWER("lower"),
             MIDDLE("middle"),
             UPPER("upper");
             private final String name;
 
-            Part(String name) {
-                this.name = name;
-            }
+            Part(String name) { this.name = name; }
+
             @Override public String getName() { return name; }
         }
     }

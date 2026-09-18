@@ -13,7 +13,7 @@ import astrotweaks.block.BlockGroundRock2;
 import astrotweaks.block.BlockGroundStick;
 
 
-public class DecorateGroundElements {
+public final class DecorateGroundElements {
     public static void register() { // Контролируется в мейне
         GameRegistry.registerWorldGenerator(new IWorldGenerator() {
             @Override

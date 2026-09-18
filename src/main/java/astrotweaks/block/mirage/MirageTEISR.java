@@ -39,8 +39,7 @@ import net.minecraft.util.EnumFacing;
  * @see MirageTESR — аналогичная логика, но для блока в мире
  * @see MirageItemBlock — копирует NBT при размещении
  */
-public class MirageTEISR extends TileEntityItemStackRenderer {
-
+public final class MirageTEISR extends TileEntityItemStackRenderer {
     /**
      * Рендер предмета. Вызывается из {@link RenderItem}
      * только когда модель предмета — {@code builtin/entity} (isBuiltInRenderer = true).

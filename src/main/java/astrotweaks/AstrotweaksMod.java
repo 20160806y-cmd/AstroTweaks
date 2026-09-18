@@ -110,6 +110,7 @@ public class AstrotweaksMod {
 		astrotweaks.world.BushDecorator.updVars();
 
 		GrassGrowth.updVars();
+		astrotweaks.world.NaturesPower.BlockMossing.updVars();
 		astrotweaks.tech.qts.BlockQTPSupressor.updVars();
 
 
@@ -139,6 +140,7 @@ public class AstrotweaksMod {
 		if (ModVariables.Enable_StepUp) MinecraftForge.EVENT_BUS.register(new astrotweaks.gameplay.StepUp());
 		if (ModVariables.Food_Negative_Effects) MinecraftForge.EVENT_BUS.register(new astrotweaks.procedure.FoodEffectHandler());
 		if (ModVariables.GG_ENABLED) MinecraftForge.EVENT_BUS.register(new GrassGrowth());
+		if (ModVariables.BM_ENABLED) MinecraftForge.EVENT_BUS.register(new astrotweaks.world.NaturesPower.BlockMossing());
     	if (ModVariables.Enable_Depths_Dim_Bedrock_TP) MinecraftForge.EVENT_BUS.register(new astrotweaks.procedure.DepthsEnter());
 		if (ModVariables.No_Potion_Icons) MinecraftForge.EVENT_BUS.register(new astrotweaks.gameplay.NoEffectIcons());
 		

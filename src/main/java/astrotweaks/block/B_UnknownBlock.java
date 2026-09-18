@@ -25,7 +25,7 @@ import java.util.Random;
 
 
 
-public class BlockUnknownBlock {
+public class B_UnknownBlock {
 	public static final Block block = new BlockCustom().setRegistryName("astrotweaks", "unknown_block");
 	public static class BlockCustom extends Block {
 		public BlockCustom() {

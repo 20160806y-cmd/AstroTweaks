@@ -97,13 +97,13 @@ public class GrassGrowth {
     }
 
     // Helper methods to get per-dimension structures
-	private static ConcurrentSkipListSet<ScheduledChunk> getQueue(int dim) {
+	private static final ConcurrentSkipListSet<ScheduledChunk> getQueue(int dim) {
 		return queues.computeIfAbsent(dim, k -> new ConcurrentSkipListSet<>());
 	}
-	private static Set<Long> getLoadedSet(int dim) {
+	private static final Set<Long> getLoadedSet(int dim) {
 		return loadedChunks.computeIfAbsent(dim, k -> ConcurrentHashMap.newKeySet());
 	}
-	private static Map<Long,Long> getScheduledMap(int dim) {
+	private static final Map<Long,Long> getScheduledMap(int dim) {
 		return scheduledTimes.computeIfAbsent(dim, k -> new ConcurrentHashMap<>());
 	}
 	private static boolean isTurfBlock(IBlockState state) {

@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "variant=default": {
+      "model": "astrotweaks:mossy_stonebrick_slab_double"
+    }
+  }
+}

@@ -9,7 +9,6 @@ import net.minecraft.entity.Entity;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraft.nbt.NBTTagCompound;
 
-import java.util.Map;
 import astrotweaks.world.DepthsDim;
 
 

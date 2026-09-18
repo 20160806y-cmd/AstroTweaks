@@ -28,10 +28,7 @@ public class ClientProxyAstrotweaksMod implements IProxyAstrotweaksMod {
     @Override
     public void init(FMLInitializationEvent event) {
         // ─── Блок-мираж: TESR (рендер в мире) ───
-        ClientRegistry.bindTileEntitySpecialRenderer(
-                astrotweaks.block.mirage.MirageTileEntity.class,
-                new MirageTESR()
-        );
+        ClientRegistry.bindTileEntitySpecialRenderer( astrotweaks.block.mirage.MirageTileEntity.class, new MirageTESR() );
 
         // ─── Блок-мираж: TEISR (рендер предмета в руке/инвентаре) ───
         // ВАЖНО 1.12.2: RenderItem для ItemBlock с ENTITYBLOCK_ANIMATED
