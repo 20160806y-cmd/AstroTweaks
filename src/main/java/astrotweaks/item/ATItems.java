@@ -26,7 +26,7 @@ public final class ATItems {
 
     public static final String MOD_ID = "astrotweaks";
 
-    private static int Money_ConvCount;
+    //private static int Money_ConvCount;
 
 
     // ===== Existing items =====

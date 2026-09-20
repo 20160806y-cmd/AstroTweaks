@@ -1,9 +1,9 @@
 [
   {
-    "modid": "astrotweaks",
+    "modid":"astrotweaks",
     "name": "AstroTweaks",
     "description": "Some tweaks and additions for minecraft or your modpack.",
-    "version": "b-6.2",
+    "version": "${mod_version}",
     "credits": "",
     "logoFile": "icon.png",
     "mcversion": "1.12.2",

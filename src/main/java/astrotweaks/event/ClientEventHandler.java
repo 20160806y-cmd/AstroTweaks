@@ -10,9 +10,6 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraftforge.client.event.RenderLivingEvent;
-import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
-
-
 
 import astrotweaks.block.BlockBush1;
 //import astrotweaks.block.BlockBush2;

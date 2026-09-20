@@ -8,11 +8,12 @@ import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.client.model.obj.OBJLoader;
-
+import net.minecraftforge.common.MinecraftForge;
 import astrotweaks.block.mirage.MirageBlock;
-import astrotweaks.block.mirage.MirageItemBlock;
+//import astrotweaks.block.mirage.MirageItemBlock;
 import astrotweaks.block.mirage.MirageTEISR;
 import astrotweaks.block.mirage.MirageTESR;
+
 
 
 /**
@@ -23,6 +24,7 @@ public class ClientProxyAstrotweaksMod implements IProxyAstrotweaksMod {
     @Override
     public void preInit(FMLPreInitializationEvent event) {
         OBJLoader.INSTANCE.addDomain("astrotweaks");
+
     }
 
     @Override
@@ -44,6 +46,10 @@ public class ClientProxyAstrotweaksMod implements IProxyAstrotweaksMod {
         if (mirageItem != null) {
             mirageItem.setTileEntityItemStackRenderer(TileEntityItemStackRenderer.instance);
         }
+
+        if (ModVariables.AstroTech_Environment) MinecraftForge.EVENT_BUS.register(new astrotweaks.event.WhenBackToMenu("AstroTech"));
+        else if (ModVariables.CUSTOM_GAME_TITLE != null && ModVariables.CUSTOM_GAME_TITLE != "") MinecraftForge.EVENT_BUS.register(new astrotweaks.event.WhenBackToMenu(ModVariables.CUSTOM_GAME_TITLE));
+        //else pass
     }
 
     @Override

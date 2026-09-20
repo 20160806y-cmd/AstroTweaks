@@ -171,8 +171,24 @@ public final class TotemOfGod {
 				player.addPotionEffect(new PotionEffect(MobEffects.REGENERATION, 100, 3, false, false));
 				player.addPotionEffect(new PotionEffect(MobEffects.SATURATION, 20, 1, false, false));
 
-				player.addPotionEffect(new PotionEffect(MobEffects.FIRE_RESISTANCE, 1200, 0, false, false));
-				player.addPotionEffect(new PotionEffect(MobEffects.WATER_BREATHING, 1200, 0, false, false));
+				player.addPotionEffect(new PotionEffect(MobEffects.FIRE_RESISTANCE, 1200*5, 0, false, false));
+				player.addPotionEffect(new PotionEffect(MobEffects.WATER_BREATHING, 1200*5, 0, false, false));
+
+				player.removePotionEffect(MobEffects.POISON);
+				player.removePotionEffect(MobEffects.WEAKNESS);
+				player.removePotionEffect(MobEffects.NAUSEA);
+				player.removePotionEffect(MobEffects.WITHER);
+				player.removePotionEffect(MobEffects.BLINDNESS);
+				player.removePotionEffect(MobEffects.HUNGER);
+				player.removePotionEffect(MobEffects.MINING_FATIGUE);
+				player.removePotionEffect(MobEffects.INSTANT_DAMAGE);
+				player.removePotionEffect(MobEffects.LEVITATION);
+				player.removePotionEffect(MobEffects.SLOWNESS);
+				player.removePotionEffect(MobEffects.UNLUCK);
+
+
+				
+				SimpleDifficultyCompat.applyHealEffects(player);
 			}
 			return new ActionResult<>(EnumActionResult.SUCCESS, stack);
 		}

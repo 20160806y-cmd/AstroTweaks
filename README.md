@@ -14,11 +14,13 @@ Link: https://www.curseforge.com/minecraft/mc-mods/astrotweaks
 
 ---
 
-Info:
+## Info:
 
- Forge 1.12.2-14.23.5.2860
- 
-
+> Forge 1.12.2-14.23.5.2860
+> mappings: snapshot-20171003-1.12 
+> Gradle: 7.5.1
+> ForgeGradle: 5.1.53
+> Java: Eclipse Adoptium JDK 8u392-b08-hotspot
 
 
 

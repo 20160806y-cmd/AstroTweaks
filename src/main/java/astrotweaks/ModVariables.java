@@ -27,6 +27,8 @@ public class ModVariables {
 	public ModVariables() {}
 	public static boolean EnableProgressionSystem = false;
 	public static boolean AstroTech_Environment = false;
+	public static String CUSTOM_GAME_TITLE = "";
+
 
 	public static boolean MULTIVERSE = false;
 	public static boolean Enable_TDARK = false; // ничего не делает в игре если MULTIVERSE == False

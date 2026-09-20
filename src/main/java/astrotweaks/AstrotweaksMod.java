@@ -28,7 +28,6 @@ import net.minecraft.util.ResourceLocation;
 
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.storage.WorldSavedData;
-import net.minecraft.potion.Potion;
 import net.minecraft.item.Item;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -44,11 +43,11 @@ import astrotweaks.recipe.RecipeHandler;
 
 
 
-@Mod(modid = AstrotweaksMod.MODID, version = AstrotweaksMod.VERSION)
+@Mod(modid = AstrotweaksMod.MODID, version = AstrotweaksMod.VERSION, dependencies = "after:simpledifficulty")
 public class AstrotweaksMod {
 
 	public static final String MODID = "astrotweaks";
-	public static final String VERSION = "b6.2";
+	public static final String VERSION = "Beta-6.3";
 
 
 	public static final SimpleNetworkWrapper PACKET_HANDLER = NetworkRegistry.INSTANCE.newSimpleChannel("astrotweaks:a");

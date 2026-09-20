@@ -1,18 +1,24 @@
 package astrotweaks.tweaks;
 
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.common.FMLLog;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.registry.GameRegistry;
 import net.minecraftforge.fml.common.registry.VillagerRegistry.VillagerCareer;
 import net.minecraftforge.fml.common.registry.VillagerRegistry.VillagerProfession;
 import net.minecraftforge.registries.IForgeRegistry;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.lang.reflect.Field;
 import java.util.List;
 
 
+
 public final class RemVillagerTrades {
+
+    private static final Logger LOGGER = LogManager.getLogger("AstroTweaks");
+
 
     public static void onLoadComplete() {
         //if (!ModVariables.Remove_METS_engineer) return;
@@ -23,43 +29,42 @@ public final class RemVillagerTrades {
 
             IForgeRegistry<VillagerProfession> registry = GameRegistry.findRegistry(VillagerProfession.class);
             if (registry == null) {
-                FMLLog.warning("VillagerProfession registry not found");
+                LOGGER.warn("VillagerProfession registry not found");
                 return;
             }
             VillagerProfession profession = registry.getValue(professionName);
             if (profession == null) {
-                FMLLog.info("Profession %s not found", professionName);
+                LOGGER.info("Profession {} not found", professionName);
                 return;
             }
             // careers (List<VillagerCareer>)
             Field careersField = findFirstListField(VillagerProfession.class, profession, VillagerCareer.class);
             if (careersField == null) {
-                FMLLog.info("No careers list found for %s", professionName);
+                LOGGER.info("No careers list found for {}", professionName);
                 return;
             }
             @SuppressWarnings("unchecked")
             List<VillagerCareer> careers = (List<VillagerCareer>) careersField.get(profession);
             if (careers == null || careers.isEmpty()) {
-                FMLLog.info("No careers for %s", professionName);
+                LOGGER.info("No careers for {}", professionName);
                 return;
             }
             //  trades (List<List<ITradeList>>)
             Field tradesField = findFirstListField(VillagerCareer.class, null, null);
             if (tradesField == null) {
-                FMLLog.info("No trades field found in VillagerCareer");
+                LOGGER.info("No trades field found in VillagerCareer");
                 return;
             }
             for (VillagerCareer career : careers) {
                 Object tradesObj = tradesField.get(career);
                 if (tradesObj instanceof List) {
                     ((List<?>) tradesObj).clear();
-                    FMLLog.info("Cleared trades for career: %s", career.getName());
+                    LOGGER.info("Cleared trades for career: {}", career.getName());
                 }
             }
-            FMLLog.info("Successfully removed all trades for %s", professionName);
+            LOGGER.info("Successfully removed all trades for {}", professionName);
         } catch (Exception e) {
-            FMLLog.info("Failed: %s", e.toString());
-            e.printStackTrace();
+            LOGGER.error("Failed to remove villager trades:\n", e);
         }
     }
     private static Field findFirstListField(Class<?> clazz, Object instance, Class<?> expectedElementType) {

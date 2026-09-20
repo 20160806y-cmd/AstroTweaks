@@ -59,6 +59,18 @@ minecraft {
     }
 }
 
+processResources {
+    inputs.property "mod_version", mod_version
+    filesMatching('mcmod.info') {
+        expand(
+            mod_version: mod_version,
+        )
+    }
+}
+
+
+
+
 repositories {
     mavenCentral()
     maven { url 'https://maven.blamejared.com/' } // JEI
@@ -70,7 +82,8 @@ repositories {
 dependencies {
     minecraft 'net.minecraftforge:forge:1.12.2-14.23.5.2860'
 
-    compileOnly "mezz.jei:jei_1.12.2:4.16.1.302"
+    compileOnly files("libs/jei_1.12.2-4.16.1.302.jar")
+    compileOnly files('libs/SimpleDifficulty-0.8.0.jar')
 
     //def mixin = 'zone.rong:mixinbooter:11.0'
 
@@ -113,6 +126,8 @@ jar {
     from sourceSets.main.output.classesDirs
     from sourceSets.main.output.resourcesDir
 }
+
+
 
 
 

@@ -63,12 +63,15 @@ public class ConfigManager {
 			//// # Astro_Tech
 			ModVariables.AstroTech_Environment = safeGetBoolean(config, "AstroTech_Environment", "Astro_Tech", false, "AstroTech Environment (y/n)");
 			ModVariables.EnableProgressionSystem = safeGetBoolean(config, "EnableProgressionSystem", "Astro_Tech", false, "Enable Progression System (y/n)");
+			
 
 
 
 			//// # general
 			ModVariables.doRegisterMinedBlocks = safeGetBoolean(config, "doRegisterMinedBlocks", "general", ModVariables.doRegisterMinedBlocks, "Register mined(trapped) blocks? (y/n)");
 			ModVariables.Extra_Fuels = safeGetBoolean(config, "Register_Extra_Fuels", "general", ModVariables.Extra_Fuels, "Should to register more fuels for furnace? (y/n)");
+			ModVariables.CUSTOM_GAME_TITLE = safeGetString(config, "CUSTOM_GAME_TITLE", "general", ModVariables.CUSTOM_GAME_TITLE, "Set the Custom Game Title ");
+
 
 
 
@@ -345,6 +348,17 @@ public class ConfigManager {
 	        return val;
 	    } catch (Exception e) {
 	        LOGGER.error("Error reading integer config '{}.{}': {}", category, name, e.getMessage());
+	        config.get(category, name, def).set(def);
+	        return def;
+	    }
+	}
+
+	private static String safeGetString(Configuration config, String name, String category, String def, String comment) {
+	    try {
+	        String raw = config.get(category, name, def == null ? "" : def, comment).getString();
+	        return raw == null ? def : raw;
+	    } catch (Exception e) {
+	        LOGGER.error("Error reading string config '{}.{}': {}", category, name, e.getMessage());
 	        config.get(category, name, def).set(def);
 	        return def;
 	    }

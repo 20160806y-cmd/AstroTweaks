@@ -26,10 +26,10 @@ public class CommandATCC {
 			return true;
 		}
 		@Override public List getAliases() {
-			return new ArrayList();
+			return new ArrayList<>();
 		}
 		@Override public List getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, BlockPos pos) {
-			return new ArrayList();
+			return new ArrayList<>();
 		}
 		@Override public boolean isUsernameIndex(String[] string, int index) { return true; }
 		@Override public String getName() { return "at_xpbox"; }

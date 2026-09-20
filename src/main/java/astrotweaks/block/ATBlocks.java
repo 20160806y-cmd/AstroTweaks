@@ -1,8 +1,7 @@
 package astrotweaks.block;
 
-
 import astrotweaks.creativetab.ATCreativeTabs;
-import astrotweaks.item.ATItems;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockFalling;
 import net.minecraft.block.BlockHorizontal;
