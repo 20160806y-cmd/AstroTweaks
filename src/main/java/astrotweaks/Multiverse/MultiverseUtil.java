@@ -79,10 +79,20 @@ public final class MultiverseUtil {
 	 * True when a player can actually stand at {@code pos}: the cell below is a liquid
 	 * or has a collision surface (standable ground), while the feet and head cells are
 	 * neither liquid nor collidable — i.e. the position is never inside a block/liquid.
+	 * Ocean fix: feet at {@link #OCEAN_SPAWN_Y}=64 over water at y=62 has an air gap at 63,
+	 * so we also accept liquid/solid 2 blocks below when feet is exactly 64.
 	 */
 	public static boolean isColumnFree(World world, BlockPos pos) {
 		IBlockState below = world.getBlockState(pos.down());
-		if (!isStandableGround(below, world, pos.down())) return false;
+		boolean standable = isStandableGround(below, world, pos.down());
+		if (!standable && pos.getY() == OCEAN_SPAWN_Y) {
+			BlockPos below2Pos = pos.down(2);
+			IBlockState below2 = world.getBlockState(below2Pos);
+			if (isStandableGround(below2, world, below2Pos)) {
+				standable = true;
+			}
+		}
+		if (!standable) return false;
 		for (int dy = 0; dy <= 1; dy++) {
 			IBlockState s = world.getBlockState(pos.up(dy));
 			if (!isPassable(s, world, pos.up(dy))) return false;

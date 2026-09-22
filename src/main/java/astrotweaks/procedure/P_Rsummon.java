@@ -19,14 +19,7 @@ public final class P_Rsummon {
     public P_Rsummon() {}
 
     public static void exect(double x, double y, double z, World world, Entity entity, String entityId, int count, String nbtStr) {
-        // Extract dependencies
-        //double x = dependencies.get("x") instanceof Number ? ((Number) dependencies.get("x")).doubleValue() : 0;
-        //double y = dependencies.get("y") instanceof Number ? ((Number) dependencies.get("y")).doubleValue() : 0;
-        //double z = dependencies.get("z") instanceof Number ? ((Number) dependencies.get("z")).doubleValue() : 0;
-        //World world = (World) dependencies.get("world");
-        //String entityId = (String) dependencies.get("entity_id");
-        //int count = dependencies.get("count") instanceof Number ? ((Number) dependencies.get("count")).intValue() : 1;
-        //String nbtStr = (String) dependencies.get("nbt");
+
         if (nbtStr == null) nbtStr = "";
 
         EntityPlayer player = null;

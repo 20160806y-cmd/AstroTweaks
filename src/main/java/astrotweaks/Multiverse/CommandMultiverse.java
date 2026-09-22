@@ -110,13 +110,13 @@ public class CommandMultiverse extends CommandBase {
         BlockPos anchor = world0.getSpawnPoint();
 
         int feetY;
-        if (isColumnFree(world0, anchor)) {
+        if (MultiverseUtil.isColumnFree(world0, anchor)) {
             // Мировой спавн уже стоит там, где игрок реально может встать.
             feetY = anchor.getY();
         } else {
-            // Спавн зарыт/залит — ищем верхний solid/liquid в той же колонне.
-            int topY = findTopSolidOrLiquidY(world0, anchor.getX(), anchor.getZ());
-            feetY = topY + 1;
+            // Спавн зарыт/залит — ищем безопасную позицию в той же колонне.
+            // Используем тот же ocean-aware поиск, что и для MV-миров (64 над водой, а не 200+).
+            feetY = MultiverseUtil.findSafeSpawnFeetY(world0, anchor.getX(), anchor.getZ());
         }
         BlockPos target = new BlockPos(anchor.getX(), feetY, anchor.getZ());
 

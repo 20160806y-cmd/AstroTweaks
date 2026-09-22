@@ -55,10 +55,23 @@ public class LevelData {
     /**
      * Reads level.dat from the level folder, or creates a fresh WorldInfo when the
      * level is brand new (seed comes from the command then).
+     * For overworlds, inherits rtgc generatorName from base world (dim 0) if enabled.
      */
     public WorldInfo loadOrCreateWorldInfo() {
         WorldInfo info = new LevelSaveHandler(folder).loadWorldInfo();
         if (info == null) {
+            // Only overworld data is stored via this path (shared level.dat), but we
+            // conservatively check if base is RTG — if so, new MV overworld should be RTG.
+            if (RTGSupport.isBaseWorldRTG()) {
+                WorldType rtgType = RTGSupport.getRTGWorldType();
+                String baseOpts = RTGSupport.getBaseGeneratorOptions(null);
+                if (rtgType != null) {
+                    WorldSettings settings = new WorldSettings(seed, GameType.SURVIVAL, true, false, rtgType);
+                    if (baseOpts != null && !baseOpts.isEmpty()) settings.setGeneratorOptions(baseOpts);
+                    info = new WorldInfo(settings, name);
+                    return info;
+                }
+            }
             info = new WorldInfo( new WorldSettings(seed, GameType.SURVIVAL, true, false, WorldType.DEFAULT), name );
         }
         return info;

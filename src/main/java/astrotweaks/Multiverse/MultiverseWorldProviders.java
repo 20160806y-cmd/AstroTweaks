@@ -43,6 +43,33 @@ public class MultiverseWorldProviders {
 
     public static class MultiverseOverworld extends WorldProviderSurface {
         @Override
+        protected void init() {
+            // RTG inheritance: if base world uses rtgc, use RTG BiomeProvider for this MV overworld
+            if (RTGSupport.shouldUseRTG(this.world)) {
+                net.minecraft.world.biome.BiomeProvider rtgProvider = RTGSupport.createRTGBiomeProvider(this.world);
+                if (rtgProvider != null) {
+                    this.biomeProvider = rtgProvider;
+                    this.nether = false;
+                    this.hasSkyLight = true;
+                    return;
+                }
+            }
+            super.init();
+            // super.init already sets biomeProvider based on WorldInfo; ensure skylight flag
+            this.hasSkyLight = true;
+            this.nether = false;
+        }
+
+        @Override
+        public IChunkGenerator createChunkGenerator() {
+            if (RTGSupport.shouldUseRTG(this.world)) {
+                IChunkGenerator rtgGen = RTGSupport.createRTGChunkGenerator(this.world);
+                if (rtgGen != null) return rtgGen;
+            }
+            return super.createChunkGenerator();
+        }
+
+        @Override
         public DimensionType getDimensionType() {
             return DimensionType.OVERWORLD;
         }

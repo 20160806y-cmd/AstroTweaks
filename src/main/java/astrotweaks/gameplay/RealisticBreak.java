@@ -38,9 +38,12 @@ public class RealisticBreak {
         HashSet<Material> noHand = new HashSet<>();
         noHand.add(Material.ROCK);
         noHand.add(Material.IRON);
-        noHand.add(Material.SAND);
+        //noHand.add(Material.SAND);
         noHand.add(Material.GROUND);
         noHand.add(Material.GRASS);
+		noHand.add(Material.ICE);
+		noHand.add(Material.PACKED_ICE);
+		noHand.add(Material.ANVIL);
         NO_HAND_MATERIALS = Collections.unmodifiableSet(noHand);
     }
     public static void initFromStrings(String[] pickaxeRules, String[] axeRules/*, String[] shovelRules*/) {
@@ -121,7 +124,7 @@ public class RealisticBreak {
 	}
 
 	private static boolean isGenericTool(ItemStack stack) {
-	    if (stack == null || stack.isEmpty()) return false;
+	    if (stack == null || stack.isEmpty())  return false;
 	    Item item = stack.getItem();
 	    if (item instanceof ItemTool) return true;
 	    // Extra fallback: has least one tool class
@@ -170,7 +173,7 @@ public class RealisticBreak {
         if (!needsPick && !needsAxe/* && !needsShovel*/) return;
         if (heldItem == null) { event.setCanceled(true); return; }
 
-	    if (mat == Material.GROUND || mat == Material.GRASS || mat == Material.SAND) {
+	    if (NO_HAND_MATERIALS.contains(mat)) {
 	        if (isGenericTool(held)) return;
 	        event.setCanceled(true);
 	        return;
@@ -205,7 +208,7 @@ public class RealisticBreak {
 				"ore:stoneDiorite","ore:stoneAndesite","ore:stoneGranite"
 			},
 			new String[] { // Axe
-				"ore:logWood"
+				"ore:logWood","ore:plankWood"
 			}//,
 			//new String[] { // Shovel
 			//	"ore:dirt","ore:gravel","ore:grass","minecraft:mycelium","minecraft:soul_sand"

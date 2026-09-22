@@ -69,7 +69,7 @@ import java.util.UUID;
  */
 public class LevelManager {
 
-    private static final int BASE_START = 10_000;
+    private static final int BASE_START = 100_000;
     private static final int STEP = 100;
     //private static final int BASE_MAX = 20_000;
     private static final int DIMS_PER_LEVEL = 4;
@@ -208,6 +208,12 @@ public class LevelManager {
         registerGlobalDimensionIfMissing();
         registerProxyDimensionIfMissing();
         reconcileWithDisk(server);
+        // RTG: whitelist already-existing MV overworld dimensions if base is rtgc
+        if (RTGSupport.isBaseWorldRTG(server)) {
+            for (LevelData data : levels.values()) {
+                RTGSupport.ensureAllowedDimension(data.baseId);
+            }
+        }
         loadPlayerData();
 
         // Pre-load worlds that saved players are in.  Without this, vanilla's
@@ -1073,7 +1079,11 @@ public class LevelManager {
 
         // Dimension must be registered before constructing the WorldServer.
         MultiverseDims.registerLevelDimensions(data.baseId);
-        return constructWorld(server, data.folder, dimId, data.name, data.seed, type == LevelDimensionType.END);
+        // RTG: whitelist MV overworld dimension if base is RTG (provider + level.dat both need it)
+        if (type == LevelDimensionType.OVERWORLD) {
+            RTGSupport.ensureAllowedDimension(dimId);
+        }
+        return constructWorld(server, data.folder, dimId, data.name, data.seed, type == LevelDimensionType.END, type == LevelDimensionType.OVERWORLD);
     }
 
     /** Loads (or creates) the shared global dimension world. Returns null when Enable_uVOID is off (folder never touched). */
@@ -1111,13 +1121,44 @@ public class LevelManager {
     }
 
     private WorldServer constructWorld(MinecraftServer server, File folder, int dimId, String saveName, long seed, boolean buildEndPortal) {
+        return constructWorld(server, folder, dimId, saveName, seed, buildEndPortal, false);
+    }
+
+    private WorldServer constructWorld(MinecraftServer server, File folder, int dimId, String saveName, long seed, boolean buildEndPortal, boolean isMVOverworld) {
         LevelSaveHandler saveHandler = new LevelSaveHandler(folder);
         WorldInfo info = saveHandler.loadWorldInfo();
         boolean fresh = info == null;
+        // RTG inheritance for MV overworlds: if base world uses rtgc, use it for fresh MV overworlds
+        boolean inheritRTG = isMVOverworld && RTGSupport.isBaseWorldRTG(server);
+        WorldType rtgType = inheritRTG ? RTGSupport.getRTGWorldType() : null;
+        String baseGenOptions = inheritRTG ? RTGSupport.getBaseGeneratorOptions(server) : "";
+        if (rtgType == null) inheritRTG = false;
+
         if (fresh) {
-            info = new WorldInfo( new WorldSettings(seed, GameType.SURVIVAL, true, false, WorldType.DEFAULT), saveName );
+            if (inheritRTG) {
+                WorldSettings settings = new WorldSettings(seed, GameType.SURVIVAL, true, false, rtgType);
+                if (baseGenOptions != null && !baseGenOptions.isEmpty()) settings.setGeneratorOptions(baseGenOptions);
+                info = new WorldInfo(settings, saveName);
+            } else {
+                info = new WorldInfo( new WorldSettings(seed, GameType.SURVIVAL, true, false, WorldType.DEFAULT), saveName );
+            }
         } else if (seed != 0 && info.getSeed() != seed) {
-            info.populateFromWorldSettings(new WorldSettings(seed, GameType.SURVIVAL, true, false, WorldType.DEFAULT));
+            if (inheritRTG) {
+                WorldSettings settings = new WorldSettings(seed, GameType.SURVIVAL, true, false, rtgType);
+                if (baseGenOptions != null && !baseGenOptions.isEmpty()) settings.setGeneratorOptions(baseGenOptions);
+                info.populateFromWorldSettings(settings);
+            } else {
+                info.populateFromWorldSettings(new WorldSettings(seed, GameType.SURVIVAL, true, false, WorldType.DEFAULT));
+            }
+        } else if (inheritRTG && !RTGSupport.isRTGWorldInfo(info)) {
+            // Existing MV overworld that was created as DEFAULT but base is now RTG -> upgrade persisted type
+            // so future loads keep rtgc without provider fallback. Guarded: only if RTG type resolved.
+            try {
+                info.setTerrainType(rtgType);
+                if (baseGenOptions != null && !baseGenOptions.isEmpty()) {
+                    RTGSupport.setGeneratorOptions(info, baseGenOptions);
+                }
+            } catch (Throwable ignored) {}
         }
         //System.out.println("[MULTIVERSE] constructWorld dim=" + dimId + " fresh=" + fresh + " requestedSeed=" + seed + " finalSeed=" + info.getSeed());
 

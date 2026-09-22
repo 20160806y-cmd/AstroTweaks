@@ -1,13 +1,36 @@
 {
   "variants": {
-    "meta=0": {"model":"minecraft:hay_block"},
+    "meta=0,axis=y": {
+      "model": "minecraft:hay"
+    },
+    "meta=0,axis=z": {
+      "model": "minecraft:hay",
+      "x": 90
+    },
+    "meta=0,axis=x": {
+      "model": "minecraft:hay",
+      "x": 90,
+      "y": 90
+    },
+
     "meta=1": {"model":"minecraft:red_sandstone"},
     "meta=2": {"model":"minecraft:purpur_block"},
     "meta=3": {"model":"minecraft:end_bricks"},
-    "meta=4": {"model":"minecraft:bone_block"},
+    "meta=4,axis=y": {
+      "model": "minecraft:bone_block"
+    },
+    "meta=4,axis=z": {
+      "model": "minecraft:bone_block",
+      "x": 90
+    },
+    "meta=4,axis=x": {
+      "model": "minecraft:bone_block",
+      "x": 90,
+      "y": 90
+    },
     "meta=5": {"model":"minecraft:nether_brick"},
     "meta=6": {"model":"minecraft:hardened_clay"},
-    "meta=7": {"model":"minecraft:prismarine"},
+    "meta=7": {"model":"minecraft:prismarine_rough"},
     "meta=8": {"model":"minecraft:sea_lantern"},
     "meta=9": {"model":"minecraft:packed_ice"},
     "meta=10": {"model":"minecraft:sponge"},

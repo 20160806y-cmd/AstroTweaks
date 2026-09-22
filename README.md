@@ -16,6 +16,8 @@ Link: https://www.curseforge.com/minecraft/mc-mods/astrotweaks
 
 ## Info:
 
+Minecraft 1.12.2
+
 > Forge 1.12.2-14.23.5.2860
 > mappings: snapshot-20171003-1.12 
 > Gradle: 7.5.1

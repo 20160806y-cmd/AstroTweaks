@@ -54,6 +54,8 @@ public final class MultiverseDims {
             && DimensionManager.isDimensionRegistered(baseId + 1)
             && DimensionManager.isDimensionRegistered(baseId + 2)
             && DimensionManager.isDimensionRegistered(baseId + 3)) {
+            // Even when already registered, ensure RTG whitelist for the overworld
+            RTGSupport.ensureAllowedDimension(baseId);
             return;
         }
         synchronized (DIMENSION_REGISTRATION_LOCK) {
@@ -62,6 +64,8 @@ public final class MultiverseDims {
             registerOneLocked(baseId + 2, MultiverseWorldProviders.MultiverseEnd.class);
             registerOneLocked(baseId + 3, MultiverseWorldProviders.MultiverseDepths.class);
         }
+        // RTG: allow MV overworld to use RTG generator if base is rtgc (guarded, no-op when RTG absent)
+        RTGSupport.ensureAllowedDimension(baseId);
     }
 
     /**
