@@ -32,10 +32,10 @@ public class BlackHoleBlock extends Block {
     public BlackHoleBlock() {
         super(Material.PORTAL);
         setHardness(-1.0F);
-        setResistance(6000000.0F);
+        setResistance(1000000000.0F);
         setLightOpacity(0);
         setLightLevel(0.0F);
-        setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
+        //setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
         // hardness -1 makes it unbreakable in survival, but allow creative break
         setBlockUnbreakable();
     }

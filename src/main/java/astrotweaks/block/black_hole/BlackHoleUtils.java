@@ -11,15 +11,15 @@ public final class BlackHoleUtils {
     /** Hard cap for gravity scan box (per user req) */
     public static final double MAX_GRAVITY_RANGE = 128.0D;
     /** Block capture radius cap - same constant as gravity per user req (perf limited) */
-    public static final double MAX_BLOCK_CAPTURE_RANGE = 64.0D; // 128 would be 17M checks/tick, cap for perf
+    public static final double MAX_BLOCK_CAPTURE_RANGE = 96.0D;
     // проверки блоков в радиусе можно сделать более "умными", например, кешировать позицию где уже был съеден блок и проверять её только через несколько тиков 
     // также можно для блоков которые несколько чеков подряд являются воздухом снижать приоритет проверок, чтобы не тратить вычисления на пустоту
     // так же можно кешировать и блоки, которые сейчас невозможно съесть, и откладывать их проверку на несколько тиков (так как масса ЧД не меняется так быстро, чтобы проверка одного и того же блока так часто могла имать смысл)
     // 
 
-    // Horizon: R_h = C * mass^E ; v3: -25% base (0.18*m^0.22): 200->0.58 ; 1000->0.82 ; 5000->1.17
+    // Horizon: R_h = C * mass^E ; v3: -25% base (H_SCALE*m^H_EXP): 200->0.58 ; 1000->0.82 ; 5000->1.17
     public static final double H_SCALE = 0.16D;
-    public static final double H_EXP = 0.23D;
+    public static final double H_EXP = 0.22D;
 
     /** Halo thickness base formula: halo = 0.25 * horizon^0.602 (1->0.25, 10->1.0) */
     public static double getHaloThickness(double horizon) {
@@ -33,7 +33,7 @@ public final class BlackHoleUtils {
     public static final double HALO_DELTA = 0.35D;
 
     /** Blocks per block-eat cycle (every 5 ticks). Configurable */
-    public static int BLOCKS_PER_TICK = 32;
+    public static int BLOCKS_PER_TICK = 16;
     /** Entity blacklist for capture */
     public static final java.util.Set<Class<? extends net.minecraft.entity.Entity>> ENTITY_BLACKLIST = new java.util.HashSet<>();
     static {
@@ -47,6 +47,8 @@ public final class BlackHoleUtils {
     public static final double MASS_PER_ITEM = 1.0D;
     public static final double MASS_PER_ENTITY = 5.0D;
     public static final double MASS_PER_XP = 0.5D;
+    /** Mass gained per liquid block eaten. Cheap — liquids have no structural cost. */
+    public static final double MASS_PER_LIQUID = 0.5D;
 
     public static double getGravityRange(double mass) {
         if (mass <= 0) return 0;
@@ -61,10 +63,10 @@ public final class BlackHoleUtils {
     }
 
     public static double getHorizonRadius(double mass) {
-        if (mass <= 0) return 0.3D;
+        if (mass <= 0) return 0.25D;
         double r = H_SCALE * Math.pow(mass, H_EXP);
         if (r < 0.3D) r = 0.3D;
-        if (r > 16D) r = 16D;
+        if (r > 20D) r = 20D; // Максимальный радиус ЧД
         return r;
     }
 
@@ -90,6 +92,12 @@ public final class BlackHoleUtils {
     public static double getAcceleration(double mass, double dist) {
         if (dist < 0.1D) dist = 0.1D;
         return G * mass / (dist * dist);
+    }
+
+    /** Mass at which the horizon reaches radius r. Inverse of getHorizonRadius. */
+    public static double massForHorizon(double r) {
+        if (r <= H_SCALE) return 1.0;
+        return Math.pow(r / H_SCALE, 1.0 / H_EXP);
     }
 
     /** Horizon radius that slowly expands with mass (alternative log formula)

@@ -105,7 +105,7 @@ public class ATBlocks {
     public static final Block DEEPSLATE = new BlockDeepslate();
     public static final Block MOSSY_STONE = new B_MossyStone();
     public static final Block MOSSY_CARVED_STONEBRICK = new B_MossyCarvedStonebrick();
-    public static final Block MOSSY_CRACKED_STONEBRICK = new B_MossyCraackedStonebrick();
+    public static final Block MOSSY_CRACKED_STONEBRICK = new B_MossyCrackedStonebrick();
 
 
     public static final Block FEXPLOSIVE = new B_Fexplosive();
@@ -1000,8 +1000,8 @@ astrotweaks.block.mirage.MirageBlock.block,
             setUnlocalizedName("mossy_stone");
             setSoundType(SoundType.STONE);
             setHarvestLevel("pickaxe", 0);
-            setHardness(2F);
-            setResistance(6F);
+            setHardness(1.5F);
+            setResistance(6.0F);
             setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
         }
         @Override public MapColor getMapColor(IBlockState state,IBlockAccess blockAccess,BlockPos pos) { return MapColor.FOLIAGE; }
@@ -1013,20 +1013,20 @@ astrotweaks.block.mirage.MirageBlock.block,
             setUnlocalizedName("mossy_stonebrick_carved");
             setSoundType(SoundType.STONE);
             setHarvestLevel("pickaxe", 0);
-            setHardness(2F);
+            setHardness(1.5F);
             setResistance(6F);
             setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
         }
         @Override public MapColor getMapColor(IBlockState state,IBlockAccess blockAccess,BlockPos pos) { return MapColor.FOLIAGE; }
     }
-    public static class B_MossyCraackedStonebrick extends Block {
-        public B_MossyCraackedStonebrick() {
+    public static class B_MossyCrackedStonebrick extends Block {
+        public B_MossyCrackedStonebrick() {
             super(Material.ROCK);
             setRegistryName(MOD_ID, "mossy_stonebrick_cracked");
             setUnlocalizedName("mossy_stonebrick_cracked");
             setSoundType(SoundType.STONE);
             setHarvestLevel("pickaxe", 0);
-            setHardness(2F);
+            setHardness(1.5F);
             setResistance(6F);
             setCreativeTab(ATCreativeTabs.ASTRO_TWEAKS_CT);
         }
