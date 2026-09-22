@@ -30,12 +30,13 @@ import java.io.File;
  */
 public class LevelSaveHandler extends AnvilSaveHandler {
 
-    // DataFixer immutable после построения; lazy-таблица в DataFixerUpper
-    // инициализируется потокобезопасно (volatile). Один инстанс на JVM достаточно.
-    private static final DataFixer SHARED_FIXER = DataFixesManager.createFixer();
+    // DataFixer тяжёлый; lazy-holder гарантирует создание только при первом MV-мире и потокобезопасно
+    private static class FixerHolder {
+        static final DataFixer INSTANCE = DataFixesManager.createFixer();
+    }
 
     public LevelSaveHandler(File levelFolder) {
-        super(levelFolder.getParentFile(), levelFolder.getName(), true, SHARED_FIXER);
+        super(levelFolder.getParentFile(), levelFolder.getName(), true, FixerHolder.INSTANCE);
     }
 
     @Override public void checkSessionLock() throws MinecraftException {

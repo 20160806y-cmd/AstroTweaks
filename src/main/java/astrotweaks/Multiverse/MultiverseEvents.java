@@ -6,6 +6,8 @@ import net.minecraft.command.CommandGameRule;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.GameRules;
@@ -14,6 +16,7 @@ import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.util.ITeleporter;
 import net.minecraftforge.event.CommandEvent;
 import net.minecraftforge.event.entity.EntityTravelToDimensionEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.FMLCommonHandler;
@@ -100,6 +103,13 @@ public class MultiverseEvents {
     private static boolean scanForActiveMultiverseWorlds(MinecraftServer srv) {
         if (srv == null) return false;
         LevelManager lm = LevelManager.getInstance();
+        // #5 fast-path: если нет вселенных и глобальный void выключен — миров точно нет, скан не нужен
+        if (lm.countUniverses() == 0) {
+            if (!MultiverseDims.isGlobalDimensionEnabled()) return false;
+            // только global/proxy могут быть активны
+            return net.minecraftforge.common.DimensionManager.getWorld(MultiverseDims.GLOBAL_DIM) != null
+                || net.minecraftforge.common.DimensionManager.getWorld(MultiverseDims.PROXY_DIM) != null;
+        }
         for (WorldServer w : srv.worlds) {
             if (w != null && lm.isMultiverseDimension(w.provider.getDimension())) return true;
         }
@@ -378,6 +388,64 @@ public class MultiverseEvents {
         }
     }
 
+    // ------------------------------------------------------------------ portal lighting (vanilla-like, any interior block)
+
+    /**
+     * Makes flint&steel light the MV custom portal even when the fire is placed on an
+     * upper interior block. Vanilla {@code BlockFire.onBlockAdded} only checks the fire
+     * pos and walks down to the base, but for MV the vanilla {@code Size} check fails
+     * when the interior already contains our custom portal block (vanilla only allows
+     * AIR/FIRE/PORTAL). We directly probe our frame with {@link NetherPortalGeometry#findFrame}
+     * at the fire position and light the custom portal on the next tick, exactly like
+     * vanilla does when you click any interior block.
+     */
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public void onFlintAndSteelUse(PlayerInteractEvent.RightClickBlock event) {
+        if (event.getWorld() == null || event.getWorld().isRemote) return;
+        if (event.getItemStack().isEmpty() || event.getItemStack().getItem() != Items.FLINT_AND_STEEL) return;
+        if (event.getFace() == null) return;
+        int dim = event.getWorld().provider.getDimension();
+        LevelData data = LevelManager.getInstance().getLevelByDimensionId(dim);
+        if (data == null) return;
+        LevelDimensionType type = data.typeOf(dim);
+        if (type != LevelDimensionType.OVERWORLD && type != LevelDimensionType.NETHER) return;
+        BlockPos firePos = event.getPos().offset(event.getFace());
+        // Only if the clicked side would place fire inside a valid obsidian frame
+        NetherPortalGeometry.Geometry geo = NetherPortalGeometry.findFrame(event.getWorld(), firePos);
+        if (geo != null) {
+            World world = event.getWorld();
+            if (world instanceof WorldServer) {
+                ((WorldServer) world).addScheduledTask(() -> NetherPortalGeometry.placePortal(world, geo));
+            } else {
+                NetherPortalGeometry.placePortal(world, geo);
+            }
+        }
+    }
+
+    /**
+     * Catches fire placed by any other means (fire charge, spread, /setblock) inside
+     * an MV frame. Mirrors the flint&steel path but for generic FIRE PlaceEvents.
+     */
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public void onFirePlace(BlockEvent.PlaceEvent event) {
+        if (event.getWorld() == null || event.getWorld().isRemote) return;
+        if (event.getPlacedBlock().getBlock() != Blocks.FIRE) return;
+        int dim = event.getWorld().provider.getDimension();
+        LevelData data = LevelManager.getInstance().getLevelByDimensionId(dim);
+        if (data == null) return;
+        LevelDimensionType type = data.typeOf(dim);
+        if (type != LevelDimensionType.OVERWORLD && type != LevelDimensionType.NETHER) return;
+        NetherPortalGeometry.Geometry geo = NetherPortalGeometry.findFrame(event.getWorld(), event.getPos());
+        if (geo != null) {
+            World world = event.getWorld();
+            if (world instanceof WorldServer) {
+                ((WorldServer) world).addScheduledTask(() -> NetherPortalGeometry.placePortal(world, geo));
+            } else {
+                NetherPortalGeometry.placePortal(world, geo);
+            }
+        }
+    }
+
     // ------------------------------------------------------------------ portal creation safety net
 
     /**
@@ -447,6 +515,7 @@ public class MultiverseEvents {
             LevelManager lm = LevelManager.getInstance();
             lm.processDeferredUnloading(srv, PENDING_UNLOAD, lm.getUnloadDelayMs(), player.getUniqueID());
             lm.flushRegistryIfDirty(srv);
+            lm.flushPlayerDataIfDirty();
         }
     }
 
@@ -495,14 +564,15 @@ public class MultiverseEvents {
         NetherPortalLink.onEndTick();
 
         boolean rulesChanged = propagateGameRuleUpdates();
-        if (rulesChanged || tickCounter % GAMERULE_SYNC_INTERVAL == 0) {
-            syncGameRulesFromOverworld(srv); // overload с srv, см. п.3
+        if (rulesChanged) {
+            syncGameRulesFromOverworld(srv);
         }
 
         if (tickCounter % 160 == 0) {
             LevelManager lm = LevelManager.getInstance();
             lm.processDeferredUnloading(srv, PENDING_UNLOAD, lm.getUnloadDelayMs());
             lm.flushRegistryIfDirty(srv);
+            lm.flushPlayerDataIfDirty();
             tickCounter = 0;
         }
     }

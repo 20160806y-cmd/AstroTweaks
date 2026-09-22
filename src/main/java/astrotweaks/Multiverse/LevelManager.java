@@ -96,6 +96,11 @@ public class LevelManager {
     private int cachedMaxUniverses;
     private long cachedUnloadDelayMs;
 
+    // #11 кэш RTG для конструктора миров — безопасно, WorldType immutable, genOptions константен в рамках сейва
+    private WorldType cachedRtgType;
+    private String cachedRtgGenOptions;
+    private boolean cachedRtgValid;
+
     private LevelManager() {}
 
     public static LevelManager getInstance() {
@@ -186,6 +191,9 @@ public class LevelManager {
         registryLoaded = false;
 
         loadConfig();
+        cachedRtgValid = false;
+        cachedRtgType = null;
+        cachedRtgGenOptions = null;
         migrateLegacyRootFolder(server);
 
         if (!multiverseFolder.exists() && !multiverseFolder.mkdirs()) {
@@ -1032,13 +1040,9 @@ public class LevelManager {
     //}
     public boolean isMultiverseDimension(int id) {
         if (id == MultiverseDims.GLOBAL_DIM || id == MultiverseDims.PROXY_DIM) return true;
-        if (id < BASE_START) return false;                    // ванильные -1/0/1 и всё отрицательное
-        int offset = id - BASE_START;
-        int k = offset % STEP;
-        if (k >= DIMS_PER_LEVEL) return false;                // попадает в «зазор» между слотами
-        int n = offset / STEP + 1;
-        if (n < 1 || n > cachedMaxUniverses) return false;    // за пределами maxUniverses
-        return dimensionToLevel.containsKey(id);              // бокс только для «кандидатов»
+        if (id < BASE_START) return false;
+        // Быстрый бокс: ванильные и зазоры не в map, один lookup вместо %/деление (#4)
+        return dimensionToLevel.containsKey(id);
     }
 
 
@@ -1128,11 +1132,20 @@ public class LevelManager {
         LevelSaveHandler saveHandler = new LevelSaveHandler(folder);
         WorldInfo info = saveHandler.loadWorldInfo();
         boolean fresh = info == null;
-        // RTG inheritance for MV overworlds: if base world uses rtgc, use it for fresh MV overworlds
+        // RTG inheritance for MV overworlds: if base world uses rtgc, use it for fresh MV overworlds (#11 кэш)
         boolean inheritRTG = isMVOverworld && RTGSupport.isBaseWorldRTG(server);
-        WorldType rtgType = inheritRTG ? RTGSupport.getRTGWorldType() : null;
-        String baseGenOptions = inheritRTG ? RTGSupport.getBaseGeneratorOptions(server) : "";
-        if (rtgType == null) inheritRTG = false;
+        WorldType rtgType = null;
+        String baseGenOptions = "";
+        if (inheritRTG) {
+            if (!cachedRtgValid) {
+                cachedRtgType = RTGSupport.getRTGWorldType();
+                cachedRtgGenOptions = RTGSupport.getBaseGeneratorOptions(server);
+                cachedRtgValid = true;
+            }
+            rtgType = cachedRtgType;
+            baseGenOptions = cachedRtgGenOptions != null ? cachedRtgGenOptions : "";
+            if (rtgType == null) inheritRTG = false;
+        }
 
         if (fresh) {
             if (inheritRTG) {
@@ -1295,17 +1308,24 @@ public class LevelManager {
     private File playerDataFile() {
         return new File(multiverseFolder, "mv_playerdata.dat");
     }
+    private boolean playerDataDirty;
+    private void markPlayerDataDirty() { playerDataDirty = true; }
+    public void flushPlayerDataIfDirty() {
+        if (playerDataDirty) {
+            savePlayerData();
+            playerDataDirty = false;
+        }
+    }
     public void recordPlayer(EntityPlayerMP player) {
         PlayerEntry old = playerEntries.put(player.getUniqueID(), new PlayerEntry(player.dimension, player.posX, player.posY, player.posZ, player.rotationYaw, player.rotationPitch));
-        // Only write when the entry actually changed (or is new) so autosave hooks that
-        // re-record the same position are cheap.
+        // #10 дебаунс IO: пишем не сразу, а раз в 160 тиков / на сохранении мира
         if (old == null || old.dimension != player.dimension || old.x != player.posX || old.y != player.posY || old.z != player.posZ || old.yaw != player.rotationYaw || old.pitch != player.rotationPitch) {
-            savePlayerData();
+            markPlayerDataDirty();
         }
     }
     public void clearPlayer(UUID uuid) {
         if (playerEntries.remove(uuid) != null) {
-            savePlayerData();
+            markPlayerDataDirty();
         }
     }
     public PlayerEntry getPlayerEntry(UUID uuid) {
@@ -1532,6 +1552,9 @@ public class LevelManager {
         uidToNumber.clear();
         multiverseFolder = null;
         registryLoaded = false;
+        cachedRtgValid = false;
+        cachedRtgType = null;
+        cachedRtgGenOptions = null;
         System.out.println("[MULTIVERSE] All dimensions unloaded and unregistered.");
     }
 
@@ -1616,6 +1639,7 @@ public class LevelManager {
         saveRegistry(server);
         registryDirty = false;
         savePlayerData();
+        playerDataDirty = false;
         for (LevelData data : levels.values()) {
             forEachDim(data, dim -> saveWorldIfLoaded(dim));
         }

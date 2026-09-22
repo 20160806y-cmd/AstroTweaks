@@ -1,0 +1,10 @@
+{
+  "forge_marker": 1,
+  "defaults": {
+    "model": "minecraft:air"
+  },
+  "variants": {
+    "normal": [{ "model": "minecraft:air" }],
+    "inventory": [{ "model": "astrotweaks:black_hole" }]
+  }
+}

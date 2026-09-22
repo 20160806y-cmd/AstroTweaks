@@ -1,6 +1,6 @@
 {
   "variants": {
-    "axis=x": { "model":"portal_ns" },
-    "axis=z": { "model":"portal_ew" }
+    "axis=x": { "model":"minecraft:portal_ns" },
+    "axis=z": { "model":"minecraft:portal_ew" }
   }
 }

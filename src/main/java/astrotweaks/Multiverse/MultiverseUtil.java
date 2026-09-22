@@ -17,6 +17,12 @@ public final class MultiverseUtil {
 	/** Sea-level stand height used for ocean spawns (above the water). */
 	private static final int OCEAN_SPAWN_Y = 64;
 
+	private static final ThreadLocal<BlockPos.MutableBlockPos> TL_MPOS = ThreadLocal.withInitial(BlockPos.MutableBlockPos::new);
+
+	private static BlockPos.MutableBlockPos mpos() {
+		return TL_MPOS.get();
+	}
+
 	private MultiverseUtil() {}
 
 	/**
@@ -100,14 +106,20 @@ public final class MultiverseUtil {
 		return true;
 	}
 
-	/** True when an entity can occupy the cell (not liquid and no collision box). */
+	/** True when an entity can occupy the cell (AIR или replaceable, не жидкость, без коллизии — нельзя задохнуться). */
 	private static boolean isPassable(IBlockState state, World world, BlockPos pos) {
-		return !state.getMaterial().isLiquid() && state.getCollisionBoundingBox(world, pos) == null;
+		if (state.getMaterial().isLiquid()) return false;
+		// быстрый отсев твёрдых кубов без аллокации AABB
+		if (state.getMaterial().isSolid() && state.isFullCube()) return false;
+		// replaceable (трава, цветы) уже без коллизии, но проверяем AABB для гарантии
+		return state.getCollisionBoundingBox(world, pos) == null;
 	}
 
-	/** True when an entity can stand on the cell (liquid surface or a solid surface). */
+	/** True when an entity can stand on the cell (liquid surface или твёрдая поверхность). */
 	private static boolean isStandableGround(IBlockState state, World world, BlockPos pos) {
-		return state.getMaterial().isLiquid() || state.getCollisionBoundingBox(world, pos) != null;
+		if (state.getMaterial().isLiquid()) return true;
+		if (state.getMaterial().isSolid() && state.isFullCube()) return true;
+		return state.getCollisionBoundingBox(world, pos) != null;
 	}
 
 	/**
@@ -145,21 +157,34 @@ public final class MultiverseUtil {
 
 	/**
 	 * Highest solid-or-liquid block at or below {@code startY} in the column, or -1
-	 * when the whole column is open (void). Mirrors CommandMultiverse's column search.
+	 * when the whole column is open (void). Оптимизировано (#1): если чанк загружен — читаем напрямую из Chunk без hash-lookup World.
 	 */
 	public static int findGroundBelow(World world, int x, int z, int startY) {
-		BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
-		for (int y = Math.min(startY, world.getHeight() - 1); y >= 0; y--) {
+		int top = Math.min(startY, world.getHeight() - 1);
+		// пробуем взять уже загруженный чанк — без генерации
+		net.minecraft.world.chunk.Chunk chunk = null;
+		try {
+			chunk = world.getChunkProvider().getLoadedChunk(x >> 4, z >> 4);
+		} catch (Throwable ignored) {}
+		if (chunk != null) {
+			for (int y = top; y >= 0; y--) {
+				IBlockState s = chunk.getBlockState(x & 15, y, z & 15);
+				if (s.getMaterial().isSolid() || s.getMaterial().isLiquid()) return y;
+			}
+			return -1;
+		}
+		BlockPos.MutableBlockPos mpos = mpos();
+		for (int y = top; y >= 0; y--) {
 			IBlockState s = world.getBlockState(mpos.setPos(x, y, z));
 			if (s.getMaterial().isSolid() || s.getMaterial().isLiquid()) return y;
 		}
 		return -1;
 	}
 
-	/** Walks {@code feet} upward until the feet/head cells are open air (guaranteed not in a block). */
+	/** Walks {@code feet} upward until the feet/head cells are open air (гарантированно не в блоке). Переиспользует ThreadLocal mpos (#9). */
 	private static int clampToOpenColumn(World world, int x, int z, int feet) {
 		int max = Math.max(1, world.getHeight() - 2);
-		BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
+		BlockPos.MutableBlockPos mpos = mpos();
 		int y = Math.min(Math.max(feet, 1), max);
 		while (y < max) {
 			if (isColumnFree(world, mpos.setPos(x, y, z))) return y;

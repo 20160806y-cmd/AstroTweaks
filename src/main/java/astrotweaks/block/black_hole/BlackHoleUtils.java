@@ -1,0 +1,81 @@
+package astrotweaks.block.black_hole;
+
+public final class BlackHoleUtils {
+
+    private BlackHoleUtils() {}
+
+    /** Game gravity constant tuned so mass=1000 => gravity range ~22 blocks at threshold 0.001 */
+    public static final double G = 5.0e-4;
+    /** Minimal displacement per tick to be applied */
+    public static final double MIN_ACCEL = 0.001D;
+    /** Hard cap for gravity scan box (per user req) */
+    public static final double MAX_GRAVITY_RANGE = 128.0D;
+    /** Block capture radius cap - same constant as gravity per user req (perf limited) */
+    public static final double MAX_BLOCK_CAPTURE_RANGE = 32.0D; // 128 would be 17M checks/tick, cap for perf
+
+    // Horizon: R_h = C * mass^E ; v3: -25% base (0.18*m^0.22): 200->0.58 ; 1000->0.82 ; 5000->1.17
+    public static final double H_SCALE = 0.18D;
+    public static final double H_EXP = 0.22D;
+
+    /** Halo delta: first ring = horizon+delta, second = halo1+delta */
+    public static final double HALO_DELTA = 0.35D;
+
+    /** Default mass for newly placed black hole */
+    public static final double DEFAULT_MASS = 1000.0D;
+
+    /** Mass delta per absorption */
+    public static final double MASS_PER_ITEM = 1.0D;
+    public static final double MASS_PER_ENTITY = 5.0D;
+    public static final double MASS_PER_XP = 1.0D;
+
+    public static double getGravityRange(double mass) {
+        if (mass <= 0) return 0;
+        double r = Math.sqrt(G * mass / MIN_ACCEL);
+        if (r > MAX_GRAVITY_RANGE) r = MAX_GRAVITY_RANGE;
+        return r;
+    }
+
+    /** Effective block capture radius - not just hardnessMin, but also capped by MAX range */
+    public static double getBlockCaptureRadius(double mass) {
+        return getGravityRange(mass); // per user: same constant as gravity
+    }
+
+    public static double getHorizonRadius(double mass) {
+        if (mass <= 0) return 0.3D;
+        double r = H_SCALE * Math.pow(mass, H_EXP);
+        if (r < 0.3D) r = 0.3D;
+        if (r > 16D) r = 16D;
+        return r;
+    }
+
+    /** Radius where accel >= hardness threshold (dynamic) */
+    public static double getBlockEatRadiusByHardness(double mass, double hardness) {
+        if (mass <= 0) return 0;
+        if (hardness < 0.05) hardness = 0.1; // zero-hardness ->0.1 per req
+        double r = Math.sqrt(G * mass / hardness);
+        double h = getHorizonRadius(mass);
+        if (r < h + 0.5D) r = h + 0.5D;
+        // cap by global block capture limit
+        if (r > MAX_BLOCK_CAPTURE_RANGE) r = MAX_BLOCK_CAPTURE_RANGE;
+        if (r > MAX_GRAVITY_RANGE) r = MAX_GRAVITY_RANGE;
+        return r;
+    }
+
+    /** Legacy alias */
+    public static double getBlockEatRadius(double mass) {
+        return getBlockEatRadiusByHardness(mass, 0.2D);
+    }
+
+    /** Acceleration per tick towards center at distance r */
+    public static double getAcceleration(double mass, double dist) {
+        if (dist < 0.1D) dist = 0.1D;
+        return G * mass / (dist * dist);
+    }
+
+    /** Horizon radius that slowly expands with mass (alternative log formula)
+     *  Exposed for debug, not used by default.
+     */
+    public static double getHorizonLog(double mass) {
+        return 0.5D + Math.log10(1 + mass) * 1.2D;
+    }
+}
