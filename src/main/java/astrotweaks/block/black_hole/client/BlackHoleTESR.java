@@ -64,20 +64,21 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
             BlackHoleRenderHelper.drawSphere(horizon, 0x000000, 1.0f, 32, 32);
         }
 
-        // --- First halo (uMode=1) ---
+        // --- First halo (uMode=1) + second halo (uMode=2) ---
+        // thickness depends on horizon: 1->0.25, 10->1.0
+        double thickness = BlackHoleUtils.getHaloThickness(horizon);
+        double halo1 = horizon + thickness;
+        double halo2 = halo1 + thickness;
         GlStateManager.depthMask(false);
         GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
-        double halo1 = horizon + BlackHoleUtils.HALO_DELTA;
-        double halo2 = halo1 + BlackHoleUtils.HALO_DELTA; // same delta larger
         if (sh != null) {
             sh.setFloat("uMode", 1.0f);
             BlackHoleRenderHelper.drawSphere(halo1, 0xFFFFFF, 1.0f, 32, 32);
-            // second contour + same delta, 50% more transparent (0.325 vs 0.65 in shader)
             sh.setFloat("uMode", 2.0f);
             BlackHoleRenderHelper.drawSphere(halo2, 0xFFFFFF, 1.0f, 32, 32);
             BlackHoleShader.stop();
         } else {
-            BlackHoleRenderHelper.drawSphere(halo1, 0x000000, 0.35f, 16, 16);
+            BlackHoleRenderHelper.drawSphere(halo1, 0x000000, 0.32f, 16, 16);
             BlackHoleRenderHelper.drawSphere(halo2, 0x000000, 0.175f, 16, 16);
         }
 

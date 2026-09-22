@@ -86,7 +86,9 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
 
     @Override
     public AxisAlignedBB getRenderBoundingBox() {
-        double r = BlackHoleUtils.getHorizonRadius(mass) + BlackHoleUtils.HALO_DELTA * 2 + 1.0D;
+        double h = BlackHoleUtils.getHorizonRadius(mass);
+        double t = BlackHoleUtils.getHaloThickness(h);
+        double r = h + t * 2 + 1.0D;
         double rad = Math.max(r, 2.0D);
         return new AxisAlignedBB(pos).grow(rad + 1, rad + 1, rad + 1);
     }
@@ -125,11 +127,21 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
         boolean massChanged = false;
 
         for (Entity e : entities) {
+            // blacklist (e.g. squid)
+            boolean blacklisted = false;
+            for (Class<? extends Entity> cls : BlackHoleUtils.ENTITY_BLACKLIST) {
+                if (cls.isInstance(e)) { blacklisted = true; break; }
+            }
+            if (blacklisted) continue;
+
             // players in creative/spectator immune
             if (e instanceof EntityPlayer) {
                 EntityPlayer p = (EntityPlayer) e;
                 if (p.isCreative() || p.isSpectator()) continue;
             }
+
+            // skip dead / invalid already filtered by predicate but double-check
+            if (e.isDead) continue;
 
             double ey = e.posY + e.height * 0.5D;
             if (e instanceof EntityItem) ey = e.posY + 0.25D;
@@ -144,26 +156,40 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
 
             // Event horizon absorption
             if (dist <= horizon) {
-                if (e instanceof EntityItem) {
-                    EntityItem ei = (EntityItem) e;
-                    int count = ei.getItem().getCount();
-                    if (count <= 0) count = 1;
-                    mass += count * BlackHoleUtils.MASS_PER_ITEM;
-                    e.setDead();
-                    massChanged = true;
-                } else if (e instanceof EntityXPOrb) {
-                    mass += BlackHoleUtils.MASS_PER_XP;
-                    e.setDead();
-                    massChanged = true;
-                } else {
-                    if (e instanceof EntityPlayer) {
-                        e.attackEntityFrom(DamageSource.OUT_OF_WORLD, Float.MAX_VALUE);
-                        if (!e.isDead) e.setDead();
-                    } else {
+                try {
+                    if (e instanceof EntityItem) {
+                        EntityItem ei = (EntityItem) e;
+                        int count = ei.getItem().getCount();
+                        if (count <= 0) count = 1;
+                        mass += count * BlackHoleUtils.MASS_PER_ITEM;
                         e.setDead();
+                        massChanged = true;
+                    } else if (e instanceof EntityXPOrb) {
+                        mass += BlackHoleUtils.MASS_PER_XP;
+                        e.setDead();
+                        massChanged = true;
+                    } else if (e instanceof EntityPlayer) {
+                        // don't force setDead on players - let vanilla death handling run
+                        // prevents ghost entity where isDead=true but client still controls player -> gravity stops + flicker after failed absorb
+                        e.attackEntityFrom(DamageSource.OUT_OF_WORLD, Float.MAX_VALUE);
+                        if (e.isDead) {
+                            mass += BlackHoleUtils.MASS_PER_ENTITY;
+                            massChanged = true;
+                        } else {
+                            // survived (totem / invuln ticks) - still count? No mass until actually dead
+                            // keep entity alive, will be retried next tick inside horizon
+                        }
+                    } else {
+                        // living / other - try damage first, fallback to setDead
+                        boolean damaged = false;
+                        try { damaged = e.attackEntityFrom(DamageSource.OUT_OF_WORLD, Float.MAX_VALUE); } catch (Exception ignored) {}
+                        if (!e.isDead) e.setDead();
+                        mass += BlackHoleUtils.MASS_PER_ENTITY;
+                        massChanged = true;
                     }
-                    mass += BlackHoleUtils.MASS_PER_ENTITY;
-                    massChanged = true;
+                } catch (Exception ex) {
+                    // prevent whole tick abort -> flicker
+                    ex.printStackTrace();
                 }
                 continue;
             }
@@ -209,25 +235,25 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
 
             e.fallDistance = 0;
             e.velocityChanged = true;
+            // for players, ensure velocity sync (client prediction otherwise causes jitter / no pull)
+            if (e instanceof net.minecraft.entity.player.EntityPlayerMP) {
+                net.minecraft.entity.player.EntityPlayerMP mp = (net.minecraft.entity.player.EntityPlayerMP) e;
+                try {
+                    mp.connection.sendPacket(new net.minecraft.network.play.server.SPacketEntityVelocity(e));
+                } catch (Exception ignored) {}
+            }
         }
 
-        // ---- Block eating: sorted from center outward ----
-        // Throttled every 5 ticks, max 8 blocks per cycle
+        // ---- Block eating: random from nearest layer + next ----
+        // Every 5 ticks, pick up to BLOCKS_PER_TICK blocks from (minLayer and minLayer+1)
         if ((world.getTotalWorldTime() + pos.hashCode()) % 5 == 0) {
-            double captureR = BlackHoleUtils.getBlockCaptureRadius(mass); // 128 cap per req
-            // effective scan limited by perf cap MAX_BLOCK_CAPTURE_RANGE
+            double captureR = BlackHoleUtils.getBlockCaptureRadius(mass);
             double scanR = Math.min(captureR, BlackHoleUtils.MAX_BLOCK_CAPTURE_RANGE);
-            // also at least horizon
             if (scanR < horizon + 0.5D) scanR = horizon + 0.5D;
             int r = (int) Math.ceil(scanR);
             if (r >= 1) {
-                // Collect up to candidate list sorted by distance (center first)
-                // Use bounded priority (max-heap of 8 smallest dist) to avoid full sort
-                java.util.PriorityQueue<BlockPos> heap = new java.util.PriorityQueue<>(8, (a, b) -> {
-                    double da = (a.getX() - pos.getX()) * (a.getX() - pos.getX()) + (a.getY() - pos.getY()) * (a.getY() - pos.getY()) + (a.getZ() - pos.getZ()) * (a.getZ() - pos.getZ());
-                    double db = (b.getX() - pos.getX()) * (b.getX() - pos.getX()) + (b.getY() - pos.getY()) * (b.getY() - pos.getY()) + (b.getZ() - pos.getZ()) * (b.getZ() - pos.getZ());
-                    return Double.compare(db, da); // max-heap
-                });
+                java.util.Map<Integer, java.util.ArrayList<BlockPos>> byLayer = new java.util.HashMap<>();
+                int minLayer = Integer.MAX_VALUE;
                 // scan cube
                 for (int bx = -r; bx <= r; bx++) {
                     for (int by = -r; by <= r; by++) {
@@ -235,12 +261,6 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
                             if (bx == 0 && by == 0 && bz == 0) continue;
                             double bdist = Math.sqrt((double)bx*bx + (double)by*by + (double)bz*bz);
                             if (bdist > scanR + 0.1D) continue;
-                            if (bdist < horizon - 0.1D) {
-                                // inside horizon handled but still need check block exists
-                            } else {
-                                // quick hardness pre-check: if accel < effective then skip early (saves getBlockState calls for far blocks)
-                                // but we need block to know hardness, so cannot early skip without lookup; keep lookup
-                            }
                             BlockPos bp = pos.add(bx, by, bz);
                             IBlockState st = world.getBlockState(bp);
                             Block blk = st.getBlock();
@@ -249,52 +269,52 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
                             float hardness;
                             try { hardness = blk.getBlockHardness(st, world, bp); } catch (Exception ex) { continue; }
                             if (hardness < 0) continue;
-                            // hardness mapping per user
-                            double effective;
                             boolean isLiquid = false;
-                            try {
-                                isLiquid = st.getMaterial().isLiquid();
-                            } catch (Exception ignored) {}
-                            // Also treat BlockLiquid/FluidBase as liquid
-                            if (isLiquid) effective = 0.5D;
-                            else if (hardness == 0.0F) effective = 0.1D;
-                            else effective = hardness;
-
+                            try { isLiquid = st.getMaterial().isLiquid(); } catch (Exception ignored) {}
+                            double effective = isLiquid ? 0.5D : (hardness == 0.0F ? 0.1D : hardness);
                             boolean insideHorizon = bdist <= horizon + 0.5D;
                             double accelAt = BlackHoleUtils.getAcceleration(mass, bdist);
                             if (!(insideHorizon || accelAt >= effective)) continue;
-                            // candidate: push to heap (keep 32 closest to avoid losing if many)
-                            heap.offer(bp);
-                            if (heap.size() > 32) heap.poll(); // keep only 32 closest
+                            int layer = (int) Math.floor(bdist); // 1-block thick shell
+                            if (layer < minLayer) minLayer = layer;
+                            byLayer.computeIfAbsent(layer, k -> new java.util.ArrayList<>()).add(bp);
                         }
                     }
                 }
-                // Extract sorted ascending (closest first)
-                java.util.ArrayList<BlockPos> list = new java.util.ArrayList<>(heap);
-                list.sort((a, b) -> {
-                    double da = (a.getX() - pos.getX())*(a.getX() - pos.getX()) + (a.getY() - pos.getY())*(a.getY() - pos.getY()) + (a.getZ() - pos.getZ())*(a.getZ() - pos.getZ());
-                    double db = (b.getX() - pos.getX())*(b.getX() - pos.getX()) + (b.getY() - pos.getY())*(b.getY() - pos.getY()) + (b.getZ() - pos.getZ())*(b.getZ() - pos.getZ());
-                    return Double.compare(da, db);
-                });
-                int eaten = 0;
-                for (BlockPos bp : list) {
-                    if (eaten >= 8) break;
-                    IBlockState st = world.getBlockState(bp);
-                    Block blk = st.getBlock();
-                    if (blk == Blocks.AIR || blk instanceof BlackHoleBlock) continue;
-                    float h;
-                    try { h = blk.getBlockHardness(st, world, bp); } catch (Exception ex) { continue; }
-                    if (h < 0) continue;
-                    double effective;
-                    boolean isLiquid = false;
-                    try { isLiquid = st.getMaterial().isLiquid(); } catch (Exception ignored) {}
-                    if (isLiquid) effective = 0.5D;
-                    else if (h == 0.0F) effective = 0.1D;
-                    else effective = h;
-                    world.setBlockToAir(bp);
-                    mass += effective;
-                    massChanged = true;
-                    eaten++;
+                if (!byLayer.isEmpty()) {
+                    java.util.ArrayList<BlockPos> pool = new java.util.ArrayList<>();
+                    java.util.ArrayList<BlockPos> l0 = byLayer.get(minLayer);
+                    if (l0 != null) pool.addAll(l0);
+                    java.util.ArrayList<BlockPos> l1 = byLayer.get(minLayer + 1);
+                    if (l1 != null) pool.addAll(l1);
+                    if (!pool.isEmpty()) {
+                        java.util.Collections.shuffle(pool, world.rand);
+                        int toEat = Math.min(BlackHoleUtils.BLOCKS_PER_TICK, pool.size());
+                        for (int i = 0; i < toEat; i++) {
+                            BlockPos bp = pool.get(i);
+                            IBlockState st = world.getBlockState(bp);
+                            Block blk = st.getBlock();
+                            if (blk == Blocks.AIR || blk instanceof BlackHoleBlock) continue;
+                            float h;
+                            try { h = blk.getBlockHardness(st, world, bp); } catch (Exception ex) { continue; }
+                            if (h < 0) continue;
+                            boolean isLiquid = false;
+                            try { isLiquid = st.getMaterial().isLiquid(); } catch (Exception ignored) {}
+                            double effective = isLiquid ? 0.5D : (h == 0.0F ? 0.1D : h);
+                            // Use flag 2 + no neighbor notify for liquids to reduce flow blocking (see comment below)
+                            // world.setBlockState(bp, Blocks.AIR.getDefaultState(), 2);
+                            // For now use setBlockToAir (flag 3) for non-liquids, flag 2 for liquids
+                            if (isLiquid) {
+                                world.setBlockState(bp, Blocks.AIR.getDefaultState(), 2);
+                                // also suppress pending fluid ticks in this pos by removing scheduled updates if any (best-effort)
+                                // world.getPendingBlockUpdates() is not accessible in 1.12 without AT, so we just rely on flag 2
+                            } else {
+                                world.setBlockToAir(bp);
+                            }
+                            mass += effective;
+                            massChanged = true;
+                        }
+                    }
                 }
             }
         }

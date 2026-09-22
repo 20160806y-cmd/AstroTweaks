@@ -11,14 +11,34 @@ public final class BlackHoleUtils {
     /** Hard cap for gravity scan box (per user req) */
     public static final double MAX_GRAVITY_RANGE = 128.0D;
     /** Block capture radius cap - same constant as gravity per user req (perf limited) */
-    public static final double MAX_BLOCK_CAPTURE_RANGE = 32.0D; // 128 would be 17M checks/tick, cap for perf
+    public static final double MAX_BLOCK_CAPTURE_RANGE = 64.0D; // 128 would be 17M checks/tick, cap for perf
+    // проверки блоков в радиусе можно сделать более "умными", например, кешировать позицию где уже был съеден блок и проверять её только через несколько тиков 
+    // также можно для блоков которые несколько чеков подряд являются воздухом снижать приоритет проверок, чтобы не тратить вычисления на пустоту
+    // так же можно кешировать и блоки, которые сейчас невозможно съесть, и откладывать их проверку на несколько тиков (так как масса ЧД не меняется так быстро, чтобы проверка одного и того же блока так часто могла имать смысл)
+    // 
 
     // Horizon: R_h = C * mass^E ; v3: -25% base (0.18*m^0.22): 200->0.58 ; 1000->0.82 ; 5000->1.17
-    public static final double H_SCALE = 0.18D;
-    public static final double H_EXP = 0.22D;
+    public static final double H_SCALE = 0.16D;
+    public static final double H_EXP = 0.23D;
 
-    /** Halo delta: first ring = horizon+delta, second = halo1+delta */
+    /** Halo thickness base formula: halo = 0.25 * horizon^0.602 (1->0.25, 10->1.0) */
+    public static double getHaloThickness(double horizon) {
+        if (horizon <= 0) return 0.25D;
+        double h = 0.25D * Math.pow(horizon, 0.60206D);
+        if (h < 0.12D) h = 0.12D;
+        if (h > 1.8D) h = 1.8D;
+        return h;
+    }
+    /** Legacy constant for compat - now computed */
     public static final double HALO_DELTA = 0.35D;
+
+    /** Blocks per block-eat cycle (every 5 ticks). Configurable */
+    public static int BLOCKS_PER_TICK = 32;
+    /** Entity blacklist for capture */
+    public static final java.util.Set<Class<? extends net.minecraft.entity.Entity>> ENTITY_BLACKLIST = new java.util.HashSet<>();
+    static {
+        ENTITY_BLACKLIST.add(net.minecraft.entity.passive.EntitySquid.class);
+    }
 
     /** Default mass for newly placed black hole */
     public static final double DEFAULT_MASS = 1000.0D;
@@ -26,7 +46,7 @@ public final class BlackHoleUtils {
     /** Mass delta per absorption */
     public static final double MASS_PER_ITEM = 1.0D;
     public static final double MASS_PER_ENTITY = 5.0D;
-    public static final double MASS_PER_XP = 1.0D;
+    public static final double MASS_PER_XP = 0.5D;
 
     public static double getGravityRange(double mass) {
         if (mass <= 0) return 0;
