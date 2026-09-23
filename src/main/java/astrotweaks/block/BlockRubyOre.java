@@ -48,7 +48,7 @@ public class BlockRubyOre {
 			setUnlocalizedName("ruby_ore");
 			setSoundType(SoundType.STONE);
 			setHarvestLevel("pickaxe", 2);
-			setHardness(5F);
+			setHardness(3.0F);
 			setResistance(15F);
 			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 		}

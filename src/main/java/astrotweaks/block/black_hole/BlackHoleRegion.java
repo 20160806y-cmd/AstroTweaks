@@ -88,11 +88,13 @@ public class BlackHoleRegion {
     }
 
     public void addDeferred(int localIdx) {
+        if (localIdx < 0 || localIdx >= VOLUME) return;
         if (isDeferred == null) {
             isDeferred = new boolean[VOLUME];
             deferred = new short[VOLUME];
         }
         if (isDeferred[localIdx]) return;
+        if (deferredCount >= VOLUME) return; // safety: region already full
         isDeferred[localIdx] = true;
         deferred[deferredCount++] = (short) localIdx;
     }

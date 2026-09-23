@@ -46,7 +46,7 @@ public class BlockQuartzOreStone {
 			setUnlocalizedName("quartz_ore_stone");
 			setSoundType(SoundType.STONE);
 			setHarvestLevel("pickaxe", 1);
-			setHardness(5F);
+			setHardness(3.0F);
 			setResistance(15F);
 			setCreativeTab(astrotweaks.creativetab.ATCreativeTabs.ASTRO_TWEAKS_CT);
 		}

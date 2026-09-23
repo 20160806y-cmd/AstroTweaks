@@ -18,8 +18,8 @@ public final class BlackHoleUtils {
     // 
 
     // Horizon: R_h = C * mass^E ; v3: -25% base (H_SCALE*m^H_EXP): 200->0.58 ; 1000->0.82 ; 5000->1.17
-    public static final double H_SCALE = 0.16D;
-    public static final double H_EXP = 0.22D;
+    public static final double H_SCALE = 0.08D;
+    public static final double H_EXP = 0.28D;
 
     /** Halo thickness base formula: halo = 0.25 * horizon^0.602 (1->0.25, 10->1.0) */
     public static double getHaloThickness(double horizon) {
@@ -33,7 +33,7 @@ public final class BlackHoleUtils {
     public static final double HALO_DELTA = 0.35D;
 
     /** Blocks per block-eat cycle (every 5 ticks). Configurable */
-    public static int BLOCKS_PER_TICK = 16;
+    //public static int BLOCKS_PER_TICK = 16;
     /** Entity blacklist for capture */
     public static final java.util.Set<Class<? extends net.minecraft.entity.Entity>> ENTITY_BLACKLIST = new java.util.HashSet<>();
     static {
@@ -47,6 +47,7 @@ public final class BlackHoleUtils {
     public static final double MASS_PER_ITEM = 1.0D;
     public static final double MASS_PER_ENTITY = 5.0D;
     public static final double MASS_PER_XP = 0.5D;
+    public static final double MASS_PER_PLAYER = 20.0D;
     /** Mass gained per liquid block eaten. Cheap — liquids have no structural cost. */
     public static final double MASS_PER_LIQUID = 0.5D;
 

@@ -69,6 +69,7 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
         double thickness = BlackHoleUtils.getHaloThickness(horizon);
         double halo1 = horizon + thickness;
         double halo2 = halo1 + thickness;
+        double halo3 = halo2 + thickness*0.5;
         GlStateManager.depthMask(false);
         GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
         if (sh != null) {
@@ -76,10 +77,13 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
             BlackHoleRenderHelper.drawSphere(halo1, 0xFFFFFF, 1.0f, 32, 32);
             sh.setFloat("uMode", 2.0f);
             BlackHoleRenderHelper.drawSphere(halo2, 0xFFFFFF, 1.0f, 32, 32);
+            sh.setFloat("uMode", 3.0f);
+            BlackHoleRenderHelper.drawSphere(halo3, 0xFFFFFF, 1.0f, 32, 32);
             BlackHoleShader.stop();
         } else {
-            BlackHoleRenderHelper.drawSphere(halo1, 0x000000, 0.32f, 16, 16);
-            BlackHoleRenderHelper.drawSphere(halo2, 0x000000, 0.175f, 16, 16);
+            BlackHoleRenderHelper.drawSphere(halo1, 0x000000, 0.3f, 16, 16);
+            BlackHoleRenderHelper.drawSphere(halo2, 0x000000, 0.15f, 16, 16);
+            BlackHoleRenderHelper.drawSphere(halo3, 0x000000, 0.05f, 16, 16);
         }
 
         // Restore state via popAttrib (covers blend/texture/depth) + manual

@@ -19,16 +19,24 @@ void main(){
     float alpha = pow(fresnel, 2.0);
     float ang = atan(vPos.z, vPos.x);
     float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0);
-    alpha *= 0.65 * shimmer;
+    alpha *= 0.4 * shimmer;
     if (alpha < 0.003) discard;
+    gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
+    return;
+  } else if (uMode < 2.5) {
+    float alpha = pow(fresnel, 2.0);
+    float ang = atan(vPos.z, vPos.x);
+    float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0 + 1.5);
+    alpha *= 0.2 * shimmer;
+    if (alpha < 0.002) discard;
     gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
     return;
   } else {
     float alpha = pow(fresnel, 2.0);
     float ang = atan(vPos.z, vPos.x);
-    float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0 + 1.5);
-    alpha *= 0.325 * shimmer;
-    if (alpha < 0.0025) discard;
+    float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0 + 2.5);
+    alpha *= 0.10 * shimmer;
+    if (alpha < 0.0005) discard;
     gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
     return;
   }

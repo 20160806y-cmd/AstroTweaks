@@ -98,7 +98,7 @@ public class ModVariables {
     public static double bush2gen = 1.9; // swamp
     public static double bush3gen = 1.7; // Taiga
     public static double bush4gen = 1.8; // Jungle
-    public static double bush5gen = 1.0; // siren
+    public static double bush5gen = 0.9; // siren
     public static double bush6gen = 0.5;// Plains
     public static double bush7gen = 1.6; // Jungle
     public static double fern1gen = 2.3;

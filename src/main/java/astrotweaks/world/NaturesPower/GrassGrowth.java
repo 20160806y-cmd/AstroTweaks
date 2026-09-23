@@ -368,7 +368,7 @@ public class GrassGrowth {
 		if ((tallCount > 0 || doubleCount > 0 || tripleCount > 0) && tallCount < GRASS_DENSITY && Sum < 25) {
 			BlockPos above = grassPos.up();
 			if (world.isAirBlock(above)) {
-				world.setBlockState(above, TALL_GRASS, 2);
+				world.setBlockState(above, TALL_GRASS, 3);
 				return;
 			}
 		}

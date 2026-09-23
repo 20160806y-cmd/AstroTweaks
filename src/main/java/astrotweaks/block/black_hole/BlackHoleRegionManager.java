@@ -1,5 +1,8 @@
 package astrotweaks.block.black_hole;
 
+import net.minecraft.block.BlockBush;
+import net.minecraft.block.BlockVine;
+import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.math.BlockPos;
@@ -11,9 +14,9 @@ import java.util.*;
 public class BlackHoleRegionManager {
 
     /** Total block reads allowed per tick for this black hole. */
-    public static final int BUDGET_PER_TICK = 1500;
-    /** Only process wake-ups once mass grew by this much since last check. */
-    public static final double MASS_WAKE_THRESHOLD = 100.0;
+    public static final int BUDGET_PER_TICK = 1024;
+    /** Legacy threshold - now unused, wake checked every tick vs wakeMass. Kept for compat. */
+    public static final double MASS_WAKE_THRESHOLD = 0.0;
 
     private final BlackHoleTileEntity te;
     private final Map<Long, BlackHoleRegion> allRegions = new HashMap<>();
@@ -39,14 +42,24 @@ public class BlackHoleRegionManager {
         if (!seeded) { seeded = true; seed(); }
 
         double mass = te.getMass();
-        if (mass - massAtLastWake > MASS_WAKE_THRESHOLD) {
+        // Wake deferred regions as soon as mass reaches their wakeMass.
+        // No delta-threshold: guarantees EMPTY=only air/unbreakable and liquids
+        // are rechecked immediately when BH grows enough to pull them (accel>0.1).
+        // PriorityQueue peek is O(1), so per-tick cost is negligible.
+        while (!waiting.isEmpty() && waiting.peek().wakeMass <= mass) {
+            BlackHoleRegion r = waiting.poll();
+            if (r.state != BlackHoleRegion.STATE_WAITING) continue; // lazy removal via onBlockPlaced
+            r.state = BlackHoleRegion.STATE_RECHECKING;
+            r.recheckCursor = 0;
+            if (!active.contains(r)) active.add(r);
+            expandFrontier(r);
+        }
+        // Frontier expansion for still-waiting regions when mass grew
+        // (covers case where new mass makes a neighbour's nearDist <= MAX)
+        if (mass > massAtLastWake) {
             massAtLastWake = mass;
-            while (!waiting.isEmpty() && waiting.peek().wakeMass <= mass) {
-                BlackHoleRegion r = waiting.poll();
-                if (r.state != BlackHoleRegion.STATE_WAITING) continue; // already woken via event (lazy removal)
-                r.state = BlackHoleRegion.STATE_RECHECKING;
-                r.recheckCursor = 0;
-                if (!active.contains(r)) active.add(r);
+            for (BlackHoleRegion r : new ArrayList<>(waiting)) {
+                expandFrontier(r);
             }
         }
 
@@ -103,11 +116,19 @@ public class BlackHoleRegionManager {
             IBlockState st = world.getBlockState(bp);
             if (st.getBlock() == Blocks.AIR || st.getBlock() instanceof BlackHoleBlock) continue;
 
-            // --- Liquids: always eat. They have no structural resistance. ---
-            if (st.getMaterial().isLiquid()) {
-                eat(world, bp, true);
-                te.addMass(BlackHoleUtils.MASS_PER_LIQUID);
-                massChanged = true;
+            // --- Liquids & vegetation: eat if accel > 0.1 or inside horizon, else defer (never EMPTY) ---
+            if (st.getMaterial().isLiquid() || isVegetation(st)) {
+                double bdist = dist(bp, cx, cy, cz);
+                double horizon = BlackHoleUtils.getHorizonRadius(te.getMass());
+                boolean insideHorizon = bdist <= horizon + 0.5;
+                double accel = BlackHoleUtils.getAcceleration(te.getMass(), bdist);
+                if (insideHorizon || accel > 0.1) {
+                    eat(world, bp, true);
+                    te.addMass(BlackHoleUtils.MASS_PER_LIQUID);
+                    massChanged = true;
+                } else {
+                    r.addDeferred(idx); // keep region WAITING, not EMPTY
+                }
                 continue;
             }
 
@@ -168,12 +189,19 @@ public class BlackHoleRegionManager {
                 continue;
             }
 
-            // --- Liquids: always eat, and drop from the deferred list. ---
-            if (st.getMaterial().isLiquid()) {
-                eat(world, bp, true);
-                te.addMass(BlackHoleUtils.MASS_PER_LIQUID);
-                massChanged = true;
-                r.markDeferredRemoved(r.recheckCursor);
+            // --- Liquids & vegetation: eat if accel > 0.1 or inside horizon, else keep deferred ---
+            if (st.getMaterial().isLiquid() || isVegetation(st)) {
+                double bdist = dist(bp, cx, cy, cz);
+                double horizon = BlackHoleUtils.getHorizonRadius(te.getMass());
+                boolean insideHorizon = bdist <= horizon + 0.5;
+                double accel = BlackHoleUtils.getAcceleration(te.getMass(), bdist);
+                if (insideHorizon || accel > 0.1) {
+                    eat(world, bp, true);
+                    te.addMass(BlackHoleUtils.MASS_PER_LIQUID);
+                    massChanged = true;
+                    r.markDeferredRemoved(r.recheckCursor);
+                }
+                // else: keep in deferred -> remains WAITING until mass grows
                 r.recheckCursor++;
                 continue;
             }
@@ -228,7 +256,9 @@ public class BlackHoleRegionManager {
     }
 
     private BlackHoleRegion getOrCreateRegion(int ox, int oy, int oz) {
+        int s = BlackHoleRegion.SIZE;
         if (oy < 0 || oy >= 256) return null;
+
         long key = packKey(ox, oy, oz);
         BlackHoleRegion r = allRegions.get(key);
         if (r != null) return r;
@@ -236,10 +266,19 @@ public class BlackHoleRegionManager {
         double cx = te.getPos().getX() + 0.5;
         double cy = te.getPos().getY() + 0.5;
         double cz = te.getPos().getZ() + 0.5;
-        double rx = ox + 4, ry = oy + 4, rz = oz + 4;
-        double dx = rx - cx, dy = ry - cy, dz = rz - cz;
-        double d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (d > BlackHoleUtils.MAX_BLOCK_CAPTURE_RANGE + BlackHoleRegion.SIZE) return null;
+
+        // Smoothing: use closest point of region cube instead of center.
+        // This removes 8x8 cube steps at the MAX boundary.
+        // Region creation is gated only by MAX_BLOCK_CAPTURE_RANGE (hard cap),
+        // not by current reachSoft - per-block canEat inside the region gives
+        // the true spherical front (radial sortedOrder) without quantization.
+        double nearX = Math.max(ox, Math.min(cx, ox + s));
+        double nearY = Math.max(oy, Math.min(cy, oy + s));
+        double nearZ = Math.max(oz, Math.min(cz, oz + s));
+        double ndx = nearX - cx, ndy = nearY - cy, ndz = nearZ - cz;
+        double nearDist = Math.sqrt(ndx * ndx + ndy * ndy + ndz * ndz);
+
+        if (nearDist > BlackHoleUtils.MAX_BLOCK_CAPTURE_RANGE) return null;
 
         r = new BlackHoleRegion(ox, oy, oz, cx, cy, cz);
         allRegions.put(key, r);
@@ -261,8 +300,21 @@ public class BlackHoleRegionManager {
     // =================================================================
     /** Called when a block is placed / liquid appears in the world. */
     public void onBlockPlaced(BlockPos bp) {
-        BlackHoleRegion r = allRegions.get(packKeyForBlock(bp));
-        if (r == null) return; // will be picked up when the frontier reaches it
+        long key = packKeyForBlock(bp);
+        BlackHoleRegion r = allRegions.get(key);
+        if (r == null) {
+            // Region not yet known (frontier hasn't reached it). Try to create it
+            // if it's within MAX range - otherwise frontier will create it later.
+            int s = BlackHoleRegion.SIZE;
+            int ox = Math.floorDiv(bp.getX(), s) * s;
+            int oy = Math.floorDiv(bp.getY(), s) * s;
+            int oz = Math.floorDiv(bp.getZ(), s) * s;
+            r = getOrCreateRegion(ox, oy, oz);
+            if (r == null) return;
+            if (!active.contains(r)) active.add(r);
+            // New region will scan and pick the block up in sorted order
+            return;
+        }
 
         if (r.state == BlackHoleRegion.STATE_EMPTY) {
             r.resetToScanning();
@@ -271,14 +323,58 @@ public class BlackHoleRegionManager {
             int lx = bp.getX() - r.originX;
             int ly = bp.getY() - r.originY;
             int lz = bp.getZ() - r.originZ;
+            if (lx < 0 || lx >= BlackHoleRegion.SIZE || ly < 0 || ly >= BlackHoleRegion.SIZE || lz < 0 || lz >= BlackHoleRegion.SIZE) return;
             int idx = (lz << 6) | (ly << 3) | lx;
-            r.addDeferred(idx);
+            // Avoid duplicate deferral, but ensure recheck
+            if (r.isDeferred != null && idx >= 0 && idx < r.isDeferred.length && r.isDeferred[idx]) {
+                // already deferred
+            } else {
+                r.addDeferred(idx);
+            }
+            // Recompute wakeMass for the new block - old wakeMass may be huge
+            // (hard block) and the new dirt should wake earlier.
+            double bdist = dist(bp, te.getPos().getX() + 0.5, te.getPos().getY() + 0.5, te.getPos().getZ() + 0.5);
+            World world = te.getWorld();
+            if (world != null && world.isBlockLoaded(bp)) {
+                try {
+                    IBlockState st = world.getBlockState(bp);
+                    boolean veg = isVegetation(st);
+                    if (!st.getMaterial().isLiquid() && !veg) {
+                        float h = st.getBlock().getBlockHardness(st, world, bp);
+                        if (h >= 0) {
+                            double eff = (h == 0 ? 0.1 : h);
+                            double mAccel = eff * bdist * bdist / BlackHoleUtils.G;
+                            double mHorizon = BlackHoleUtils.massForHorizon(bdist - 0.5);
+                            double need = Math.min(mAccel, mHorizon);
+                            if (need < r.wakeMass) r.wakeMass = need;
+                        }
+                    } else {
+                        // Liquids/vegetation never stay long in deferred, wake with 0.1
+                        double eff = 0.1;
+                        double mAccel = eff * bdist * bdist / BlackHoleUtils.G;
+                        double mHorizon = BlackHoleUtils.massForHorizon(bdist - 0.5);
+                        double need = Math.min(mAccel, mHorizon);
+                        if (need < r.wakeMass) r.wakeMass = need;
+                    }
+                } catch (Exception ignored) {}
+            }
             r.state = BlackHoleRegion.STATE_RECHECKING;
             r.recheckCursor = 0;
             if (!active.contains(r)) active.add(r);
-            // Not removed from `waiting` — the polling loop in tick() will skip it (lazy removal).
+            // Not removed from `waiting` — lazy removal in tick()
+        } else {
+            // SCANNING или RECHECKING: sortedOrder мог уже пройти эту позицию,
+            // либо его вовсе нет. Явно кладём блок в deferred.
+            int lx = bp.getX() - r.originX;
+            int ly = bp.getY() - r.originY;
+            int lz = bp.getZ() - r.originZ;
+            if (lx < 0 || lx >= BlackHoleRegion.SIZE || ly < 0 || ly >= BlackHoleRegion.SIZE || lz < 0 || lz >= BlackHoleRegion.SIZE) return;
+            int idx = (lz << 6) | (ly << 3) | lx;
+            r.addDeferred(idx);
+            // Для SCANNING: finishScan посчитает wakeMass уже с учётом этого блока.
+            // Для RECHECKING: запись встанет в конец deferred, и recheckCursor её дойдёт
+            // (recheckCursor <= deferredCount всегда, потому что мы только что увеличили count).
         }
-        // SCANNING / RECHECKING: it'll be picked up on its own.
     }
 
     /** Called when a chunk finishes loading. Resets any regions in that chunk. */
@@ -291,10 +387,24 @@ public class BlackHoleRegionManager {
                 for (int oy = 0; oy < 256; oy += BlackHoleRegion.SIZE) {
                     BlackHoleRegion r = allRegions.get(packKey(ox, oy, oz));
                     if (r == null) continue;
-                    // Blocks in this chunk may have changed while unloaded. Rescan.
+                    // While chunk was unloaded, BH mass and world blocks may have
+                    // changed arbitrarily. Need to handle both EMPTY and WAITING:
+                    // - EMPTY: full rescan (new blocks may have appeared)
+                    // - WAITING: deferred list is stale (new blocks missed, old
+                    //   blocks may be air/hard). Move to RECHECKING and recompute
+                    //   wakeMass instead of full rescan to keep budget low.
                     if (r.state == BlackHoleRegion.STATE_EMPTY) {
                         r.resetToScanning();
                         if (!active.contains(r)) active.add(r);
+                    } else if (r.state == BlackHoleRegion.STATE_WAITING) {
+                        // Stale deferred - force recheck; if chunk was modified
+                        // heavily, compact will drop air entries and recompute
+                        // wakeMass will be updated after the recheck pass.
+                        r.state = BlackHoleRegion.STATE_RECHECKING;
+                        r.recheckCursor = 0;
+                        r.wakeMass = computeWakeMass(r);
+                        if (!active.contains(r)) active.add(r);
+                        // lazy removal from waiting
                     }
                 }
             }
@@ -330,8 +440,8 @@ public class BlackHoleRegionManager {
             float hardness;
             try { hardness = st.getBlockHardness(world, bp); } catch (Exception e) { continue; }
             if (hardness < 0) continue;
-            boolean liquid = st.getMaterial().isLiquid();
-            double effective = liquid ? 0.5 : (hardness == 0 ? 0.1 : hardness);
+            boolean liquid = st.getMaterial().isLiquid() || isVegetation(st);
+            double effective = liquid ? 0.1 : (hardness == 0 ? 0.1 : hardness);
             double bdist = dist(bp, cx, cy, cz);
             // Either accel becomes enough, or the horizon grows to swallow it.
             double mAccel = effective * bdist * bdist / BlackHoleUtils.G;
@@ -340,6 +450,17 @@ public class BlackHoleRegionManager {
             if (m < minMass) minMass = m;
         }
         return minMass;
+    }
+
+    /** Vegetation that should be absorbed like liquids (hardness ~0.1): tallgrass, flowers, bushes, vine etc. */
+    public static boolean isVegetation(IBlockState st) {
+        if (st == null) return false;
+        Material m = st.getMaterial();
+        if (m == Material.PLANTS || m == Material.VINE) return true;
+        net.minecraft.block.Block b = st.getBlock();
+        if (b instanceof BlockBush) return true;
+        if (b instanceof BlockVine) return true;
+        return false;
     }
 
     private static double dist(BlockPos bp, double cx, double cy, double cz) {

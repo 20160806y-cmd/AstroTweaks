@@ -142,16 +142,24 @@ public class BlackHoleShader {
             "    float alpha = pow(fresnel, 2.0);\n" +
             "    float ang = atan(vPos.z, vPos.x);\n" +
             "    float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0);\n" +
-            "    alpha *= 0.65 * shimmer;\n" +
+            "    alpha *= 0.4 * shimmer;\n" +
             "    if (alpha < 0.003) discard;\n" +
+            "    gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);\n" +
+            "    return;\n" +
+            "  } else if (uMode < 2.5) {\n" +
+            "    float alpha = pow(fresnel, 2.0);\n" +
+            "    float ang = atan(vPos.z, vPos.x);\n" +
+            "    float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0 + 1.5);\n" +
+            "    alpha *= 0.24 * shimmer;\n" +
+            "    if (alpha < 0.002) discard;\n" +
             "    gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);\n" +
             "    return;\n" +
             "  } else {\n" +
             "    float alpha = pow(fresnel, 2.0);\n" +
             "    float ang = atan(vPos.z, vPos.x);\n" +
-            "    float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0 + 1.5);\n" +
-            "    alpha *= 0.325 * shimmer;\n" + // 50% more transparent than first ring
-            "    if (alpha < 0.0025) discard;\n" +
+            "    float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0 + 2.5);\n" +
+            "    alpha *= 0.14 * shimmer;\n" +
+            "    if (alpha < 0.0001) discard;\n" +
             "    gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);\n" +
             "    return;\n" +
             "  }\n" +

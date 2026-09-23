@@ -119,7 +119,8 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
     }
 
     private void tickEntities() {
-        int parity = (int)(world.getTotalWorldTime() & 1);
+        int parity2 = (int)(world.getTotalWorldTime() & 1);
+        int parity4 = (int)(world.getTotalWorldTime() & 3);
 
         double horizon   = BlackHoleUtils.getHorizonRadius(mass);
         double gravRange = BlackHoleUtils.getGravityRange(mass);
@@ -134,11 +135,21 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
 
         List<Entity> entities = world.getEntitiesWithinAABB(Entity.class, aabb, e ->
                 e != null && !e.isDead
-                && (e.getEntityId() & 1) == parity
                 && !(e instanceof EntityPlayer && ((EntityPlayer)e).isSpectator()));
 
         boolean massChanged = false;
         for (Entity e : entities) {
+            boolean isPlayer = e instanceof EntityPlayerMP;
+            // Stride by type: items/XP across 4 ticks, others across 2 ticks
+            boolean isItemOrXp = e instanceof EntityItem || e instanceof EntityXPOrb;
+            if (!isPlayer) {
+                if (isItemOrXp) {
+                    if ((e.getEntityId() & 3) != parity4) continue;
+                } else {
+                    if ((e.getEntityId() & 1) != parity2) continue;
+                }
+            }
+
             // Blacklist
             boolean blacklisted = false;
             for (Class<? extends Entity> cls : BlackHoleUtils.ENTITY_BLACKLIST)
@@ -154,14 +165,35 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
             double ey = e.posY + e.height * 0.5;
             if (e instanceof EntityItem || e instanceof EntityXPOrb) ey = e.posY + 0.25;
 
+            // Compensate stride: items/XP run every 4 ticks (x4), others every 2 ticks (x2)
+            double stride = isItemOrXp ? 4.0 : 2.0;
+
             double dx = cx - e.posX;
             double dy = cy - ey;
             double dz = cz - e.posZ;
             double dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
             if (dist < 0.05) dist = 0.05;
 
-            // Absorption
-            if (dist <= horizon) {
+            double accel = BlackHoleUtils.getAcceleration(mass, dist);
+            boolean insideHorizon = dist <= horizon;
+
+            // --- Suffocation (applied BEFORE horizon block, so guaranteed inside) ---
+            // Threshold lowered 0.5 -> 0.4 per request.
+            // Inside horizon -> always true for any living entity. Creative /
+            // spectator players were filtered out above, so gm 0/2 are covered.
+            if (e instanceof EntityLivingBase && (insideHorizon || accel > 0.4)) {
+                EntityLivingBase living = (EntityLivingBase) e;
+                // ~1.5 air units per real tick, scaled by stride so faster/slower
+                // tick rates give the same effective drain rate.
+                int airDelta = (int) Math.max(1, Math.round(1.5 * stride));
+                int air = living.getAir() - airDelta;
+                if (air < -20) { air = 0; living.attackEntityFrom(DamageSource.DROWN, 1.0F); }
+                living.setAir(air);
+                if (e.isDead) continue;
+            }
+
+            // --- Horizon absorption ---
+            if (insideHorizon) {
                 try {
                     if (e instanceof EntityItem) {
                         int count = Math.max(1, ((EntityItem) e).getItem().getCount());
@@ -174,7 +206,7 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
                         massChanged = true;
                     } else if (e instanceof EntityPlayer) {
                         e.attackEntityFrom(DamageSource.OUT_OF_WORLD, Float.MAX_VALUE);
-                        if (e.isDead) { mass += BlackHoleUtils.MASS_PER_ENTITY; massChanged = true; }
+                        if (e.isDead) { mass += BlackHoleUtils.MASS_PER_PLAYER; massChanged = true; }
                     } else {
                         try { e.attackEntityFrom(DamageSource.OUT_OF_WORLD, Float.MAX_VALUE); }
                         catch (Exception ignored) {}
@@ -187,20 +219,10 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
             }
 
             if (dist > gravRange) continue;
-
-            double accel = BlackHoleUtils.getAcceleration(mass, dist);
             if (accel < BlackHoleUtils.MIN_ACCEL) continue;
 
-            // Suffocation only on even ticks to avoid double-draining (compensated: -3 per 2 ticks vs -6 per tick)
-            if (accel > 0.5 && (e instanceof EntityLivingBase)) {
-                EntityLivingBase living = (EntityLivingBase) e;
-                int air = living.getAir() - 3;
-                if (air < -20) { air = 0; living.attackEntityFrom(DamageSource.DROWN, 1.0F); }
-                living.setAir(air);
-            }
-
-            // Double accel to compensate for 2-tick stride
-            double maxAccel = Math.min(accel, dist * 0.45) * 2.0;
+            // --- Motion ---
+            double maxAccel = Math.min(accel, dist * 0.45) * stride;
             if (maxAccel > 3.0) maxAccel = 3.0;
 
             double nx = dx / dist, ny = dy / dist, nz = dz / dist;
@@ -216,13 +238,15 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
             }
             e.fallDistance = 0;
             e.velocityChanged = true;
+
             if (e instanceof EntityPlayerMP) {
-                // Only sync if velocity actually changed enough
-                if (Math.abs(nx*maxAccel*0.35) + Math.abs(ny*maxAccel*0.35) + Math.abs(nz*maxAccel*0.35) > 0.02) {
-                    try { ((EntityPlayerMP) e).connection.sendPacket(
-                            new net.minecraft.network.play.server.SPacketEntityVelocity(e)); }
-                    catch (Exception ignored) {}
-                }
+                // Players aren't covered by vanilla entity velocity tracking, and
+                // the local client doesn't interpolate server-set motion the way
+                // it does for remote entities. Push every processed tick.
+                // Threshold removed so tiny accumulations aren't silently dropped.
+                try {
+                    ((EntityPlayerMP) e).connection.sendPacket(new net.minecraft.network.play.server.SPacketEntityVelocity(e));
+                } catch (Exception ignored) {}
             }
         }
         if (massChanged) { markDirty(); syncCooldown = 0; }

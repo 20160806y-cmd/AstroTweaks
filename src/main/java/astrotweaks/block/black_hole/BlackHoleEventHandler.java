@@ -31,10 +31,10 @@ public class BlackHoleEventHandler {
         World world = event.getWorld();
         if (world == null || world.isRemote) return;
 
-        // Fire only when the notified block itself is a liquid.
-        // Covers: bucket place (setBlockState → notify) and water spreading (updateFlow → notify).
+        // Fire for liquids and vegetation (tallgrass, flowers, bushes, vine etc.).
+        // Covers: bucket place (setBlockState → notify), water spreading, and vegetation growth.
         IBlockState state = world.getBlockState(event.getPos());
-        if (!state.getMaterial().isLiquid()) return;
+        if (!state.getMaterial().isLiquid() && !BlackHoleRegionManager.isVegetation(state)) return;
 
         BlockPos pos = event.getPos();
         for (TileEntity te : world.loadedTileEntityList) {
