@@ -4,6 +4,8 @@ import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 
+
+
 // Minimal sphere helper ported from AE2's RenderHelper (GL POSITION+COLOR)
 public final class BlackHoleRenderHelper {
     private BlackHoleRenderHelper() {}

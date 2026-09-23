@@ -12,6 +12,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+
+
 public class BlackHoleShader {
     private final int programId;
     private final Map<String, Integer> uniformCache = new HashMap<>();

@@ -11,6 +11,8 @@ import net.minecraft.world.World;
 import javax.annotation.Nullable;
 import java.util.List;
 
+
+
 public class BlackHoleItemBlock extends ItemBlock {
     public BlackHoleItemBlock(Block block) {
         super(block);
@@ -32,7 +34,7 @@ public class BlackHoleItemBlock extends ItemBlock {
     public String getItemStackDisplayName(ItemStack stack) {
         if (stack.hasTagCompound() && stack.getTagCompound().hasKey(BlackHoleTileEntity.TAG_MASS)) {
             double m = stack.getTagCompound().getDouble(BlackHoleTileEntity.TAG_MASS);
-            return super.getItemStackDisplayName(stack) + " [" + (int)m + "]";
+            return super.getItemStackDisplayName(stack) + " [" + String.format("%.0f", m) + "]";
         }
         return super.getItemStackDisplayName(stack);
     }

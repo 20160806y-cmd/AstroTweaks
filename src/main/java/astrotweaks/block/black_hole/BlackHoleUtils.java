@@ -2,6 +2,8 @@ package astrotweaks.block.black_hole;
 
 import net.minecraft.block.material.Material;
 
+
+
 public final class BlackHoleUtils {
 
     private BlackHoleUtils() {}
@@ -44,28 +46,25 @@ public final class BlackHoleUtils {
     /** Minimal displacement per tick to be applied */
     public static final double MIN_ACCEL = 0.001D;
     /** Hard cap for gravity scan box (per user req) */
-    public static final double MAX_GRAVITY_RANGE = 128.0D;
+    public static final double MAX_GRAVITY_RANGE = 150.0D;
     /** Block capture radius cap - same constant as gravity per user req (perf limited) */
-    public static final double MAX_BLOCK_CAPTURE_RANGE = 96.0D;
-    // проверки блоков в радиусе можно сделать более "умными", например, кешировать позицию где уже был съеден блок и проверять её только через несколько тиков 
-    // также можно для блоков которые несколько чеков подряд являются воздухом снижать приоритет проверок, чтобы не тратить вычисления на пустоту
-    // так же можно кешировать и блоки, которые сейчас невозможно съесть, и откладывать их проверку на несколько тиков (так как масса ЧД не меняется так быстро, чтобы проверка одного и того же блока так часто могла имать смысл)
-    // 
+    public static final double MAX_BLOCK_CAPTURE_RANGE = 128.0D;
+
 
     // Horizon: R_h = C * mass^E ; v3: -25% base (H_SCALE*m^H_EXP): 200->0.58 ; 1000->0.82 ; 5000->1.17
-    public static final double H_SCALE = 0.08D;
-    public static final double H_EXP = 0.28D;
+    public static final double H_SCALE = 0.05D;
+    public static final double H_EXP = 0.3D;
 
     /** Halo thickness base formula: halo = 0.25 * horizon^0.602 (1->0.25, 10->1.0) */
     public static double getHaloThickness(double horizon) {
-        if (horizon <= 0) return 0.25D;
-        double h = 0.25D * Math.pow(horizon, 0.60206D);
+        if (horizon <= 0) return 0.2D;
+        double h = 0.2D * Math.pow(horizon, 0.60206D);
         if (h < 0.12D) h = 0.12D;
         if (h > 1.8D) h = 1.8D;
         return h;
     }
     /** Legacy constant for compat - now computed */
-    public static final double HALO_DELTA = 0.35D;
+    //public static final double HALO_DELTA = 0.35D;
 
     /** Blocks per block-eat cycle (every 5 ticks). Configurable */
     //public static int BLOCKS_PER_TICK = 16;
@@ -73,16 +72,57 @@ public final class BlackHoleUtils {
     public static final java.util.Set<Class<? extends net.minecraft.entity.Entity>> ENTITY_BLACKLIST = new java.util.HashSet<>();
     static {
         ENTITY_BLACKLIST.add(net.minecraft.entity.passive.EntitySquid.class);
+        ENTITY_BLACKLIST.add(net.minecraft.entity.boss.EntityDragon.class);
     }
 
     /** Default mass for newly placed black hole */
-    public static final double DEFAULT_MASS = 1000.0D;
+    public static final double DEFAULT_MASS = 5000.0D;
+
+    /** Hard floor for mass (evaporation and drains never go below this). */
+    public static final double MIN_MASS = 1.0D;
+    /**
+     * Hard cap for mass. Clamp, not reset: values above (e.g. huge NBT)
+     * saturate here, values below MIN_MASS saturate at the floor.
+     * Gravity range caps at 128 anyway (~32768 mass); horizon keeps growing
+     * up to ~3.6e8 mass, so this cap only bounds runaway growth.
+     */
+    public static final double MAX_MASS = 1.0E12D;
+
+    /**
+     * Evaporation: mass lost per tick, inversely proportional to mass.
+     * Halves every decade: 1e4 -&gt; 32, 1e5 -&gt; 16, 1e6 -&gt; 8, ...
+     * loss(m) = EVAP_BASE / m^EVAP_EXP, EVAP_EXP = log10(2).
+     */
+    public static final double EVAP_BASE = 512.0D;
+    public static final double EVAP_EXP = 0.30103D / 2;
+
+    public static double getEvaporationPerTick(double mass) {
+        if (mass < MIN_MASS)  return 0.0D; // floor or NaN: nothing to evaporate
+        double loss = EVAP_BASE / Math.pow(mass, EVAP_EXP);
+        double maxLoss = mass - MIN_MASS;
+        return loss < maxLoss ? loss : maxLoss;
+    }
+
+    /**
+     * BH-vs-BH mass tug rate. A hole of mass M drains
+     * TUG_RATE * M * (1 + grav) per tick from every other hole inside its
+     * gravity range, where grav is its own acceleration at that distance.
+     * The drained amount is credited to the drainer (conserved transfer).
+     */
+    public static final double TUG_RATE = 0.0001D;
+
+    /** Clamp any mass value into [MIN_MASS, MAX_MASS] (NaN-safe: NaN -> floor). */
+    public static double clampMass(double m) {
+        if (!(m >= MIN_MASS)) return MIN_MASS;
+        if (m > MAX_MASS) return MAX_MASS;
+        return m;
+    }
 
     /** Mass delta per absorption */
     public static final double MASS_PER_ITEM = 1.0D;
-    public static final double MASS_PER_ENTITY = 5.0D;
+    public static final double MASS_PER_ENTITY = 10.0D;
     public static final double MASS_PER_XP = 0.5D;
-    public static final double MASS_PER_PLAYER = 20.0D;
+    public static final double MASS_PER_PLAYER = 25.0D;
     /** Mass gained per liquid block eaten. Cheap — liquids have no structural cost. */
     public static final double MASS_PER_LIQUID = 0.5D;
 
@@ -99,10 +139,10 @@ public final class BlackHoleUtils {
     }
 
     public static double getHorizonRadius(double mass) {
-        if (mass <= 0) return 0.25D;
+        if (mass <= 0) return 0.04D;
         double r = H_SCALE * Math.pow(mass, H_EXP);
-        if (r < 0.3D) r = 0.3D;
-        if (r > 20D) r = 20D; // Максимальный радиус ЧД
+        if (r < 0.04D) r = 0.04D;
+        if (r > 50D) r = 50D; // Максимальный радиус ЧД
         return r;
     }
 
@@ -113,16 +153,16 @@ public final class BlackHoleUtils {
      * (capture, absorption) keeps using {@link #getHorizonRadius}.
      */
     public static double getVisualHorizonRadius(double mass) {
-        if (mass <= 0) return 0.1D;
+        if (mass <= 0) return 0.04D;
         double r = H_SCALE * Math.pow(mass, H_EXP);
-        if (r < 0.1D) r = 0.1D;
-        if (r > 20D) r = 20D;
+        if (r < 0.04D) r = 0.04D;
+        if (r > 50D) r = 50D;
         return r;
     }
 
     /** Radius where accel >= hardness threshold (dynamic) */
     public static double getBlockEatRadiusByHardness(double mass, double hardness) {
-        if (mass <= 0) return 0;
+        if (mass <= 0)  return 0;
         if (hardness < 0.05) hardness = 0.1; // zero-hardness ->0.1 per req
         double r = Math.sqrt(G * mass / hardness);
         double h = getHorizonRadius(mass);
@@ -146,7 +186,7 @@ public final class BlackHoleUtils {
 
     /** Mass at which the horizon reaches radius r. Inverse of getHorizonRadius. */
     public static double massForHorizon(double r) {
-        if (r <= H_SCALE) return 1.0;
+        if (r <= H_SCALE) return H_SCALE;
         return Math.pow(r / H_SCALE, 1.0 / H_EXP);
     }
 

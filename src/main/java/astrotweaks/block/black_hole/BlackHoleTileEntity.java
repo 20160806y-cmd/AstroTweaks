@@ -16,6 +16,8 @@ import net.minecraft.util.math.AxisAlignedBB;
 
 import java.util.List;
 
+
+
 public class BlackHoleTileEntity extends TileEntity implements ITickable {
 
     public static final String TAG_MASS = "mass";
@@ -30,8 +32,7 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
     public double getMass() { return mass; }
 
     public void setMass(double m) {
-        if (m < 1) m = 1;
-        this.mass = m;
+        this.mass = BlackHoleUtils.clampMass(m);
         markDirty();
         // force sync soon
         syncCooldown = 0;
@@ -39,6 +40,18 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
 
     public void addMass(double delta) {
         setMass(this.mass + delta);
+    }
+
+    /**
+     * Continuous per-tick delta (evaporation, BH-vs-BH tug). Clamped like
+     * setMass, but does NOT force an immediate client sync — the periodic
+     * 20-tick sync covers it, otherwise every BH would spam update packets
+     * every tick.
+     */
+    public void addMassPassive(double delta) {
+        if (delta == 0.0D) return;
+        this.mass = BlackHoleUtils.clampMass(this.mass + delta);
+        markDirty();
     }
 
     @Override
@@ -51,7 +64,10 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
         if (nbt.hasKey("Mass")) {
             this.mass = nbt.getDouble("Mass");
         }
-        if (this.mass < 1) this.mass = BlackHoleUtils.DEFAULT_MASS;
+        // Clamp, don't reset: huge NBT values (past int range, incl. wrapped
+        // negatives from external editors) saturate at the configured limits
+        // instead of silently falling back to default.
+        this.mass = BlackHoleUtils.clampMass(this.mass);
     }
 
     @Override
@@ -60,23 +76,19 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
         nbt.setDouble(TAG_MASS, mass);
         return nbt;
     }
-
     @Override
     public NBTTagCompound getUpdateTag() {
         return writeToNBT(new NBTTagCompound());
     }
-
     @Override
     public SPacketUpdateTileEntity getUpdatePacket() {
         return new SPacketUpdateTileEntity(pos, 0, getUpdateTag());
     }
-
     @Override
     public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity pkt) {
         readFromNBT(pkt.getNbtCompound());
         if (world != null) world.markBlockRangeForRenderUpdate(pos, pos);
     }
-
     @Override
     public void handleUpdateTag(NBTTagCompound tag) {
         readFromNBT(tag);
@@ -101,7 +113,16 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
     // =================================================================
     @Override
     public void update() {
-        if (world == null || world.isRemote) return;
+        if (world == null || world.isRemote)  return;
+
+        // Evaporation: slow mass bleed, weaker for heavier holes.
+        // Passive (no forced sync): the N-tick periodic sync covers it.
+        // Runs before eating so the region logic sees the post-evap mass.
+        double m = mass;
+        if (m > BlackHoleUtils.MIN_MASS) {
+            double evap = BlackHoleUtils.getEvaporationPerTick(m);
+            if (evap > 0.0D) addMassPassive(-evap);
+        }
 
         // Entities: split across 2 ticks by entity-id parity.
         // Each entity gets processed once every 2 ticks; accel is doubled to compensate.
@@ -110,10 +131,10 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
         // Blocks: budgeted, region-driven.
         regionManager.tick();
 
-        // periodic sync every 20 ticks (mass change forces syncCooldown=0)
+        // periodic sync every N ticks (mass change forces syncCooldown=0)
         syncCooldown--;
         if (syncCooldown <= 0) {
-            syncCooldown = 20;
+            syncCooldown = 10;
             world.notifyBlockUpdate(pos, world.getBlockState(pos), world.getBlockState(pos), 3);
         }
     }

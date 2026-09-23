@@ -23,11 +23,13 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 
 import javax.annotation.Nullable;
 
+
+
 public class BlackHoleBlock extends Block {
 
     public static final Block INSTANCE = new BlackHoleBlock()
             .setRegistryName("astrotweaks", "black_hole")
-            .setUnlocalizedName("astrotweaks.black_hole");
+            .setUnlocalizedName("black_hole");
 
     public BlackHoleBlock() {
         super(Material.PORTAL);

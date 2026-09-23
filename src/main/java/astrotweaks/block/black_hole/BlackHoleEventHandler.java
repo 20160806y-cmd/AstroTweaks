@@ -1,6 +1,5 @@
 package astrotweaks.block.black_hole;
 
-import astrotweaks.AstrotweaksMod;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
@@ -10,8 +9,14 @@ import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.event.world.ChunkEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent;
 
-@Mod.EventBusSubscriber(modid = AstrotweaksMod.MODID)
+import java.util.ArrayList;
+import java.util.List;
+
+
+
+@Mod.EventBusSubscriber(modid = "astrotweaks")
 public class BlackHoleEventHandler {
 
     @SubscribeEvent
@@ -40,6 +45,66 @@ public class BlackHoleEventHandler {
         for (TileEntity te : world.loadedTileEntityList) {
             if (te instanceof BlackHoleTileEntity) {
                 ((BlackHoleTileEntity) te).getRegionManager().onBlockPlaced(pos);
+            }
+        }
+    }
+
+    /**
+     * BH-vs-BH mass tug, once per world tick (not per hole, to stay O(holes^2)).
+     * Every hole drains TUG_RATE * mass * (1 + grav) per tick from each other
+     * hole inside its own gravity range; the drained amount is credited to the
+     * drainer. Both directions are evaluated, so a smaller hole caught by a
+     * bigger one loses net mass with acceleration until it is pinned at the
+     * floor. Masses are re-read live, so the snowball effect applies within
+     * the same tick; order between holes does not matter for the outcome.
+     * Passive deltas (no forced sync): the 20-tick TE sync covers the drift.
+     */
+    @SubscribeEvent
+    public static void onWorldTick(TickEvent.WorldTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        World world = event.world;
+        if (world == null || world.isRemote) return;
+
+        List<BlackHoleTileEntity> holes = null;
+        for (TileEntity te : world.loadedTileEntityList) {
+            if (te instanceof BlackHoleTileEntity && !te.isInvalid()) {
+                if (holes == null) holes = new ArrayList<>();
+                holes.add((BlackHoleTileEntity) te);
+            }
+        }
+        if (holes == null || holes.size() < 2) return;
+
+        final double minMass = BlackHoleUtils.MIN_MASS;
+        for (int i = 0; i < holes.size(); i++) {
+            BlackHoleTileEntity a = holes.get(i);
+            if (a.isInvalid()) continue;
+            double massA = a.getMass();
+            if (!(massA > minMass)) continue; // floored hole pulls nothing worth moving
+            double rangeA = BlackHoleUtils.getGravityRange(massA);
+            double ax = a.getPos().getX() + 0.5;
+            double ay = a.getPos().getY() + 0.5;
+            double az = a.getPos().getZ() + 0.5;
+            for (int j = 0; j < holes.size(); j++) {
+                if (j == i) continue;
+                BlackHoleTileEntity b = holes.get(j);
+                if (b.isInvalid()) continue;
+                double dx = (b.getPos().getX() + 0.5) - ax;
+                double dy = (b.getPos().getY() + 0.5) - ay;
+                double dz = (b.getPos().getZ() + 0.5) - az;
+                double distSq = dx * dx + dy * dy + dz * dz;
+                if (distSq > rangeA * rangeA) continue; // outside A's influence
+                double dist = Math.sqrt(distSq);
+                double grav = BlackHoleUtils.getAcceleration(massA, dist);
+                double take = BlackHoleUtils.TUG_RATE * massA * (1.0D + grav);
+                if (!(take > 1e-9D)) continue; // noise guard, avoids dirty-churn
+                double avail = b.getMass() - minMass;
+                if (take > avail) take = avail;
+                if (!(take > 0.0D)) continue; // victim already at floor
+                b.addMassPassive(-take);
+                a.addMassPassive(take);
+                // Refresh live: growth widens the range for the next victim.
+                massA = a.getMass();
+                rangeA = BlackHoleUtils.getGravityRange(massA);
             }
         }
     }

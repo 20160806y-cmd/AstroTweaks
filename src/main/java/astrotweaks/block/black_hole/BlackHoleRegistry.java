@@ -13,6 +13,8 @@ import net.minecraftforge.fml.common.registry.GameRegistry;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 
+
+
 @Mod.EventBusSubscriber(modid = AstrotweaksMod.MODID)
 public class BlackHoleRegistry {
 
@@ -21,7 +23,6 @@ public class BlackHoleRegistry {
         e.getRegistry().register(BlackHoleBlock.INSTANCE);
         GameRegistry.registerTileEntity(BlackHoleTileEntity.class, new ResourceLocation("astrotweaks", "te_black_hole"));
     }
-
     @SubscribeEvent
     public static void onRegisterItems(RegistryEvent.Register<Item> e) {
         e.getRegistry().register(new BlackHoleItemBlock(BlackHoleBlock.INSTANCE).setRegistryName(BlackHoleBlock.INSTANCE.getRegistryName()));

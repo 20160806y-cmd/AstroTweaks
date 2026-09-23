@@ -6,6 +6,8 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import org.lwjgl.opengl.GL11;
 
+
+
 public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity> {
 
     private static BlackHoleShader shader;
@@ -68,7 +70,7 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
         // thickness depends on horizon: 1->0.25, 10->1.0
         double thickness = BlackHoleUtils.getHaloThickness(horizon);
         double halo1 = horizon + thickness;
-        double halo2 = halo1 + thickness;
+        double halo2 = halo1 + thickness*0.8;
         double halo3 = halo2 + thickness*0.5;
         GlStateManager.depthMask(false);
         GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
@@ -81,9 +83,9 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
             BlackHoleRenderHelper.drawSphere(halo3, 0xFFFFFF, 1.0f, 32, 32);
             BlackHoleShader.stop();
         } else {
-            BlackHoleRenderHelper.drawSphere(halo1, 0x000000, 0.3f, 16, 16);
-            BlackHoleRenderHelper.drawSphere(halo2, 0x000000, 0.15f, 16, 16);
-            BlackHoleRenderHelper.drawSphere(halo3, 0x000000, 0.03f, 16, 16);
+            BlackHoleRenderHelper.drawSphere(halo1, 0x000000, 0.29f, 16, 16);
+            BlackHoleRenderHelper.drawSphere(halo2, 0x000000, 0.16f, 16, 16);
+            BlackHoleRenderHelper.drawSphere(halo3, 0x000000, 0.02f, 16, 16);
         }
 
         // Restore state via popAttrib (covers blend/texture/depth) + manual

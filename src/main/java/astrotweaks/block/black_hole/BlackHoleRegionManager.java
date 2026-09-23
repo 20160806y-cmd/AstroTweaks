@@ -11,12 +11,13 @@ import net.minecraft.world.chunk.Chunk;
 
 import java.util.*;
 
+
+
 public class BlackHoleRegionManager {
 
     /** Total block reads allowed per tick for this black hole. */
     public static final int BUDGET_PER_TICK = 1024;
-    /** Legacy threshold - now unused, wake checked every tick vs wakeMass. Kept for compat. */
-    public static final double MASS_WAKE_THRESHOLD = 0.0;
+
     /**
      * Safety full-rescan delay after a mass change (5 minutes = 6000 ticks).
      * Catches blocks/liquids missed by the first pass. At most one pending
@@ -24,6 +25,13 @@ public class BlackHoleRegionManager {
      * until it fires.
      */
     public static final long RESCAN_DELAY_TICKS = 6000L;
+    /**
+     * Prompt revisit throttle: an immediate EMPTY-region recheck fires only
+     * once the mass has grown by this much since the last prompt revisit...
+     */
+    public static final double PROMPT_RESCAN_MIN_DELTA = 1000.0D;
+    /** ...and no more often than this (ticks), so dense feasts can't thrash the budget. */
+    public static final long PROMPT_RESCAN_MIN_INTERVAL = 200L;
 
     private final BlackHoleTileEntity te;
     private final Map<Long, BlackHoleRegion> allRegions = new HashMap<>();
@@ -37,6 +45,10 @@ public class BlackHoleRegionManager {
     // --- Delayed safety rescan state (transient: fresh seed scan covers reloads) ---
     private long rescanDueTick = -1L; // -1 = none scheduled
     private double lastSeenMass = Double.NaN;
+
+    // --- Prompt revisit state: high-water mark of mass at last prompt recheck ---
+    private double massAtLastPrompt = Double.NaN;
+    private long lastPromptTick = 0L;
 
     public BlackHoleRegionManager(BlackHoleTileEntity te) {
         this.te = te;
@@ -55,21 +67,43 @@ public class BlackHoleRegionManager {
         double mass = te.getMass();
         long now = world.getTotalWorldTime();
 
-        // --- Delayed safety rescan: any mass change schedules one full
+        // --- Delayed safety rescan: a mass INCREASE schedules one full
         // recheck in RESCAN_DELAY_TICKS, but only if none is pending
         // (earliest request wins). If the rescan eats new blocks, the mass
         // change it causes schedules the next one; if mass stays flat
         // (everything edible already eaten), nothing is scheduled and the
-        // hole stays idle. O(1) per tick.
+        // hole stays idle. Decreases (evaporation, BH tug losses, /blockdata
+        // down) schedule nothing: they can't make anything newly edible.
+        // O(1) per tick.
         if (Double.isNaN(lastSeenMass)) {
             lastSeenMass = mass; // first tick after load: no spurious schedule
-        } else if (Double.compare(mass, lastSeenMass) != 0) {
+        } else if (mass > lastSeenMass) {
             lastSeenMass = mass;
             if (rescanDueTick < 0) rescanDueTick = now + RESCAN_DELAY_TICKS;
+        } else if (mass < lastSeenMass) {
+            lastSeenMass = mass;
         }
         if (rescanDueTick >= 0 && now >= rescanDueTick) {
             rescanDueTick = -1L;
             fullRescan();
+        }
+
+        // --- Prompt revisit on significant mass growth: EMPTY regions (settled
+        // craters, event-less arrivals like fallen sand) are invisible to the
+        // wake queue, so without this a /blockdata jump would sit idle until
+        // the 5-minute safety rescan. WAITING regions need nothing extra: the
+        // wake loop below already releases them the same tick.
+        // Throttled by mass delta AND time so dense feasts can't thrash the budget.
+        if (Double.isNaN(massAtLastPrompt)) {
+            massAtLastPrompt = mass;
+            lastPromptTick = now;
+        } else if (mass < massAtLastPrompt) {
+            massAtLastPrompt = mass; // decrease: just lower the high-water mark
+        } else if (mass - massAtLastPrompt >= PROMPT_RESCAN_MIN_DELTA
+                && now - lastPromptTick >= PROMPT_RESCAN_MIN_INTERVAL) {
+            massAtLastPrompt = mass;
+            lastPromptTick = now;
+            promptRescan(mass);
         }
 
         // Wake deferred regions as soon as mass reaches their wakeMass.
@@ -206,6 +240,28 @@ public class BlackHoleRegionManager {
                 r.resetToScanning();
                 if (!active.contains(r)) active.add(r);
             }
+        }
+    }
+
+    /**
+     * Immediate revisit after a significant mass jump (e.g. /blockdata).
+     * Only EMPTY regions within the current stone-eat reach are requeued:
+     * that's where new growth can appear. WAITING regions are covered by the
+     * wake loop in the same tick, distant regions are unreachable anyway.
+     * Requeued regions resume frontier expansion in finishScan, so a fully
+     * settled hole (empty active/waiting) starts growing again at once.
+     */
+    private void promptRescan(double mass) {
+        double reach = Math.min(
+                BlackHoleUtils.getBlockEatRadiusByHardness(mass, BlackHoleUtils.FAKE_HARDNESS_ROCK),
+                BlackHoleUtils.MAX_BLOCK_CAPTURE_RANGE);
+        double rr = reach + 7.0D; // + region half-diagonal, so edge regions qualify
+        double rrSq = rr * rr;
+        for (BlackHoleRegion r : allRegions.values()) {
+            if (r.state != BlackHoleRegion.STATE_EMPTY) continue;
+            if (r.distSq > rrSq) continue;
+            r.resetToScanning();
+            if (!active.contains(r)) active.add(r);
         }
     }
 
