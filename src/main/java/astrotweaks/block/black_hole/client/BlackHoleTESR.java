@@ -23,7 +23,7 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
     public void render(BlackHoleTileEntity te, double x, double y, double z, float partialTicks, int destroyStage, float alpha) {
         if (te == null || te.getWorld() == null) return;
         double mass = te.getMass();
-        double horizon = BlackHoleUtils.getHorizonRadius(mass);
+        double horizon = BlackHoleUtils.getVisualHorizonRadius(mass);
         double gravRange = BlackHoleUtils.getGravityRange(mass);
 
         // Frustum culling already handled via getRenderBoundingBox ; but distance check
@@ -83,7 +83,7 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
         } else {
             BlackHoleRenderHelper.drawSphere(halo1, 0x000000, 0.3f, 16, 16);
             BlackHoleRenderHelper.drawSphere(halo2, 0x000000, 0.15f, 16, 16);
-            BlackHoleRenderHelper.drawSphere(halo3, 0x000000, 0.05f, 16, 16);
+            BlackHoleRenderHelper.drawSphere(halo3, 0x000000, 0.03f, 16, 16);
         }
 
         // Restore state via popAttrib (covers blend/texture/depth) + manual

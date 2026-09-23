@@ -32,10 +32,12 @@ void main(){
     gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
     return;
   } else {
-    float alpha = pow(fresnel, 2.0);
+    // Outer halo: widest fresnel band (pow 1.5) so the rim survives the
+    // discard cutoff, peak 0.20 keeps it faintest but clearly visible.
+    float alpha = pow(fresnel, 1.5);
     float ang = atan(vPos.z, vPos.x);
     float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0 + 2.5);
-    alpha *= 0.10 * shimmer;
+    alpha *= 0.20 * shimmer;
     if (alpha < 0.0005) discard;
     gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
     return;

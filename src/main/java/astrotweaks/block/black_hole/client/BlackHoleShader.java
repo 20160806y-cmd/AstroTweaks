@@ -155,11 +155,11 @@ public class BlackHoleShader {
             "    gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);\n" +
             "    return;\n" +
             "  } else {\n" +
-            "    float alpha = pow(fresnel, 2.0);\n" +
+            "    float alpha = pow(fresnel, 1.5);\n" +
             "    float ang = atan(vPos.z, vPos.x);\n" +
             "    float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0 + 2.5);\n" +
-            "    alpha *= 0.14 * shimmer;\n" +
-            "    if (alpha < 0.0001) discard;\n" +
+            "    alpha *= 0.20 * shimmer;\n" +
+            "    if (alpha < 0.0005) discard;\n" +
             "    gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);\n" +
             "    return;\n" +
             "  }\n" +

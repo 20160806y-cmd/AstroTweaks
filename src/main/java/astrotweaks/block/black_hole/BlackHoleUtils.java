@@ -1,8 +1,43 @@
 package astrotweaks.block.black_hole;
 
+import net.minecraft.block.material.Material;
+
 public final class BlackHoleUtils {
 
     private BlackHoleUtils() {}
+
+    /**
+     * Fake hardness used ONLY for the eat-ability check (accel >= hardness).
+     * Mass gain always uses the real hardness.
+     *
+     * <ul>
+     *   <li>Material.ROCK with real hardness in [1.5, 5.0] -&gt; 1.5 (stone level,
+     *       so ores don't hang in the air of the crater);</li>
+     *   <li>Material.WOOD -&gt; 0.6 unconditionally;</li>
+     *   <li>everything else -&gt; real hardness (0 maps to 0.1 as before).</li>
+     * </ul>
+     * Hot path: reference equality on Material singletons + one float range
+     * check, no allocations. JIT-inlinable.
+     */
+    public static final double FAKE_HARDNESS_ROCK = 1.5D;
+    public static final double FAKE_HARDNESS_WOOD = 0.6D;
+
+    public static double effectiveHardnessForCheck(Material mat, float realHardness) {
+        if (mat == Material.ROCK) {
+            // Most common case in the crater is stone-like rock: single range check.
+            // Outside the window (e.g. obsidian 50) falls through to real hardness.
+            // The else-if below is intentional: ROCK != WOOD, saves one comparison.
+            if (realHardness >= 1.5F && realHardness <= 5.0F) return FAKE_HARDNESS_ROCK;
+        } else if (mat == Material.WOOD) {
+            return FAKE_HARDNESS_WOOD;
+        }
+        return realHardness == 0.0F ? 0.1D : (double) realHardness;
+    }
+
+    /** Real hardness mapped to mass gain (zero-hardness blocks give 0.1). */
+    public static double massGainForHardness(float realHardness) {
+        return realHardness == 0.0F ? 0.1D : (double) realHardness;
+    }
 
     /** Game gravity constant tuned so mass=1000 => gravity range ~22 blocks at threshold 0.001 */
     public static final double G = 5.0e-4;
@@ -68,6 +103,20 @@ public final class BlackHoleUtils {
         double r = H_SCALE * Math.pow(mass, H_EXP);
         if (r < 0.3D) r = 0.3D;
         if (r > 20D) r = 20D; // Максимальный радиус ЧД
+        return r;
+    }
+
+    /**
+     * Visual-only horizon radius for rendering (TESR, bounding box).
+     * Same formula as gameplay, but the minimum is 3x smaller (0.1 instead
+     * of 0.3), so a fresh mass=1 hole renders tiny. Gameplay logic
+     * (capture, absorption) keeps using {@link #getHorizonRadius}.
+     */
+    public static double getVisualHorizonRadius(double mass) {
+        if (mass <= 0) return 0.1D;
+        double r = H_SCALE * Math.pow(mass, H_EXP);
+        if (r < 0.1D) r = 0.1D;
+        if (r > 20D) r = 20D;
         return r;
     }
 

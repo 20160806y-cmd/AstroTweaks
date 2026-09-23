@@ -84,7 +84,7 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
 
     @Override
     public AxisAlignedBB getRenderBoundingBox() {
-        double h = BlackHoleUtils.getHorizonRadius(mass);
+        double h = BlackHoleUtils.getVisualHorizonRadius(mass);
         double t = BlackHoleUtils.getHaloThickness(h);
         double r = h + t * 2 + 1.0D;
         double rad = Math.max(r, 2.0D);
