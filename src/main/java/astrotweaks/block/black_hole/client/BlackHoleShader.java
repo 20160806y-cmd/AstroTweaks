@@ -18,6 +18,13 @@ public class BlackHoleShader {
     private final int programId;
     private final Map<String, Integer> uniformCache = new HashMap<>();
 
+    // Cached locations for the hot-path uniforms (no HashMap lookup per call).
+    private int locUTime = -2;
+    private int locUHorizon = -2;
+    private int locUGravityRange = -2;
+    private int locUMass = -2;
+    private int locUMode = -2;
+
     private BlackHoleShader(int program) { this.programId = program; }
 
     public static BlackHoleShader create(String vertSrc, String fragSrc) throws Exception {
@@ -68,6 +75,40 @@ public class BlackHoleShader {
     public void setVec3(String name, float x, float y, float z) {
         int l = loc(name);
         if (l >= 0) GL20.glUniform3f(l, x, y, z);
+    }
+
+    private static void setUniform(int loc, float v) {
+        if (loc >= 0) GL20.glUniform1f(loc, v);
+    }
+
+    private int locDirect(int cached, String name) {
+        if (cached != -2) return cached;
+        return loc(name);
+    }
+
+    public void setTime(float v) {
+        locUTime = locDirect(locUTime, "uTime");
+        setUniform(locUTime, v);
+    }
+
+    public void setHorizon(float v) {
+        locUHorizon = locDirect(locUHorizon, "uHorizon");
+        setUniform(locUHorizon, v);
+    }
+
+    public void setGravityRange(float v) {
+        locUGravityRange = locDirect(locUGravityRange, "uGravityRange");
+        setUniform(locUGravityRange, v);
+    }
+
+    public void setMass(float v) {
+        locUMass = locDirect(locUMass, "uMass");
+        setUniform(locUMass, v);
+    }
+
+    public void setMode(float v) {
+        locUMode = locDirect(locUMode, "uMode");
+        setUniform(locUMode, v);
     }
 
     public void delete() {
@@ -142,9 +183,8 @@ public class BlackHoleShader {
             "    return;\n" +
             "  } else if (uMode < 1.5) {\n" +
             "    float alpha = pow(fresnel, 2.0);\n" +
-            "    float ang = atan(vPos.z, vPos.x);\n" +
-            "    float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0);\n" +
-            "    alpha *= 0.4 * shimmer;\n" +
+            "    float shimmer = 0.9 + 0.1 * sin(uTime * 1.1);\n" +
+            "    alpha *= 0.42 * shimmer;\n" +
             "    if (alpha < 0.003) discard;\n" +
             "    gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);\n" +
             "    return;\n" +
@@ -160,7 +200,7 @@ public class BlackHoleShader {
             "    float alpha = pow(fresnel, 1.5);\n" +
             "    float ang = atan(vPos.z, vPos.x);\n" +
             "    float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0 + 2.5);\n" +
-            "    alpha *= 0.20 * shimmer;\n" +
+            "    alpha *= 0.18 * shimmer;\n" +
             "    if (alpha < 0.0005) discard;\n" +
             "    gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);\n" +
             "    return;\n" +

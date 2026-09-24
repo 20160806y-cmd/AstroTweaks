@@ -25,6 +25,10 @@ public class BlackHoleRegion {
 
     public byte state = STATE_SCANNING;
 
+    /** O(1) membership flags: maintained by BlackHoleRegionManager.addActive/addWaiting. */
+    public boolean inActive;
+    public boolean inWaiting;
+
     // --- Scan phase ---
     // 512 indices sorted by distance. Freed after the scan finishes to save memory.
     public short[] sortedOrder;
@@ -58,9 +62,12 @@ public class BlackHoleRegion {
      *
      * Index layout: idx = (lz << 6) | (ly << 3) | lx with lx,ly,lz in [0,8).
      */
+    // Reused sort-key buffer (server tick is single-threaded, no reentrancy here).
+    private static final long[] SORT_KEYS = new long[VOLUME];
+
     public void buildSortedOrder(double hx, double hy, double hz) {
         if (sortedOrder != null) return;
-        long[] keys = new long[VOLUME];
+        long[] keys = SORT_KEYS;
         double baseX = originX + 0.5, baseY = originY + 0.5, baseZ = originZ + 0.5;
         for (int i = 0; i < VOLUME; i++) {
             int lx = i & 7;

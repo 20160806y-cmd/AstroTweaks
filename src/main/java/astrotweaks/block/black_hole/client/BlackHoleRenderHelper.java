@@ -4,21 +4,59 @@ import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 
+import java.util.HashMap;
+import java.util.Map;
+
 
 
 // Minimal sphere helper — без аллокаций double[] на вершину
 public final class BlackHoleRenderHelper {
     private BlackHoleRenderHelper() {}
 
+    // Unitsphere colors used by the BH renderer are branch-selected inline
+    // in drawSphere (no per-call float[] allocation on the hot path).
+
+    // Cached sin/cos tables per longitude-segment count (render thread only).
+    // phi(i) depends on lonSegments alone, so one table serves all spheres/frames.
+    private static final Map<Integer, double[]> COS_TABLE = new HashMap<>();
+    private static final Map<Integer, double[]> SIN_TABLE = new HashMap<>();
+
+    private static double[] cosTable(int lonSegments) {
+        double[] t = COS_TABLE.get(lonSegments);
+        if (t == null) {
+            t = new double[lonSegments + 1];
+            double step = 2.0 * Math.PI / lonSegments;
+            for (int i = 0; i <= lonSegments; i++) t[i] = Math.cos(i * step);
+            COS_TABLE.put(lonSegments, t);
+        }
+        return t;
+    }
+
+    private static double[] sinTable(int lonSegments) {
+        double[] t = SIN_TABLE.get(lonSegments);
+        if (t == null) {
+            t = new double[lonSegments + 1];
+            double step = 2.0 * Math.PI / lonSegments;
+            for (int i = 0; i <= lonSegments; i++) t[i] = Math.sin(i * step);
+            SIN_TABLE.put(lonSegments, t);
+        }
+        return t;
+    }
+
     public static void drawSphere(double radius, int color, float alpha, int latSegments, int lonSegments) {
         if (alpha <= 0.01f) return;
-        float[] rgb = unpackRGB(color);
-        float r = rgb[0], g = rgb[1], b = rgb[2];
+        float r, g, b;
+        if (color == 0xFFFFFF) { r = 1.0f; g = 1.0f; b = 1.0f; }
+        else if (color == 0x000000) { r = 0.0f; g = 0.0f; b = 0.0f; }
+        else {
+            float[] rgb = unpackRGB(color);
+            r = rgb[0]; g = rgb[1]; b = rgb[2];
+        }
+        double[] cosPhi = cosTable(lonSegments);
+        double[] sinPhi = sinTable(lonSegments);
         Tessellator tes = Tessellator.getInstance();
         BufferBuilder buf = tes.getBuffer();
         buf.begin(4, DefaultVertexFormats.POSITION_COLOR);
-        // Предвычисляем 2*PI / lonSegments
-        final double lonStep = 2.0 * Math.PI / lonSegments;
         final double latStep = Math.PI / latSegments;
         for (int lat = 0; lat < latSegments; lat++) {
             double theta1 = lat * latStep;
@@ -32,12 +70,10 @@ public final class BlackHoleRenderHelper {
             double rSin1 = radius * sinTheta1;
             double rSin2 = radius * sinTheta2;
             for (int lon = 0; lon < lonSegments; lon++) {
-                double phi1 = lon * lonStep;
-                double phi2 = phi1 + lonStep;
-                double cosPhi1 = Math.cos(phi1);
-                double sinPhi1 = Math.sin(phi1);
-                double cosPhi2 = Math.cos(phi2);
-                double sinPhi2 = Math.sin(phi2);
+                double cosPhi1 = cosPhi[lon];
+                double sinPhi1 = sinPhi[lon];
+                double cosPhi2 = cosPhi[lon + 1];
+                double sinPhi2 = sinPhi[lon + 1];
                 double x1 = rSin1 * cosPhi1;
                 double z1 = rSin1 * sinPhi1;
                 double x2 = rSin1 * cosPhi2;

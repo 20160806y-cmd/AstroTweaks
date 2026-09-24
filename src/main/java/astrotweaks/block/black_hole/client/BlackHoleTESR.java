@@ -36,10 +36,6 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
     public static void renderStatic(BlackHoleTileEntity te, double x, double y, double z, float partialTicks) {
         if (te == null || te.getWorld() == null) return;
 
-        double mass = te.getMass();
-        double horizon = BlackHoleUtils.getVisualHorizonRadius(mass);
-        double gravRange = BlackHoleUtils.getGravityRange(mass);
-
         // Захватываем состояние до изменений, чтобы восстановить точно как было
         boolean fogWasEnabled = GL11.glIsEnabled(GL11.GL_FOG);
         boolean texWasEnabled = GL11.glIsEnabled(GL11.GL_TEXTURE_2D);
@@ -47,6 +43,44 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
         boolean lightWasEnabled = GL11.glIsEnabled(GL11.GL_LIGHTING);
         boolean blendWasEnabled = GL11.glIsEnabled(GL11.GL_BLEND);
         int prevShade = GL11.glGetInteger(GL11.GL_SHADE_MODEL);
+
+        try {
+            renderStaticCore(te, x, y, z, partialTicks);
+        } finally {
+            // Восстанавливаем ровно то что было до рендера, синхронизируя GlStateManager + raw GL
+            GL11.glShadeModel(prevShade);
+
+            if (fogWasEnabled) { GlStateManager.enableFog(); GL11.glEnable(GL11.GL_FOG); }
+            else { GlStateManager.disableFog(); GL11.glDisable(GL11.GL_FOG); }
+
+            if (lightWasEnabled) { GlStateManager.enableLighting(); GL11.glEnable(GL11.GL_LIGHTING); }
+            else { GlStateManager.disableLighting(); GL11.glDisable(GL11.GL_LIGHTING); }
+
+            if (cullWasEnabled) { GlStateManager.enableCull(); GL11.glEnable(GL11.GL_CULL_FACE); }
+            else { GlStateManager.disableCull(); GL11.glDisable(GL11.GL_CULL_FACE); }
+
+            if (blendWasEnabled) { GlStateManager.enableBlend(); GL11.glEnable(GL11.GL_BLEND); }
+            else { GlStateManager.disableBlend(); GL11.glDisable(GL11.GL_BLEND); }
+
+            if (texWasEnabled) { GlStateManager.enableTexture2D(); GL11.glEnable(GL11.GL_TEXTURE_2D); }
+            else { GlStateManager.disableTexture2D(); GL11.glDisable(GL11.GL_TEXTURE_2D); }
+
+            GlStateManager.color(1, 1, 1, 1);
+        }
+    }
+
+    /**
+     * Тело рендера без захвата/восстановления GL-состояния.
+     * Вызывать только когда состояние уже захвачено снаружи (пакетный рендер
+     * нескольких BH за кадр) либо из renderStatic. Оставляет конвейер в
+     * детерминированном «рендер»-состоянии: те же флаги выставляются
+     * безусловно при каждом вызове, поэтому повторные вызовы идемпотентны,
+     * а восстановление выполняется один раз снаружи.
+     */
+    static void renderStaticCore(BlackHoleTileEntity te, double x, double y, double z, float partialTicks) {
+        double mass = te.getMass();
+        double horizon = BlackHoleUtils.getVisualHorizonRadius(mass);
+        double gravRange = BlackHoleUtils.getGravityRange(mass);
 
         GlStateManager.pushMatrix();
         GlStateManager.translate(x + 0.5, y + 0.5, z + 0.5);
@@ -73,11 +107,11 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
             // --- Inner black horizon sphere (uMode=0 -> opaque black) ---
             if (sh != null) {
                 sh.use();
-                sh.setFloat("uTime", time);
-                sh.setFloat("uHorizon", (float) horizon);
-                sh.setFloat("uGravityRange", (float) gravRange);
-                sh.setFloat("uMass", (float) mass);
-                sh.setFloat("uMode", 0.0f);
+                sh.setTime(time);
+                sh.setHorizon((float) horizon);
+                sh.setGravityRange((float) gravRange);
+                sh.setMass((float) mass);
+                sh.setMode(0.0f);
                 BlackHoleRenderHelper.drawSphere(horizon, 0xFFFFFF, 1.0f, 32, 32);
             } else {
                 BlackHoleRenderHelper.drawSphere(horizon, 0x000000, 1.0f, 32, 32);
@@ -90,9 +124,9 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
 
             GlStateManager.depthMask(false);
             if (sh != null) {
-                sh.setFloat("uMode", 1.0f); BlackHoleRenderHelper.drawSphere(halo1, 0xFFFFFF, 1.0f, 32, 32);
-                sh.setFloat("uMode", 2.0f); BlackHoleRenderHelper.drawSphere(halo2, 0xFFFFFF, 1.0f, 32, 32);
-                sh.setFloat("uMode", 3.0f); BlackHoleRenderHelper.drawSphere(halo3, 0xFFFFFF, 1.0f, 32, 32);
+                sh.setMode(1.0f); BlackHoleRenderHelper.drawSphere(halo1, 0xFFFFFF, 1.0f, 32, 32);
+                sh.setMode(2.0f); BlackHoleRenderHelper.drawSphere(halo2, 0xFFFFFF, 1.0f, 32, 32);
+                sh.setMode(3.0f); BlackHoleRenderHelper.drawSphere(halo3, 0xFFFFFF, 1.0f, 32, 32);
             } else {
                 BlackHoleRenderHelper.drawSphere(halo1, 0x000000, 0.29f, 16, 16);
                 BlackHoleRenderHelper.drawSphere(halo2, 0x000000, 0.16f, 16, 16);
@@ -100,25 +134,9 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
             }
         } finally {
             if (sh != null) BlackHoleShader.stop();
-            // Восстанавливаем ровно то что было до рендера, синхронизируя GlStateManager + raw GL
+            // Core оставляет детерминированное «рендер»-состояние; полное
+            // восстановление делает внешний код (renderStatic либо bulk-цикл).
             GlStateManager.depthMask(true);
-            GL11.glShadeModel(prevShade);
-
-            if (fogWasEnabled) { GlStateManager.enableFog(); GL11.glEnable(GL11.GL_FOG); }
-            else { GlStateManager.disableFog(); GL11.glDisable(GL11.GL_FOG); }
-
-            if (lightWasEnabled) { GlStateManager.enableLighting(); GL11.glEnable(GL11.GL_LIGHTING); }
-            else { GlStateManager.disableLighting(); GL11.glDisable(GL11.GL_LIGHTING); }
-
-            if (cullWasEnabled) { GlStateManager.enableCull(); GL11.glEnable(GL11.GL_CULL_FACE); }
-            else { GlStateManager.disableCull(); GL11.glDisable(GL11.GL_CULL_FACE); }
-
-            if (blendWasEnabled) { GlStateManager.enableBlend(); GL11.glEnable(GL11.GL_BLEND); }
-            else { GlStateManager.disableBlend(); GL11.glDisable(GL11.GL_BLEND); }
-
-            if (texWasEnabled) { GlStateManager.enableTexture2D(); GL11.glEnable(GL11.GL_TEXTURE_2D); }
-            else { GlStateManager.disableTexture2D(); GL11.glDisable(GL11.GL_TEXTURE_2D); }
-
             GlStateManager.color(1, 1, 1, 1);
             GlStateManager.popMatrix();
         }

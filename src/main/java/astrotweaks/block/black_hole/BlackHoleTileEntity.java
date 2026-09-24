@@ -257,27 +257,17 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
         double cx = pos.getX() + 0.5;
         double cy = pos.getY() + 0.5;
         double cz = pos.getZ() + 0.5;
-        AxisAlignedBB aabb;
-        if (gravRange != cachedGravRange || cachedAABB == null) {
+        // TE never moves after placement, so the box is rebuilt only when the range changes.
+        if (cachedAABB == null || gravRange != cachedGravRange) {
             cachedGravRange = gravRange;
             cachedAABB = new AxisAlignedBB(
                     cx - gravRange, cy - gravRange, cz - gravRange,
                     cx + gravRange, cy + gravRange, cz + gravRange);
-        } else {
-            // Центр не меняется, но если TE переместился (не должен) — пересоздать
-            // Быстрая проверка: AABB центр vs текущая позиция
-            double ax = (cachedAABB.minX + cachedAABB.maxX) * 0.5;
-            if (ax != cx) {
-                cachedAABB = new AxisAlignedBB(
-                        cx - gravRange, cy - gravRange, cz - gravRange,
-                        cx + gravRange, cy + gravRange, cz + gravRange);
-            }
         }
-        aabb = cachedAABB;
+        AxisAlignedBB aabb = cachedAABB;
 
         List<Entity> entities = world.getEntitiesWithinAABB(Entity.class, aabb);
 
-        boolean massChanged = false;
         for (Entity e : entities) {
             if (e == null || e.isDead) continue;
             if (e instanceof EntityPlayer && ((EntityPlayer)e).isSpectator()) continue;
@@ -341,20 +331,17 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
                         int count = Math.max(1, ((EntityItem) e).getItem().getCount());
                         mass = BlackHoleUtils.clampMass(mass + count * BlackHoleUtils.MASS_PER_ITEM);
                         e.setDead();
-                        massChanged = true;
                     } else if (e instanceof EntityXPOrb) {
                         mass = BlackHoleUtils.clampMass(mass + BlackHoleUtils.MASS_PER_XP);
                         e.setDead();
-                        massChanged = true;
                     } else if (e instanceof EntityPlayer) {
                         e.attackEntityFrom(DamageSource.OUT_OF_WORLD, Float.MAX_VALUE);
-                        if (e.isDead) { mass = BlackHoleUtils.clampMass(mass + BlackHoleUtils.MASS_PER_PLAYER); massChanged = true; }
+                        if (e.isDead) { mass = BlackHoleUtils.clampMass(mass + BlackHoleUtils.MASS_PER_PLAYER); }
                     } else {
                         try { e.attackEntityFrom(DamageSource.OUT_OF_WORLD, Float.MAX_VALUE); }
                         catch (Exception ignored) {}
                         if (!e.isDead) e.setDead();
                         mass = BlackHoleUtils.clampMass(mass + BlackHoleUtils.MASS_PER_ENTITY);
-                        massChanged = true;
                     }
                 } catch (Exception ex) { ex.printStackTrace(); }
                 continue;

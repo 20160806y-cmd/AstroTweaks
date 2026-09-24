@@ -48,12 +48,12 @@ public final class BlackHoleUtils {
     /** Hard cap for gravity scan box (per user req) */
     public static final double MAX_GRAVITY_RANGE = 256.0D;
     /** Block capture radius cap - same constant as gravity per user req (perf limited) */
-    public static final double MAX_BLOCK_CAPTURE_RANGE = 160.0D;
+    public static final double MAX_BLOCK_CAPTURE_RANGE = 192.0D;
 
 
     // Horizon: R_h = C * mass^E ; v3: -25% base (H_SCALE*m^H_EXP): 200->0.58 ; 1000->0.82 ; 5000->1.17
     public static final double H_SCALE = 0.022D;
-    public static final double H_EXP = 0.333D;
+    public static final double H_EXP = 0.34D;
 
     /** Мемоизация для частых pow — single-slot, single-thread (майн single thread) */
     private static double lastHorizonMassBits = Double.NaN;
@@ -155,13 +155,19 @@ public final class BlackHoleUtils {
     /** Относительный порог для внепланового сохранения NBT (2% массы) — крупная дельта форсит сохранение даже до истечения интервала */
     public static final double NBT_DIRTY_RELATIVE_THRESHOLD = 0.02D;
 
+    // Log-domain bounds for the adaptive intervals below (hoisted: log10 is needlessly
+    // recomputed on every call otherwise; values are bit-identical to inline computation).
+    private static final double LOG_MIN_MASS = Math.log10(MIN_MASS);
+    private static final double LOG_MID_MASS = Math.log10(100000D);
+    private static final double LOG_MAX_MASS = Math.log10(MAX_MASS);
+
     /** Адаптивный интервал: <100k — чаще (испарение заметно), >1M — реже. Плюс форсирование по дельте в TileEntity. */
     public static int getSyncInterval(double mass) {
         if (!(mass >= MIN_MASS)) return SYNC_TICKS_MIN;
         if (mass >= MAX_MASS) return SYNC_TICKS_MAX;
-        final double LOG_MIN = Math.log10(MIN_MASS);
-        final double LOG_MID = Math.log10(100000D);
-        final double LOG_MAX = Math.log10(MAX_MASS);
+        final double LOG_MIN = LOG_MIN_MASS;
+        final double LOG_MID = LOG_MID_MASS;
+        final double LOG_MAX = LOG_MAX_MASS;
         double log = Math.log10(mass);
         if (mass < 100000D) {
             double t = (log - LOG_MIN) / (LOG_MID - LOG_MIN);
@@ -179,9 +185,9 @@ public final class BlackHoleUtils {
     public static int getNbtInterval(double mass) {
         if (!(mass >= MIN_MASS)) return NBT_TICKS_MIN;
         if (mass >= MAX_MASS) return NBT_TICKS_MAX;
-        final double LOG_MIN = Math.log10(MIN_MASS);
-        final double LOG_MID = Math.log10(100000D);
-        final double LOG_MAX = Math.log10(MAX_MASS);
+        final double LOG_MIN = LOG_MIN_MASS;
+        final double LOG_MID = LOG_MID_MASS;
+        final double LOG_MAX = LOG_MAX_MASS;
         double log = Math.log10(mass);
         if (mass < 100000D) {
             double t = (log - LOG_MIN) / (LOG_MID - LOG_MIN);
@@ -246,6 +252,15 @@ public final class BlackHoleUtils {
     public static double getAcceleration(double mass, double dist) {
         if (dist < 0.1D) dist = 0.1D;
         return G * mass / (dist * dist);
+    }
+
+    /**
+     * Same as getAcceleration, but takes a precomputed squared distance.
+     * Saves a sqrt in scan loops that only need distSq for the horizon check.
+     */
+    public static double getAccelerationSq(double mass, double distSq) {
+        if (distSq < 0.01D) distSq = 0.01D;
+        return G * mass / distSq;
     }
 
     /** Mass at which the horizon reaches radius r. Inverse of getHorizonRadius. */

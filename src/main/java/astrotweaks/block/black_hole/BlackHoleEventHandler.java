@@ -19,6 +19,20 @@ import java.util.List;
 @Mod.EventBusSubscriber(modid = "astrotweaks")
 public class BlackHoleEventHandler {
 
+    /**
+     * Generous pre-filter radius for per-block events: block capture range plus
+     * region granularity margin. Far holes skip the map lookup entirely.
+     */
+    private static final double BLOCK_EVENT_RANGE = BlackHoleUtils.MAX_BLOCK_CAPTURE_RANGE + 24.0D;
+    private static final double BLOCK_EVENT_RANGE_SQ = BLOCK_EVENT_RANGE * BLOCK_EVENT_RANGE;
+
+    private static boolean inBlockEventRange(BlackHoleTileEntity bh, BlockPos pos) {
+        double dx = (pos.getX() + 0.5) - (bh.getPos().getX() + 0.5);
+        double dy = (pos.getY() + 0.5) - (bh.getPos().getY() + 0.5);
+        double dz = (pos.getZ() + 0.5) - (bh.getPos().getZ() + 0.5);
+        return dx * dx + dy * dy + dz * dz <= BLOCK_EVENT_RANGE_SQ;
+    }
+
     @SubscribeEvent
     public static void onBlockPlaced(BlockEvent.PlaceEvent event) {
         World world = event.getWorld();
@@ -26,9 +40,10 @@ public class BlackHoleEventHandler {
         java.util.Set<BlackHoleTileEntity> active = BlackHoleTileEntity.getActiveHoles();
         if (active.isEmpty()) return;
         BlockPos pos = event.getPos();
-        // Snapshot to avoid CME if BH dies mid-loop
-        for (BlackHoleTileEntity bh : new java.util.ArrayList<>(active)) {
+        // Прямая итерация CHM-множества: weakly-consistent, без CME и без копии.
+        for (BlackHoleTileEntity bh : active) {
             if (bh.isInvalid() || bh.getWorld() != world) continue;
+            if (!inBlockEventRange(bh, pos)) continue;
             bh.getRegionManager().onBlockPlaced(pos);
         }
     }
@@ -46,8 +61,9 @@ public class BlackHoleEventHandler {
         if (!state.getMaterial().isLiquid() && !BlackHoleRegionManager.isVegetation(state)) return;
 
         BlockPos pos = event.getPos();
-        for (BlackHoleTileEntity bh : new java.util.ArrayList<>(active)) {
+        for (BlackHoleTileEntity bh : active) {
             if (bh.isInvalid() || bh.getWorld() != world) continue;
+            if (!inBlockEventRange(bh, pos)) continue;
             bh.getRegionManager().onBlockPlaced(pos);
         }
     }
@@ -97,8 +113,7 @@ public class BlackHoleEventHandler {
                 double dz = (b.getPos().getZ() + 0.5) - az;
                 double distSq = dx * dx + dy * dy + dz * dz;
                 if (distSq > rangeA * rangeA) continue; // outside A's influence
-                double dist = Math.sqrt(distSq);
-                double grav = BlackHoleUtils.getAcceleration(massA, dist);
+                double grav = BlackHoleUtils.getAccelerationSq(massA, distSq);
                 double take = BlackHoleUtils.TUG_RATE * massA * (1.0D + grav);
                 if (!(take > 1e-9D)) continue; // noise guard, avoids dirty-churn
                 double avail = b.getMass() - minMass;
@@ -129,7 +144,7 @@ public class BlackHoleEventHandler {
         java.util.Set<BlackHoleTileEntity> active = BlackHoleTileEntity.getActiveHoles();
         if (active.isEmpty()) return;
         Chunk chunk = event.getChunk();
-        for (BlackHoleTileEntity bh : new java.util.ArrayList<>(active)) {
+        for (BlackHoleTileEntity bh : active) {
             if (bh.isInvalid() || bh.getWorld() != world) continue;
             bh.getRegionManager().onChunkLoaded(chunk);
         }
