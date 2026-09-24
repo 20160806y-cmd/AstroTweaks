@@ -16,7 +16,7 @@ import java.util.*;
 public class BlackHoleRegionManager {
 
     /** Total block reads allowed per tick for this black hole. */
-    public static final int BUDGET_PER_TICK = 1024;
+    public static final int BUDGET_PER_TICK = 2048;
 
     /**
      * Safety full-rescan delay after a mass change (5 minutes = 6000 ticks).
@@ -122,7 +122,7 @@ public class BlackHoleRegionManager {
         // (covers case where new mass makes a neighbour's nearDist <= MAX)
         if (mass > massAtLastWake) {
             massAtLastWake = mass;
-            for (BlackHoleRegion r : new ArrayList<>(waiting)) {
+            for (BlackHoleRegion r : waiting) {
                 expandFrontier(r);
             }
         }
@@ -139,15 +139,22 @@ public class BlackHoleRegionManager {
             totalWeight += r.weight;
         }
 
-        List<BlackHoleRegion> snapshot = new ArrayList<>(active);
+        // Итерация по индексу без snapshot-копии и без O(n) contains — проверка state O(1)
         int budget = BUDGET_PER_TICK;
-        for (BlackHoleRegion r : snapshot) {
-            if (budget <= 0) break;
-            if (!active.contains(r)) continue;
+        for (int idx = 0; idx < active.size() && budget > 0; ) {
+            BlackHoleRegion r = active.get(idx);
+            // Регион мог быть удалён лениво, но в active бывают только SCANNING/RECHECKING
+            if (r.state != BlackHoleRegion.STATE_SCANNING && r.state != BlackHoleRegion.STATE_RECHECKING) {
+                active.remove(idx);
+                continue;
+            }
             int share = (int) Math.round(BUDGET_PER_TICK * r.weight / totalWeight);
             if (share < 1) share = 1;
             if (share > budget) share = budget;
-            budget -= processRegion(r, share, cx, cy, cz);
+            int used = processRegion(r, share, cx, cy, cz);
+            budget -= used;
+            // если processRegion удалил r, элемент на idx уже следующий — не инкрементим
+            if (idx < active.size() && active.get(idx) == r) idx++;
         }
     }
 
@@ -170,55 +177,61 @@ public class BlackHoleRegionManager {
         if (r.sortedOrder == null) r.buildSortedOrder(cx, cy, cz);
         int used = 0;
         double massDelta = 0.0D;
-        // Local mass cache: avoids te.getMass() + Math.pow(horizon) per block.
-        // Updated on every eat, flushed once at the end (single markDirty/sync).
         double curMass = te.getMass();
         double horizonPlus = BlackHoleUtils.getHorizonRadius(curMass) + 0.5D;
+        BlockPos.PooledMutableBlockPos pooled = BlockPos.PooledMutableBlockPos.retain();
+        try {
+            while (used < budget && r.scanCursor < BlackHoleRegion.VOLUME) {
+                int idx = r.sortedOrder[r.scanCursor++];
+                used++;
+                int lx = idx & 7;
+                int ly = (idx >> 3) & 7;
+                int lz = (idx >> 6) & 7;
+                int bx = r.originX + lx;
+                int by = r.originY + ly;
+                int bz = r.originZ + lz;
+                pooled.setPos(bx, by, bz);
+                if (!world.isBlockLoaded(pooled)) continue;
 
-        while (used < budget && r.scanCursor < BlackHoleRegion.VOLUME) {
-            int idx = r.sortedOrder[r.scanCursor++];
-            used++;
-            BlockPos bp = r.blockPos(idx);
-            if (!world.isBlockLoaded(bp)) continue;
+                IBlockState st = world.getBlockState(pooled);
+                if (st.getBlock() == Blocks.AIR || st.getBlock() instanceof BlackHoleBlock) continue;
 
-            IBlockState st = world.getBlockState(bp);
-            if (st.getBlock() == Blocks.AIR || st.getBlock() instanceof BlackHoleBlock) continue;
+                Material mat = st.getMaterial();
+                if (mat.isLiquid() || isVegetation(st, mat)) {
+                    double bdist = dist(bx, by, bz, cx, cy, cz);
+                    boolean insideHorizon = bdist <= horizonPlus;
+                    double accel = BlackHoleUtils.getAcceleration(curMass, bdist);
+                    if (insideHorizon || accel > 0.1) {
+                        eat(world, pooled, true);
+                        massDelta += BlackHoleUtils.MASS_PER_LIQUID;
+                        curMass += BlackHoleUtils.MASS_PER_LIQUID;
+                        horizonPlus = BlackHoleUtils.getHorizonRadius(curMass) + 0.5D;
+                    } else {
+                        r.addDeferred(idx);
+                    }
+                    continue;
+                }
 
-            Material mat = st.getMaterial();
-            // --- Liquids & vegetation: eat if accel > 0.1 or inside horizon, else defer (never EMPTY) ---
-            if (mat.isLiquid() || isVegetation(st, mat)) {
-                double bdist = dist(bp, cx, cy, cz);
-                boolean insideHorizon = bdist <= horizonPlus;
-                double accel = BlackHoleUtils.getAcceleration(curMass, bdist);
-                if (insideHorizon || accel > 0.1) {
-                    eat(world, bp, true);
-                    massDelta += BlackHoleUtils.MASS_PER_LIQUID;
-                    curMass += BlackHoleUtils.MASS_PER_LIQUID;
+                float hardness;
+                try { hardness = st.getBlockHardness(world, pooled); }
+                catch (Exception e) { continue; }
+                if (hardness < 0) { r.addDeferred(idx); continue; }
+
+                double check = BlackHoleUtils.effectiveHardnessForCheck(mat, hardness);
+                double bdist = dist(bx, by, bz, cx, cy, cz);
+
+                if (canEat(bdist, check, curMass, horizonPlus)) {
+                    eat(world, pooled, false);
+                    double gain = BlackHoleUtils.massGainForHardness(hardness);
+                    massDelta += gain;
+                    curMass += gain;
                     horizonPlus = BlackHoleUtils.getHorizonRadius(curMass) + 0.5D;
                 } else {
-                    r.addDeferred(idx); // keep region WAITING, not EMPTY
+                    r.addDeferred(idx);
                 }
-                continue;
             }
-
-            float hardness;
-            try { hardness = st.getBlockHardness(world, bp); }
-            catch (Exception e) { continue; }
-            if (hardness < 0) { r.addDeferred(idx); continue; }
-
-            // Fake hardness for the check, real hardness for the mass gain.
-            double check = BlackHoleUtils.effectiveHardnessForCheck(mat, hardness);
-            double bdist = dist(bp, cx, cy, cz);
-
-            if (canEat(bdist, check, curMass, horizonPlus)) {
-                eat(world, bp, false);
-                double gain = BlackHoleUtils.massGainForHardness(hardness);
-                massDelta += gain;
-                curMass += gain;
-                horizonPlus = BlackHoleUtils.getHorizonRadius(curMass) + 0.5D;
-            } else {
-                r.addDeferred(idx);
-            }
+        } finally {
+            pooled.release();
         }
 
         if (r.scanCursor >= BlackHoleRegion.VOLUME) finishScan(r);
@@ -287,57 +300,63 @@ public class BlackHoleRegionManager {
         double massDelta = 0.0D;
         double curMass = te.getMass();
         double horizonPlus = BlackHoleUtils.getHorizonRadius(curMass) + 0.5D;
+        BlockPos.PooledMutableBlockPos pooled = BlockPos.PooledMutableBlockPos.retain();
+        try {
+            while (r.recheckCursor < r.deferredCount && used < budget) {
+                short idx = r.deferred[r.recheckCursor];
+                used++;
+                if (idx < 0) { r.recheckCursor++; continue; }
+                int lx = idx & 7;
+                int ly = (idx >> 3) & 7;
+                int lz = (idx >> 6) & 7;
+                int bx = r.originX + lx;
+                int by = r.originY + ly;
+                int bz = r.originZ + lz;
+                pooled.setPos(bx, by, bz);
+                if (!world.isBlockLoaded(pooled)) { r.recheckCursor++; continue; }
 
-        while (r.recheckCursor < r.deferredCount && used < budget) {
-            short idx = r.deferred[r.recheckCursor];
-            used++;
-            if (idx < 0) { r.recheckCursor++; continue; }
+                IBlockState st = world.getBlockState(pooled);
+                if (st.getBlock() == Blocks.AIR) {
+                    r.markDeferredRemoved(r.recheckCursor++);
+                    continue;
+                }
 
-            BlockPos bp = r.blockPos(idx);
-            if (!world.isBlockLoaded(bp)) { r.recheckCursor++; continue; }
+                Material mat = st.getMaterial();
+                if (mat.isLiquid() || isVegetation(st, mat)) {
+                    double bdist = dist(bx, by, bz, cx, cy, cz);
+                    boolean insideHorizon = bdist <= horizonPlus;
+                    double accel = BlackHoleUtils.getAcceleration(curMass, bdist);
+                    if (insideHorizon || accel > 0.1) {
+                        eat(world, pooled, true);
+                        massDelta += BlackHoleUtils.MASS_PER_LIQUID;
+                        curMass += BlackHoleUtils.MASS_PER_LIQUID;
+                        horizonPlus = BlackHoleUtils.getHorizonRadius(curMass) + 0.5D;
+                        r.markDeferredRemoved(r.recheckCursor);
+                    }
+                    r.recheckCursor++;
+                    continue;
+                }
 
-            IBlockState st = world.getBlockState(bp);
-            if (st.getBlock() == Blocks.AIR) {
-                r.markDeferredRemoved(r.recheckCursor++);
-                continue;
-            }
+                float hardness;
+                try { hardness = st.getBlockHardness(world, pooled); }
+                catch (Exception e) { r.recheckCursor++; continue; }
+                if (hardness < 0) { r.recheckCursor++; continue; }
 
-            Material mat = st.getMaterial();
-            // --- Liquids & vegetation: eat if accel > 0.1 or inside horizon, else keep deferred ---
-            if (mat.isLiquid() || isVegetation(st, mat)) {
-                double bdist = dist(bp, cx, cy, cz);
-                boolean insideHorizon = bdist <= horizonPlus;
-                double accel = BlackHoleUtils.getAcceleration(curMass, bdist);
-                if (insideHorizon || accel > 0.1) {
-                    eat(world, bp, true);
-                    massDelta += BlackHoleUtils.MASS_PER_LIQUID;
-                    curMass += BlackHoleUtils.MASS_PER_LIQUID;
+                double check = BlackHoleUtils.effectiveHardnessForCheck(mat, hardness);
+                double bdist = dist(bx, by, bz, cx, cy, cz);
+
+                if (canEat(bdist, check, curMass, horizonPlus)) {
+                    eat(world, pooled, false);
+                    double gain = BlackHoleUtils.massGainForHardness(hardness);
+                    massDelta += gain;
+                    curMass += gain;
                     horizonPlus = BlackHoleUtils.getHorizonRadius(curMass) + 0.5D;
                     r.markDeferredRemoved(r.recheckCursor);
                 }
-                // else: keep in deferred -> remains WAITING until mass grows
                 r.recheckCursor++;
-                continue;
             }
-
-            float hardness;
-            try { hardness = st.getBlockHardness(world, bp); }
-            catch (Exception e) { r.recheckCursor++; continue; }
-            if (hardness < 0) { r.recheckCursor++; continue; }
-
-            // Fake hardness for the check, real hardness for the mass gain.
-            double check = BlackHoleUtils.effectiveHardnessForCheck(mat, hardness);
-            double bdist = dist(bp, cx, cy, cz);
-
-            if (canEat(bdist, check, curMass, horizonPlus)) {
-                eat(world, bp, false);
-                double gain = BlackHoleUtils.massGainForHardness(hardness);
-                massDelta += gain;
-                curMass += gain;
-                horizonPlus = BlackHoleUtils.getHorizonRadius(curMass) + 0.5D;
-                r.markDeferredRemoved(r.recheckCursor);
-            }
-            r.recheckCursor++;
+        } finally {
+            pooled.release();
         }
 
         if (r.recheckCursor >= r.deferredCount) {
@@ -404,10 +423,9 @@ public class BlackHoleRegionManager {
 
     /** Seed the region containing the black hole itself. Called once on first tick. */
     public void seed() {
-        int s = BlackHoleRegion.SIZE;
-        int ox = Math.floorDiv(te.getPos().getX(), s) * s;
-        int oy = Math.floorDiv(te.getPos().getY(), s) * s;
-        int oz = Math.floorDiv(te.getPos().getZ(), s) * s;
+        int ox = te.getPos().getX() & ~7;
+        int oy = te.getPos().getY() & ~7;
+        int oz = te.getPos().getZ() & ~7;
         BlackHoleRegion r = getOrCreateRegion(ox, oy, oz);
         if (r != null && !active.contains(r)) active.add(r);
     }
@@ -420,12 +438,9 @@ public class BlackHoleRegionManager {
         long key = packKeyForBlock(bp);
         BlackHoleRegion r = allRegions.get(key);
         if (r == null) {
-            // Region not yet known (frontier hasn't reached it). Try to create it
-            // if it's within MAX range - otherwise frontier will create it later.
-            int s = BlackHoleRegion.SIZE;
-            int ox = Math.floorDiv(bp.getX(), s) * s;
-            int oy = Math.floorDiv(bp.getY(), s) * s;
-            int oz = Math.floorDiv(bp.getZ(), s) * s;
+            int ox = bp.getX() & ~7;
+            int oy = bp.getY() & ~7;
+            int oz = bp.getZ() & ~7;
             r = getOrCreateRegion(ox, oy, oz);
             if (r == null) return;
             if (!active.contains(r)) active.add(r);
@@ -549,26 +564,34 @@ public class BlackHoleRegionManager {
         double cy = te.getPos().getY() + 0.5;
         double cz = te.getPos().getZ() + 0.5;
         double minMass = Double.MAX_VALUE;
-        for (int i = 0; i < r.deferredCount; i++) {
-            short idx = r.deferred[i];
-            if (idx < 0) continue;
-            BlockPos bp = r.blockPos(idx);
-            IBlockState st = world.getBlockState(bp);
-            if (st.getBlock() == Blocks.AIR) continue;
-            float hardness;
-            try { hardness = st.getBlockHardness(world, bp); } catch (Exception e) { continue; }
-            if (hardness < 0) continue;
-            Material mat = st.getMaterial();
-            boolean liquid = mat.isLiquid() || isVegetation(st, mat);
-            // Wake threshold must use the same fake hardness as the eat check,
-            // otherwise e.g. an ore (3.0 -> 1.5) would wake the region too late.
-            double effective = liquid ? 0.1 : BlackHoleUtils.effectiveHardnessForCheck(mat, hardness);
-            double bdist = dist(bp, cx, cy, cz);
-            // Either accel becomes enough, or the horizon grows to swallow it.
-            double mAccel = effective * bdist * bdist / BlackHoleUtils.G;
-            double mHorizon = BlackHoleUtils.massForHorizon(bdist - 0.5);
-            double m = Math.min(mAccel, mHorizon);
-            if (m < minMass) minMass = m;
+        BlockPos.PooledMutableBlockPos pooled = BlockPos.PooledMutableBlockPos.retain();
+        try {
+            for (int i = 0; i < r.deferredCount; i++) {
+                short idx = r.deferred[i];
+                if (idx < 0) continue;
+                int lx = idx & 7;
+                int ly = (idx >> 3) & 7;
+                int lz = (idx >> 6) & 7;
+                int bx = r.originX + lx;
+                int by = r.originY + ly;
+                int bz = r.originZ + lz;
+                pooled.setPos(bx, by, bz);
+                IBlockState st = world.getBlockState(pooled);
+                if (st.getBlock() == Blocks.AIR) continue;
+                float hardness;
+                try { hardness = st.getBlockHardness(world, pooled); } catch (Exception e) { continue; }
+                if (hardness < 0) continue;
+                Material mat = st.getMaterial();
+                boolean liquid = mat.isLiquid() || isVegetation(st, mat);
+                double effective = liquid ? 0.1 : BlackHoleUtils.effectiveHardnessForCheck(mat, hardness);
+                double bdist = dist(bx, by, bz, cx, cy, cz);
+                double mAccel = effective * bdist * bdist / BlackHoleUtils.G;
+                double mHorizon = BlackHoleUtils.massForHorizon(bdist - 0.5);
+                double m = Math.min(mAccel, mHorizon);
+                if (m < minMass) minMass = m;
+            }
+        } finally {
+            pooled.release();
         }
         return minMass;
     }
@@ -596,21 +619,28 @@ public class BlackHoleRegionManager {
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
 
+    private static double dist(int bx, int by, int bz, double cx, double cy, double cz) {
+        double dx = bx + 0.5 - cx;
+        double dy = by + 0.5 - cy;
+        double dz = bz + 0.5 - cz;
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
     private static long packKey(int ox, int oy, int oz) {
-        int rx = Math.floorDiv(ox, BlackHoleRegion.SIZE);
-        int ry = Math.floorDiv(oy, BlackHoleRegion.SIZE);
-        int rz = Math.floorDiv(oz, BlackHoleRegion.SIZE);
-        // 24 | 6 | 24 = 54 bits — covers full world range with margin.
+        // SIZE==8 → division = arithmetic shift, floorDiv == >>3 for power-of-two
+        int rx = ox >> 3;
+        int ry = oy >> 3;
+        int rz = oz >> 3;
         return ((long)(rx & 0xFFFFFF) << 30)
               | ((long)(ry & 0x3F) << 24)
               | (long)(rz & 0xFFFFFF);
     }
 
     private static long packKeyForBlock(BlockPos bp) {
-        int s = BlackHoleRegion.SIZE;
-        int ox = Math.floorDiv(bp.getX(), s) * s;
-        int oy = Math.floorDiv(bp.getY(), s) * s;
-        int oz = Math.floorDiv(bp.getZ(), s) * s;
+        // floor to multiple of 8 via & ~7, same as floorDiv*s for power-of-two
+        int ox = bp.getX() & ~7;
+        int oy = bp.getY() & ~7;
+        int oz = bp.getZ() & ~7;
         return packKey(ox, oy, oz);
     }
 }

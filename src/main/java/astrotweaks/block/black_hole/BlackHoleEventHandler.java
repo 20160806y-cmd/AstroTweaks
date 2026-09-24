@@ -23,11 +23,13 @@ public class BlackHoleEventHandler {
     public static void onBlockPlaced(BlockEvent.PlaceEvent event) {
         World world = event.getWorld();
         if (world == null || world.isRemote) return;
+        java.util.Set<BlackHoleTileEntity> active = BlackHoleTileEntity.getActiveHoles();
+        if (active.isEmpty()) return;
         BlockPos pos = event.getPos();
-        for (TileEntity te : world.loadedTileEntityList) {
-            if (te instanceof BlackHoleTileEntity) {
-                ((BlackHoleTileEntity) te).getRegionManager().onBlockPlaced(pos);
-            }
+        // Snapshot to avoid CME if BH dies mid-loop
+        for (BlackHoleTileEntity bh : new java.util.ArrayList<>(active)) {
+            if (bh.isInvalid() || bh.getWorld() != world) continue;
+            bh.getRegionManager().onBlockPlaced(pos);
         }
     }
 
@@ -35,6 +37,8 @@ public class BlackHoleEventHandler {
     public static void onNeighborNotify(BlockEvent.NeighborNotifyEvent event) {
         World world = event.getWorld();
         if (world == null || world.isRemote) return;
+        java.util.Set<BlackHoleTileEntity> active = BlackHoleTileEntity.getActiveHoles();
+        if (active.isEmpty()) return;
 
         // Fire for liquids and vegetation (tallgrass, flowers, bushes, vine etc.).
         // Covers: bucket place (setBlockState → notify), water spreading, and vegetation growth.
@@ -42,10 +46,9 @@ public class BlackHoleEventHandler {
         if (!state.getMaterial().isLiquid() && !BlackHoleRegionManager.isVegetation(state)) return;
 
         BlockPos pos = event.getPos();
-        for (TileEntity te : world.loadedTileEntityList) {
-            if (te instanceof BlackHoleTileEntity) {
-                ((BlackHoleTileEntity) te).getRegionManager().onBlockPlaced(pos);
-            }
+        for (BlackHoleTileEntity bh : new java.util.ArrayList<>(active)) {
+            if (bh.isInvalid() || bh.getWorld() != world) continue;
+            bh.getRegionManager().onBlockPlaced(pos);
         }
     }
 
@@ -64,13 +67,14 @@ public class BlackHoleEventHandler {
         if (event.phase != TickEvent.Phase.END) return;
         World world = event.world;
         if (world == null || world.isRemote) return;
+        java.util.Set<BlackHoleTileEntity> active = BlackHoleTileEntity.getActiveHoles();
+        if (active.size() < 2) return;
 
         List<BlackHoleTileEntity> holes = null;
-        for (TileEntity te : world.loadedTileEntityList) {
-            if (te instanceof BlackHoleTileEntity && !te.isInvalid()) {
-                if (holes == null) holes = new ArrayList<>();
-                holes.add((BlackHoleTileEntity) te);
-            }
+        for (BlackHoleTileEntity bh : active) {
+            if (bh.isInvalid() || bh.getWorld() != world) continue;
+            if (holes == null) holes = new ArrayList<>();
+            holes.add(bh);
         }
         if (holes == null || holes.size() < 2) return;
 
@@ -98,10 +102,19 @@ public class BlackHoleEventHandler {
                 double take = BlackHoleUtils.TUG_RATE * massA * (1.0D + grav);
                 if (!(take > 1e-9D)) continue; // noise guard, avoids dirty-churn
                 double avail = b.getMass() - minMass;
+                if (!(avail > 0.0D)) {
+                    // Жертва уже на полу — съедена до конца, сносим ядро
+                    b.destroyBlackHole();
+                    continue;
+                }
                 if (take > avail) take = avail;
-                if (!(take > 0.0D)) continue; // victim already at floor
+                if (!(take > 0.0D)) continue;
                 b.addMassPassive(-take);
                 a.addMassPassive(take);
+                // Если после слива жертва дошла до порога — уничтожаем ядро
+                if (!b.isInvalid() && b.getMass() <= minMass) {
+                    b.destroyBlackHole();
+                }
                 // Refresh live: growth widens the range for the next victim.
                 massA = a.getMass();
                 rangeA = BlackHoleUtils.getGravityRange(massA);
@@ -113,11 +126,12 @@ public class BlackHoleEventHandler {
     public static void onChunkLoad(ChunkEvent.Load event) {
         World world = event.getWorld();
         if (world == null || world.isRemote) return;
+        java.util.Set<BlackHoleTileEntity> active = BlackHoleTileEntity.getActiveHoles();
+        if (active.isEmpty()) return;
         Chunk chunk = event.getChunk();
-        for (TileEntity te : world.loadedTileEntityList) {
-            if (te instanceof BlackHoleTileEntity) {
-                ((BlackHoleTileEntity) te).getRegionManager().onChunkLoaded(chunk);
-            }
+        for (BlackHoleTileEntity bh : new java.util.ArrayList<>(active)) {
+            if (bh.isInvalid() || bh.getWorld() != world) continue;
+            bh.getRegionManager().onChunkLoaded(chunk);
         }
     }
 }

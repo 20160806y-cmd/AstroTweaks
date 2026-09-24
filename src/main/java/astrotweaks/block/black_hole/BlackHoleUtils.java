@@ -46,21 +46,32 @@ public final class BlackHoleUtils {
     /** Minimal displacement per tick to be applied */
     public static final double MIN_ACCEL = 0.001D;
     /** Hard cap for gravity scan box (per user req) */
-    public static final double MAX_GRAVITY_RANGE = 150.0D;
+    public static final double MAX_GRAVITY_RANGE = 192.0D;
     /** Block capture radius cap - same constant as gravity per user req (perf limited) */
     public static final double MAX_BLOCK_CAPTURE_RANGE = 128.0D;
 
 
     // Horizon: R_h = C * mass^E ; v3: -25% base (H_SCALE*m^H_EXP): 200->0.58 ; 1000->0.82 ; 5000->1.17
-    public static final double H_SCALE = 0.05D;
+    public static final double H_SCALE = 0.03D;
     public static final double H_EXP = 0.3D;
+
+    /** Мемоизация для частых pow — single-slot, single-thread (майн single thread) */
+    private static double lastHorizonMassBits = Double.NaN;
+    private static double lastHorizonR = 0;
+    private static double lastHaloHorizon = Double.NaN;
+    private static double lastHaloThickness = 0;
+    private static double lastEvapMass = Double.NaN;
+    private static double lastEvapLoss = 0;
 
     /** Halo thickness base formula: halo = 0.25 * horizon^0.602 (1->0.25, 10->1.0) */
     public static double getHaloThickness(double horizon) {
         if (horizon <= 0) return 0.2D;
+        if (Double.doubleToLongBits(horizon) == Double.doubleToLongBits(lastHaloHorizon)) return lastHaloThickness;
         double h = 0.2D * Math.pow(horizon, 0.60206D);
         if (h < 0.12D) h = 0.12D;
         if (h > 1.8D) h = 1.8D;
+        lastHaloHorizon = horizon;
+        lastHaloThickness = h;
         return h;
     }
     /** Legacy constant for compat - now computed */
@@ -79,7 +90,7 @@ public final class BlackHoleUtils {
     public static final double DEFAULT_MASS = 5000.0D;
 
     /** Hard floor for mass (evaporation and drains never go below this). */
-    public static final double MIN_MASS = 1.0D;
+    public static final double MIN_MASS = 0.5D;
     /**
      * Hard cap for mass. Clamp, not reset: values above (e.g. huge NBT)
      * saturate here, values below MIN_MASS saturate at the floor.
@@ -97,10 +108,14 @@ public final class BlackHoleUtils {
     public static final double EVAP_EXP = 0.30103D / 2;
 
     public static double getEvaporationPerTick(double mass) {
-        if (mass < MIN_MASS)  return 0.0D; // floor or NaN: nothing to evaporate
+        if (mass < MIN_MASS)  return MIN_MASS; // floor or NaN: nothing to evaporate
+        if (Double.doubleToLongBits(mass) == Double.doubleToLongBits(lastEvapMass)) return lastEvapLoss;
         double loss = EVAP_BASE / Math.pow(mass, EVAP_EXP);
         double maxLoss = mass - MIN_MASS;
-        return loss < maxLoss ? loss : maxLoss;
+        double ret = loss < maxLoss ? loss : maxLoss;
+        lastEvapMass = mass;
+        lastEvapLoss = ret;
+        return ret;
     }
 
     /**
@@ -120,7 +135,7 @@ public final class BlackHoleUtils {
 
     /** Mass delta per absorption */
     public static final double MASS_PER_ITEM = 1.0D;
-    public static final double MASS_PER_ENTITY = 10.0D;
+    public static final double MASS_PER_ENTITY = 15.0D;
     public static final double MASS_PER_XP = 0.5D;
     public static final double MASS_PER_PLAYER = 25.0D;
     /** Mass gained per liquid block eaten. Cheap — liquids have no structural cost. */
@@ -139,25 +154,21 @@ public final class BlackHoleUtils {
     }
 
     public static double getHorizonRadius(double mass) {
-        if (mass <= 0) return 0.04D;
+        if (mass <= 0) return 0.03D;
+        if (Double.doubleToLongBits(mass) == Double.doubleToLongBits(lastHorizonMassBits)) return lastHorizonR;
         double r = H_SCALE * Math.pow(mass, H_EXP);
-        if (r < 0.04D) r = 0.04D;
-        if (r > 50D) r = 50D; // Максимальный радиус ЧД
+        if (r < 0.03D) r = 0.03D;
+        if (r > 100D) r = 100D;
+        lastHorizonMassBits = mass;
+        lastHorizonR = r;
         return r;
     }
 
     /**
-     * Visual-only horizon radius for rendering (TESR, bounding box).
-     * Same formula as gameplay, but the minimum is 3x smaller (0.1 instead
-     * of 0.3), so a fresh mass=1 hole renders tiny. Gameplay logic
-     * (capture, absorption) keeps using {@link #getHorizonRadius}.
+     * Visual-only horizon radius — сейчас идентична геймплейной, делегируем для DRY и кэша.
      */
     public static double getVisualHorizonRadius(double mass) {
-        if (mass <= 0) return 0.04D;
-        double r = H_SCALE * Math.pow(mass, H_EXP);
-        if (r < 0.04D) r = 0.04D;
-        if (r > 50D) r = 50D;
-        return r;
+        return getHorizonRadius(mass);
     }
 
     /** Radius where accel >= hardness threshold (dynamic) */

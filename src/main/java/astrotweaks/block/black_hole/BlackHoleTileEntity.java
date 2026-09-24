@@ -22,6 +22,12 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
 
     public static final String TAG_MASS = "mass";
 
+    /** Глобальный реестр активных BH — O(число BH) вместо O(все TE) в ивентах. Strong set, чтобы BH не пропадала при выгрузке чанка (WeakHashMap собиралась GC). */
+    private static final java.util.Set<BlackHoleTileEntity> ACTIVE_HOLES =
+            java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
+
+    public static java.util.Set<BlackHoleTileEntity> getActiveHoles() { return ACTIVE_HOLES; }
+
     private double mass = BlackHoleUtils.DEFAULT_MASS;
     private int syncCooldown = 0;
 
@@ -95,12 +101,41 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
     }
 
     @Override
+    public void validate() {
+        super.validate();
+        ACTIVE_HOLES.add(this);
+    }
+
+    @Override
+    public void invalidate() {
+        ACTIVE_HOLES.remove(this);
+        super.invalidate();
+    }
+
+    @Override
+    public void onChunkUnload() {
+        // Не удаляем из ACTIVE_HOLES — TE остаётся валидной, вернётся при загрузке чанка.
+        super.onChunkUnload();
+    }
+
+    // Кэш для getRenderBoundingBox — избегаем 2 pow + аллокацию AABB каждый кадр
+    private double cachedBBMass = Double.NaN;
+    private AxisAlignedBB cachedBB;
+    // Кэш для tickEntities AABB
+    private double cachedGravRange = Double.NaN;
+    private AxisAlignedBB cachedAABB;
+
+    @Override
     public AxisAlignedBB getRenderBoundingBox() {
-        double h = BlackHoleUtils.getVisualHorizonRadius(mass);
-        double t = BlackHoleUtils.getHaloThickness(h);
-        double r = h + t * 2 + 1.0D;
-        double rad = Math.max(r, 2.0D);
-        return new AxisAlignedBB(pos).grow(rad + 1, rad + 1, rad + 1);
+        double m = mass;
+        if (m != cachedBBMass || cachedBB == null) {
+            cachedBBMass = m;
+            double h = BlackHoleUtils.getVisualHorizonRadius(m);
+            double t = BlackHoleUtils.getHaloThickness(h);
+            double rad = Math.max(h + t * 2 + 1.0D, 2.0D) + 1.0D;
+            cachedBB = new AxisAlignedBB(pos).grow(rad, rad, rad);
+        }
+        return cachedBB;
     }
 
     @Override
@@ -108,24 +143,49 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
         return pass == 0 || pass == 1;
     }
 
+    @Override
+    public double getMaxRenderDistanceSquared() {
+        return super.getMaxRenderDistanceSquared();
+    }
+
+    /**
+     * Уничтожает ядро чёрной дыры (блок + TE). Безопасен при повторном вызове.
+     * Вызывать только на сервере.
+     */
+    public void destroyBlackHole() {
+        if (world == null || world.isRemote || isInvalid()) return;
+        // setBlockToAir -> BlackHoleBlock.breakBlock -> world.removeTileEntity(pos) -> invalidate()
+        world.setBlockToAir(pos);
+    }
+
     // =================================================================
     // Server tick - gravity & block eating (region-driven)
     // =================================================================
     @Override
     public void update() {
-        if (world == null || world.isRemote)  return;
+        if (world == null || world.isRemote) return;
+
+        // Смерть от испарения/поглощения: если масса дошла до пола — сносим ядро.
+        // mass==0 невозможен из-за clampMass->MIN_MASS, поэтому проверяем <= MIN_MASS.
+        if (mass <= BlackHoleUtils.MIN_MASS) {
+            destroyBlackHole();
+            return;
+        }
 
         // Evaporation: slow mass bleed, weaker for heavier holes.
-        // Passive (no forced sync): the N-tick periodic sync covers it.
-        // Runs before eating so the region logic sees the post-evap mass.
         double m = mass;
         if (m > BlackHoleUtils.MIN_MASS) {
             double evap = BlackHoleUtils.getEvaporationPerTick(m);
-            if (evap > 0.0D) addMassPassive(-evap);
+            if (evap > 0.0D) {
+                addMassPassive(-evap);
+                if (mass <= BlackHoleUtils.MIN_MASS) {
+                    destroyBlackHole();
+                    return;
+                }
+            }
         }
 
         // Entities: split across 2 ticks by entity-id parity.
-        // Each entity gets processed once every 2 ticks; accel is doubled to compensate.
         tickEntities();
 
         // Blocks: budgeted, region-driven.
@@ -134,8 +194,9 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
         // periodic sync every N ticks (mass change forces syncCooldown=0)
         syncCooldown--;
         if (syncCooldown <= 0) {
-            syncCooldown = 10;
-            world.notifyBlockUpdate(pos, world.getBlockState(pos), world.getBlockState(pos), 3);
+            syncCooldown = 4;
+            net.minecraft.block.state.IBlockState st = world.getBlockState(pos);
+            world.notifyBlockUpdate(pos, st, st, 3);
         }
     }
 
@@ -150,16 +211,30 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
         double cx = pos.getX() + 0.5;
         double cy = pos.getY() + 0.5;
         double cz = pos.getZ() + 0.5;
-        AxisAlignedBB aabb = new AxisAlignedBB(
-                cx - gravRange, cy - gravRange, cz - gravRange,
-                cx + gravRange, cy + gravRange, cz + gravRange);
+        AxisAlignedBB aabb;
+        if (gravRange != cachedGravRange || cachedAABB == null) {
+            cachedGravRange = gravRange;
+            cachedAABB = new AxisAlignedBB(
+                    cx - gravRange, cy - gravRange, cz - gravRange,
+                    cx + gravRange, cy + gravRange, cz + gravRange);
+        } else {
+            // Центр не меняется, но если TE переместился (не должен) — пересоздать
+            // Быстрая проверка: AABB центр vs текущая позиция
+            double ax = (cachedAABB.minX + cachedAABB.maxX) * 0.5;
+            if (ax != cx) {
+                cachedAABB = new AxisAlignedBB(
+                        cx - gravRange, cy - gravRange, cz - gravRange,
+                        cx + gravRange, cy + gravRange, cz + gravRange);
+            }
+        }
+        aabb = cachedAABB;
 
-        List<Entity> entities = world.getEntitiesWithinAABB(Entity.class, aabb, e ->
-                e != null && !e.isDead
-                && !(e instanceof EntityPlayer && ((EntityPlayer)e).isSpectator()));
+        List<Entity> entities = world.getEntitiesWithinAABB(Entity.class, aabb);
 
         boolean massChanged = false;
         for (Entity e : entities) {
+            if (e == null || e.isDead) continue;
+            if (e instanceof EntityPlayer && ((EntityPlayer)e).isSpectator()) continue;
             boolean isPlayer = e instanceof EntityPlayerMP;
             // Stride by type: items/XP across 4 ticks, others across 2 ticks
             boolean isItemOrXp = e instanceof EntityItem || e instanceof EntityXPOrb;
