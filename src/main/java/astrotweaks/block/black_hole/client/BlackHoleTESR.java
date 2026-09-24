@@ -23,7 +23,8 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
 
     @Override
     public void render(BlackHoleTileEntity te, double x, double y, double z, float partialTicks, int destroyStage, float alpha) {
-        renderStatic(te, x, y, z, partialTicks);
+        // TESR отключён — единый путь через RenderWorldLastEvent (иначе фантом на 64 блока: близко TESR, далеко WorldRenderer)
+        // Оставлен no-op чтобы не дублировать и не пропадать при подходе. isGlobalRenderer всё ещё true на всякий.
     }
 
     /**

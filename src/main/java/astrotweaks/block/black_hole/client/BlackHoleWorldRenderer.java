@@ -20,9 +20,6 @@ import net.minecraftforge.fml.relauncher.Side;
 @Mod.EventBusSubscriber(modid = "astrotweaks", value = Side.CLIENT)
 public final class BlackHoleWorldRenderer {
 
-    /** Квадрат дистанции, где TESR ещё отрабатывает (64 блока). Ближе — не дублируем. */
-    private static final double TESR_RANGE_SQ = 64 * 64;
-
     @SubscribeEvent
     public static void onRenderWorldLast(RenderWorldLastEvent e) {
         Minecraft mc = Minecraft.getMinecraft();
@@ -34,19 +31,25 @@ public final class BlackHoleWorldRenderer {
         double py = view.lastTickPosY + (view.posY - view.lastTickPosY) * e.getPartialTicks();
         double pz = view.lastTickPosZ + (view.posZ - view.lastTickPosZ) * e.getPartialTicks();
 
+        // Квадрат дистанции прогруженных чанков для этого игрока (renderDistance в чанках)
+        int rd = mc.gameSettings.renderDistanceChunks;
+        // +2 чанка запаса, чтобы не резать на границе прогрузки
+        double loadedRange = (rd + 2) * 16.0;
+        double loadedRangeSq = loadedRange * loadedRange;
+
         for (BlackHoleTileEntity bh : new java.util.ArrayList<>(active)) {
             if (bh.isInvalid() || bh.getWorld() != w) continue;
             BlockPos p = bh.getPos();
-            // Рендерим только в прогруженных чанках для этого игрока (иначе BH висит на границе экрана после выгрузки)
+            // Только в прогруженных чанках для этого игрока
             if (!w.isBlockLoaded(p)) continue;
-
-            // Дедупликация: TESR уже отрисует дыры в радиусе 64 блоков.
+            // Доп. проверка по дистанции прогрузки — isBlockLoaded может держать чанк чуть дольше
             double dx = (p.getX() + 0.5) - px;
             double dy = (p.getY() + 0.5) - py;
             double dz = (p.getZ() + 0.5) - pz;
             double distSq = dx * dx + dy * dy + dz * dz;
-            if (distSq < TESR_RANGE_SQ) continue;
+            if (distSq > loadedRangeSq) continue;
 
+            // Рендерим на любой дистанции прогрузки единым путём (без фантомного хенд-оффа 64)
             double x = p.getX() - px;
             double y = p.getY() - py;
             double z = p.getZ() - pz;

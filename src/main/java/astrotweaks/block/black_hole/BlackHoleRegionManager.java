@@ -16,7 +16,7 @@ import java.util.*;
 public class BlackHoleRegionManager {
 
     /** Total block reads allowed per tick for this black hole. */
-    public static final int BUDGET_PER_TICK = 2048;
+    public static final int BUDGET_PER_TICK = 2560;
 
     /**
      * Safety full-rescan delay after a mass change (5 minutes = 6000 ticks).
@@ -605,7 +605,7 @@ public class BlackHoleRegionManager {
     /** Same as above, but reuses an already-fetched Material (hot-path overload). */
     public static boolean isVegetation(IBlockState st, Material m) {
         if (st == null || m == null) return false;
-        if (m == Material.PLANTS || m == Material.VINE) return true;
+        if (m == Material.PLANTS || m == Material.VINE || m == Material.WEB) return true;
         net.minecraft.block.Block b = st.getBlock();
         if (b instanceof BlockBush) return true;
         if (b instanceof BlockVine) return true;

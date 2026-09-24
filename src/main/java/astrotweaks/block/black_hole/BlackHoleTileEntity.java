@@ -30,6 +30,9 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
 
     private double mass = BlackHoleUtils.DEFAULT_MASS;
     private int syncCooldown = 0;
+    private int nbtCooldown = 0;
+    private double lastPersistedMass = Double.NaN;
+    private double lastSyncedMass = Double.NaN;
 
     private final BlackHoleRegionManager regionManager = new BlackHoleRegionManager(this);
 
@@ -38,26 +41,31 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
     public double getMass() { return mass; }
 
     public void setMass(double m) {
-        this.mass = BlackHoleUtils.clampMass(m);
+        double clamped = BlackHoleUtils.clampMass(m);
+        this.mass = clamped;
         markDirty();
-        // force sync soon
+        lastPersistedMass = clamped;
+        lastSyncedMass = clamped;
+        nbtCooldown = BlackHoleUtils.getNbtInterval(clamped);
         syncCooldown = 0;
     }
 
     public void addMass(double delta) {
-        setMass(this.mass + delta);
+        if (delta == 0.0D) return;
+        // Блочное поедание — суммированная дельта за тик, форсим NBT/sync через общий механизм,
+        // но не каждый вызов, чтобы не спамить при 1024 блоках/тик
+        this.mass = BlackHoleUtils.clampMass(this.mass + delta);
+        // не вызываем markDirty/sync здесь — update() сделает адаптивно
     }
 
     /**
      * Continuous per-tick delta (evaporation, BH-vs-BH tug). Clamped like
-     * setMass, but does NOT force an immediate client sync — the periodic
-     * 20-tick sync covers it, otherwise every BH would spam update packets
-     * every tick.
+     * setMass, but does NOT force an immediate client sync/NBT — адаптивные интервалы.
      */
     public void addMassPassive(double delta) {
         if (delta == 0.0D) return;
         this.mass = BlackHoleUtils.clampMass(this.mass + delta);
-        markDirty();
+        // адаптивная синхронизация/NBT в update()
     }
 
     @Override
@@ -66,14 +74,16 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
         if (nbt.hasKey(TAG_MASS)) {
             this.mass = nbt.getDouble(TAG_MASS);
         }
-        // legacy int tag
         if (nbt.hasKey("Mass")) {
             this.mass = nbt.getDouble("Mass");
         }
-        // Clamp, don't reset: huge NBT values (past int range, incl. wrapped
-        // negatives from external editors) saturate at the configured limits
-        // instead of silently falling back to default.
         this.mass = BlackHoleUtils.clampMass(this.mass);
+        lastPersistedMass = this.mass;
+        lastSyncedMass = this.mass;
+        nbtCooldown = BlackHoleUtils.getNbtInterval(this.mass);
+        syncCooldown = BlackHoleUtils.getSyncInterval(this.mass);
+        // syncCooldown не трогаем — периодический sync сам подхватит новую массу
+        // (setMass форсит sync=0 отдельно)
     }
 
     @Override
@@ -114,7 +124,11 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
 
     @Override
     public void onChunkUnload() {
-        // Не удаляем из ACTIVE_HOLES — TE остаётся валидной, вернётся при загрузке чанка.
+        // Форсим сохранение последних пассивных изменений перед выгрузкой, чтобы не потерять массу
+        if (!world.isRemote && Double.doubleToLongBits(mass) != Double.doubleToLongBits(lastPersistedMass)) {
+            markDirty();
+            lastPersistedMass = mass;
+        }
         super.onChunkUnload();
     }
 
@@ -165,8 +179,16 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
     public void update() {
         if (world == null || world.isRemote) return;
 
+        if (Double.isNaN(lastPersistedMass)) {
+            lastPersistedMass = mass;
+            nbtCooldown = BlackHoleUtils.getNbtInterval(mass);
+        }
+        if (Double.isNaN(lastSyncedMass)) {
+            lastSyncedMass = mass;
+            if (syncCooldown <= 0) syncCooldown = BlackHoleUtils.getSyncInterval(mass);
+        }
+
         // Смерть от испарения/поглощения: если масса дошла до пола — сносим ядро.
-        // mass==0 невозможен из-за clampMass->MIN_MASS, поэтому проверяем <= MIN_MASS.
         if (mass <= BlackHoleUtils.MIN_MASS) {
             destroyBlackHole();
             return;
@@ -191,12 +213,36 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
         // Blocks: budgeted, region-driven.
         regionManager.tick();
 
-        // periodic sync every N ticks (mass change forces syncCooldown=0)
-        syncCooldown--;
-        if (syncCooldown <= 0) {
-            syncCooldown = 4;
+        // --- Адаптивная синхронизация: чем больше масса — тем реже пакеты, но при быстром изменении — чаще ---
+        boolean massChanged = Double.doubleToLongBits(mass) != Double.doubleToLongBits(lastSyncedMass);
+        double syncRel = 0;
+        if (massChanged) {
+            syncRel = Math.abs(mass - lastSyncedMass) / Math.max(1.0D, Math.abs(lastSyncedMass));
+        }
+        // Для маленьких BH (<100k) горизонт меняется заметно каждый тик, форсим при 0.5% изменении
+        boolean forceSyncByDelta = massChanged && syncRel >= 0.005D;
+        if (--syncCooldown <= 0 || forceSyncByDelta) {
+            syncCooldown = BlackHoleUtils.getSyncInterval(mass);
+            lastSyncedMass = mass;
             net.minecraft.block.state.IBlockState st = world.getBlockState(pos);
             world.notifyBlockUpdate(pos, st, st, 3);
+        }
+
+        // --- Адаптивное сохранение NBT: реже для больших масс (IO-экономия) ---
+        // setMass(/blockdata) уже вызвал markDirty и сбросил nbtCooldown, поэтому здесь только пассивные дельты.
+        if (--nbtCooldown <= 0) nbtCooldown = 0;
+        if (Double.doubleToLongBits(mass) != Double.doubleToLongBits(lastPersistedMass)) {
+            double abs = Math.abs(mass - lastPersistedMass);
+            double rel = abs / Math.max(1.0D, Math.abs(lastPersistedMass));
+            boolean forceByDelta = rel >= BlackHoleUtils.NBT_DIRTY_RELATIVE_THRESHOLD;
+            if (nbtCooldown <= 0 || forceByDelta) {
+                markDirty();
+                lastPersistedMass = mass;
+                nbtCooldown = BlackHoleUtils.getNbtInterval(mass);
+            }
+        } else {
+            // масса не менялась — просто продлеваем интервал, не спамим markDirty
+            if (nbtCooldown <= 0) nbtCooldown = BlackHoleUtils.getNbtInterval(mass);
         }
     }
 
@@ -293,21 +339,21 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
                 try {
                     if (e instanceof EntityItem) {
                         int count = Math.max(1, ((EntityItem) e).getItem().getCount());
-                        mass += count * BlackHoleUtils.MASS_PER_ITEM;
+                        mass = BlackHoleUtils.clampMass(mass + count * BlackHoleUtils.MASS_PER_ITEM);
                         e.setDead();
                         massChanged = true;
                     } else if (e instanceof EntityXPOrb) {
-                        mass += BlackHoleUtils.MASS_PER_XP;
+                        mass = BlackHoleUtils.clampMass(mass + BlackHoleUtils.MASS_PER_XP);
                         e.setDead();
                         massChanged = true;
                     } else if (e instanceof EntityPlayer) {
                         e.attackEntityFrom(DamageSource.OUT_OF_WORLD, Float.MAX_VALUE);
-                        if (e.isDead) { mass += BlackHoleUtils.MASS_PER_PLAYER; massChanged = true; }
+                        if (e.isDead) { mass = BlackHoleUtils.clampMass(mass + BlackHoleUtils.MASS_PER_PLAYER); massChanged = true; }
                     } else {
                         try { e.attackEntityFrom(DamageSource.OUT_OF_WORLD, Float.MAX_VALUE); }
                         catch (Exception ignored) {}
                         if (!e.isDead) e.setDead();
-                        mass += BlackHoleUtils.MASS_PER_ENTITY;
+                        mass = BlackHoleUtils.clampMass(mass + BlackHoleUtils.MASS_PER_ENTITY);
                         massChanged = true;
                     }
                 } catch (Exception ex) { ex.printStackTrace(); }
@@ -345,6 +391,6 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
                 } catch (Exception ignored) {}
             }
         }
-        if (massChanged) { markDirty(); syncCooldown = 0; }
+        // massChanged обрабатывается адаптивно в update() — без немедленного markDirty/sync
     }
 }

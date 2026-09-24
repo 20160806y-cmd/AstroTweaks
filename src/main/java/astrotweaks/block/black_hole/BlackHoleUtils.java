@@ -46,14 +46,14 @@ public final class BlackHoleUtils {
     /** Minimal displacement per tick to be applied */
     public static final double MIN_ACCEL = 0.001D;
     /** Hard cap for gravity scan box (per user req) */
-    public static final double MAX_GRAVITY_RANGE = 192.0D;
+    public static final double MAX_GRAVITY_RANGE = 256.0D;
     /** Block capture radius cap - same constant as gravity per user req (perf limited) */
-    public static final double MAX_BLOCK_CAPTURE_RANGE = 128.0D;
+    public static final double MAX_BLOCK_CAPTURE_RANGE = 160.0D;
 
 
     // Horizon: R_h = C * mass^E ; v3: -25% base (H_SCALE*m^H_EXP): 200->0.58 ; 1000->0.82 ; 5000->1.17
-    public static final double H_SCALE = 0.03D;
-    public static final double H_EXP = 0.3D;
+    public static final double H_SCALE = 0.022D;
+    public static final double H_EXP = 0.333D;
 
     /** Мемоизация для частых pow — single-slot, single-thread (майн single thread) */
     private static double lastHorizonMassBits = Double.NaN;
@@ -141,6 +141,59 @@ public final class BlackHoleUtils {
     /** Mass gained per liquid block eaten. Cheap — liquids have no structural cost. */
     public static final double MASS_PER_LIQUID = 0.5D;
 
+    // =================================================================
+    // Adaptive sync / NBT интервалы — чем больше масса, тем реже обновления
+    // =================================================================
+    /** Минимальный интервал синхронизации с клиентом (тики) — для крошечных BH, где испарение заметно */
+    public static final int SYNC_TICKS_MIN = 1;
+    /** Максимальный интервал синхронизации — для гигантов, где горизонт почти не меняется */
+    public static final int SYNC_TICKS_MAX = 50;
+    /** Минимальный интервал markDirty / сохранения NBT */
+    public static final int NBT_TICKS_MIN = 5;
+    /** Максимальный интервал сохранения NBT */
+    public static final int NBT_TICKS_MAX = 200;
+    /** Относительный порог для внепланового сохранения NBT (2% массы) — крупная дельта форсит сохранение даже до истечения интервала */
+    public static final double NBT_DIRTY_RELATIVE_THRESHOLD = 0.02D;
+
+    /** Адаптивный интервал: <100k — чаще (испарение заметно), >1M — реже. Плюс форсирование по дельте в TileEntity. */
+    public static int getSyncInterval(double mass) {
+        if (!(mass >= MIN_MASS)) return SYNC_TICKS_MIN;
+        if (mass >= MAX_MASS) return SYNC_TICKS_MAX;
+        final double LOG_MIN = Math.log10(MIN_MASS);
+        final double LOG_MID = Math.log10(100000D);
+        final double LOG_MAX = Math.log10(MAX_MASS);
+        double log = Math.log10(mass);
+        if (mass < 100000D) {
+            double t = (log - LOG_MIN) / (LOG_MID - LOG_MIN);
+            if (t < 0) t = 0; if (t > 1) t = 1;
+            // 1 .. 8 тиков для 0.5..100k — дно 1-2 тика реально достигается на 20k
+            return (int) Math.round(SYNC_TICKS_MIN + t * (8 - SYNC_TICKS_MIN));
+        } else {
+            double t = (log - LOG_MID) / (LOG_MAX - LOG_MID);
+            if (t < 0) t = 0; if (t > 1) t = 1;
+            return (int) Math.round(8 + t * (SYNC_TICKS_MAX - 8));
+        }
+    }
+
+    /** Адаптивный интервал сохранения NBT. */
+    public static int getNbtInterval(double mass) {
+        if (!(mass >= MIN_MASS)) return NBT_TICKS_MIN;
+        if (mass >= MAX_MASS) return NBT_TICKS_MAX;
+        final double LOG_MIN = Math.log10(MIN_MASS);
+        final double LOG_MID = Math.log10(100000D);
+        final double LOG_MAX = Math.log10(MAX_MASS);
+        double log = Math.log10(mass);
+        if (mass < 100000D) {
+            double t = (log - LOG_MIN) / (LOG_MID - LOG_MIN);
+            if (t < 0) t = 0; if (t > 1) t = 1;
+            return (int) Math.round(NBT_TICKS_MIN + t * (40 - NBT_TICKS_MIN));
+        } else {
+            double t = (log - LOG_MID) / (LOG_MAX - LOG_MID);
+            if (t < 0) t = 0; if (t > 1) t = 1;
+            return (int) Math.round(40 + t * (NBT_TICKS_MAX - 40));
+        }
+    }
+
     public static double getGravityRange(double mass) {
         if (mass <= 0) return 0;
         double r = Math.sqrt(G * mass / MIN_ACCEL);
@@ -154,10 +207,10 @@ public final class BlackHoleUtils {
     }
 
     public static double getHorizonRadius(double mass) {
-        if (mass <= 0) return 0.03D;
+        if (mass <= 0) return 0.02D;
         if (Double.doubleToLongBits(mass) == Double.doubleToLongBits(lastHorizonMassBits)) return lastHorizonR;
         double r = H_SCALE * Math.pow(mass, H_EXP);
-        if (r < 0.03D) r = 0.03D;
+        if (r < 0.02D) r = 0.02D;
         if (r > 100D) r = 100D;
         lastHorizonMassBits = mass;
         lastHorizonR = r;

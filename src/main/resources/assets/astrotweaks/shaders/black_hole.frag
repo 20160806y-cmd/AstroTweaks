@@ -37,7 +37,7 @@ void main(){
     float alpha = pow(fresnel, 1.5);
     float ang = atan(vPos.z, vPos.x);
     float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0 + 2.5);
-    alpha *= 0.20 * shimmer;
+    alpha *= 0.19 * shimmer;
     if (alpha < 0.0005) discard;
     gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
     return;
